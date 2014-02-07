@@ -1,7 +1,7 @@
 #!/bin/sh
 # Verify that chmod works correctly with odd option combinations.
 
-# Copyright (C) 2004-2010 Free Software Foundation, Inc.
+# Copyright (C) 2004-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,12 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  chmod --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ chmod
 
 
 # Each line in this list is a set of arguments, followed by :,
@@ -70,17 +66,17 @@ for case in $cases; do
 
   case $files in
   '')
-    touch -- $all_files || framework_failure
+    touch -- $all_files || framework_failure_
     chmod $args 2>/dev/null && fail=1
     ;;
   ?*)
-    touch -- $files || framework_failure
+    touch -- $files || framework_failure_
     chmod $args || fail=1
     for file in $files; do
       # Test for misparsing args by creating all $files but $file.
       # chmod has a bug if it succeeds even though $file is absent.
       rm -f -- $all_files && touch -- $files && rm -- $file \
-          || framework_failure
+          || framework_failure_
       chmod $args 2>/dev/null && fail=1
     done
     ;;

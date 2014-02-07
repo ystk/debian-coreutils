@@ -1,7 +1,7 @@
 #!/bin/sh
 # test diagnostics are printed when seeking too far in seekable files.
 
-# Copyright (C) 2008-2010 Free Software Foundation, Inc.
+# Copyright (C) 2008-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,22 +16,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  dd --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ dd
 require_sparse_support_ # for `truncate --size=$OFF_T_MAX`
 eval $(getlimits) # for OFF_T limits
 
 
-printf "1234" > file || framework_failure
+printf "1234" > file || framework_failure_
 
 echo "\
 dd: \`standard input': cannot skip to specified offset
 0+0 records in
-0+0 records out" > skip_err || framework_failure
+0+0 records out" > skip_err || framework_failure_
 
 # skipping beyond number of blocks in file should issue a warning
 dd bs=1 skip=5 count=0 status=noxfer < file 2> err || fail=1
@@ -64,7 +60,7 @@ compare skip_err err || fail=1
 # seeking beyond end of file is OK
 dd bs=1 seek=5 count=0 status=noxfer > file 2> err || fail=1
 echo "0+0 records in
-0+0 records out" > err_ok || framework_failure
+0+0 records out" > err_ok || framework_failure_
 compare err_ok err || fail=1
 
 # skipping > OFF_T_MAX should fail immediately

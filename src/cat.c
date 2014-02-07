@@ -1,5 +1,5 @@
 /* cat -- concatenate files and print on the standard output.
-   Copyright (C) 1988, 1990-1991, 1995-2010 Free Software Foundation, Inc.
+   Copyright (C) 1988, 1990-1991, 1995-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -30,12 +30,12 @@
 #if HAVE_STROPTS_H
 # include <stropts.h>
 #endif
-#if HAVE_SYS_IOCTL_H
-# include <sys/ioctl.h>
-#endif
+#include <sys/ioctl.h>
 
 #include "system.h"
+#include "ioblksize.h"
 #include "error.h"
+#include "fadvise.h"
 #include "full-write.h"
 #include "quote.h"
 #include "safe-read.h"
@@ -94,7 +94,7 @@ Usage: %s [OPTION]... [FILE]...\n\
 Concatenate FILE(s), or standard input, to standard output.\n\
 \n\
   -A, --show-all           equivalent to -vET\n\
-  -b, --number-nonblank    number nonempty output lines\n\
+  -b, --number-nonblank    number nonempty output lines, overrides -n\n\
   -e                       equivalent to -vE\n\
   -E, --show-ends          display $ at end of each line\n\
   -n, --number             number all output lines\n\
@@ -162,7 +162,7 @@ simple_cat (
 
   /* Loop until the end of the file.  */
 
-  for (;;)
+  while (true)
     {
       /* Read a block of input.  */
 
@@ -271,7 +271,7 @@ cat (
 
   bpout = outbuf;
 
-  for (;;)
+  while (true)
     {
       do
         {
@@ -324,7 +324,8 @@ cat (
                     use_fionread = false;
                   else
                     {
-                      error (0, errno, _("cannot do ioctl on %s"), quote (infile));
+                      error (0, errno, _("cannot do ioctl on %s"),
+                             quote (infile));
                       newlines2 = newlines;
                       return false;
                     }
@@ -426,7 +427,7 @@ cat (
          scan for chars that need conversion.  */
       if (show_nonprinting)
         {
-          for (;;)
+          while (true)
             {
               if (ch >= 32)
                 {
@@ -477,7 +478,7 @@ cat (
       else
         {
           /* Not quoting, neither of -v, -e, or -t specified.  */
-          for (;;)
+          while (true)
             {
               if (ch == '\t' && show_tabs)
                 {
@@ -701,6 +702,8 @@ main (int argc, char **argv)
           goto contin;
         }
       insize = io_blksize (stat_buf);
+
+      fdadvise (input_desc, 0, 0, FADVISE_SEQUENTIAL);
 
       /* Compare the device and i-node numbers of this input file with
          the corresponding values of the (output file associated with)

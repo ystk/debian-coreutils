@@ -4,7 +4,7 @@
 # mv: cannot remove `x': Operation not permitted
 # Affects coreutils-6.0-6.9.
 
-# Copyright (C) 2007-2010 Free Software Foundation, Inc.
+# Copyright (C) 2007-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,12 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  mv --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ mv
 require_root_
 
 cleanup_() { rm -rf "$other_partition_tmpdir"; }
@@ -34,22 +30,24 @@ cleanup_() { rm -rf "$other_partition_tmpdir"; }
 # file from a sticky tmpdir to a directory owned by that user on
 # a different partition.
 
-mkdir t || framework_failure
-chmod a=rwx,o+t t || framework_failure
-echo > t/root-owned || framework_failure
-chmod a+r t/root-owned || framework_failure
-chown "$NON_ROOT_USERNAME" "$other_partition_tmpdir" || framework_failure
+mkdir t || framework_failure_
+chmod a=rwx,o+t t || framework_failure_
+echo > t/root-owned || framework_failure_
+chmod a+r t/root-owned || framework_failure_
+chown "$NON_ROOT_USERNAME" "$other_partition_tmpdir" || framework_failure_
 
 # We have to allow $NON_ROOT_USERNAME access to ".".
-chmod go+x . || framework_failure
+chmod go+x . || framework_failure_
 
 
 # Ensure that $NON_ROOT_USERNAME can access the required version of mv.
-version=`setuidgid $NON_ROOT_USERNAME env PATH="$PATH" mv --version|sed -n '1s/.* //p'`
+version=`
+  setuidgid $NON_ROOT_USERNAME env PATH="$PATH" mv --version |
+  sed -n '1s/.* //p'
+`
 case $version in
   $PACKAGE_VERSION) ;;
-  *) echo "$0: cannot access just-built mv as user $NON_ROOT_USERNAME" 1>&2
-     fail=1 ;;
+  *) skip_ "cannot access just-built mv as user $NON_ROOT_USERNAME";;
 esac
 
 setuidgid $NON_ROOT_USERNAME env PATH="$PATH" \

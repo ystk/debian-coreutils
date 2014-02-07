@@ -1,7 +1,7 @@
 /* -*- buffer-read-only: t -*- vi: set ro: */
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Test duplicating file descriptors.
-   Copyright (C) 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -171,7 +171,12 @@ main (void)
   ASSERT (dup2 (fd + 1, fd + 1) == fd + 1);
   ASSERT (!is_inheritable (fd + 1));
   ASSERT (dup2 (fd + 1, fd + 2) == fd + 2);
+  ASSERT (!is_inheritable (fd + 1));
   ASSERT (is_inheritable (fd + 2));
+  errno = 0;
+  ASSERT (dup2 (fd + 1, -1) == -1);
+  ASSERT (errno == EBADF);
+  ASSERT (!is_inheritable (fd + 1));
 #endif
 
   /* On systems that distinguish between text and binary mode, dup2

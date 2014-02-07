@@ -1,6 +1,6 @@
-# serial 7
+# serial 8
 
-# Copyright (C) 2001, 2003-2004, 2006, 2009-2010 Free Software Foundation, Inc.
+# Copyright (C) 2001, 2003-2004, 2006, 2009-2011 Free Software Foundation, Inc.
 # This file is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
 # with or without modifications, as long as this notice is preserved.
@@ -40,6 +40,7 @@ AC_DEFUN([gl_HOST_OS],
        nonstopux*)      os='NonStop-UX';;
        netbsd*-gnu*)    os='GNU/NetBSD';; # NetBSD kernel+libc, GNU userland
        netbsd*)         os='NetBSD';;
+       mirbsd*)         os='MirBSD';;
        knetbsd*-gnu)    os='GNU/kNetBSD';; # NetBSD kernel, GNU libc+userland
        kfreebsd*-gnu)   os='GNU/kFreeBSD';; # FreeBSD kernel, GNU libc+userland
        msdosdjgpp*)     os='DJGPP';;

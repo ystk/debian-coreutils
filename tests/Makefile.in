@@ -2,7 +2,7 @@
 # @configure_input@
 
 # Copyright (C) 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002,
-# 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010  Free Software
+# 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software
 # Foundation, Inc.
 # This Makefile.in is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
@@ -16,7 +16,7 @@
 @SET_MAKE@
 
 # Include this file at the end of each tests/*/Makefile.am.
-# Copyright (C) 2007-2010 Free Software Foundation, Inc.
+# Copyright (C) 2007-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,7 +34,6 @@ VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkgincludedir = $(includedir)/@PACKAGE@
 pkglibdir = $(libdir)/@PACKAGE@
-pkglibexecdir = $(libexecdir)/@PACKAGE@
 am__cd = CDPATH="$${ZSH_VERSION+.}$(PATH_SEPARATOR)" && cd
 install_sh_DATA = $(install_sh) -c -m 644
 install_sh_PROGRAM = $(install_sh) -c
@@ -55,8 +54,7 @@ subdir = tests
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/00gnulib.m4 \
 	$(top_srcdir)/m4/acl.m4 $(top_srcdir)/m4/alloca.m4 \
-	$(top_srcdir)/m4/argmatch.m4 $(top_srcdir)/m4/arpa_inet_h.m4 \
-	$(top_srcdir)/m4/assert.m4 $(top_srcdir)/m4/atexit.m4 \
+	$(top_srcdir)/m4/arpa_inet_h.m4 $(top_srcdir)/m4/assert.m4 \
 	$(top_srcdir)/m4/autobuild.m4 $(top_srcdir)/m4/backupfile.m4 \
 	$(top_srcdir)/m4/base64.m4 $(top_srcdir)/m4/bison.m4 \
 	$(top_srcdir)/m4/boottime.m4 $(top_srcdir)/m4/btowc.m4 \
@@ -65,42 +63,41 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/00gnulib.m4 \
 	$(top_srcdir)/m4/canonicalize.m4 \
 	$(top_srcdir)/m4/chdir-long.m4 $(top_srcdir)/m4/check-decl.m4 \
 	$(top_srcdir)/m4/chown.m4 $(top_srcdir)/m4/clock_time.m4 \
-	$(top_srcdir)/m4/cloexec.m4 $(top_srcdir)/m4/close-stream.m4 \
-	$(top_srcdir)/m4/close.m4 $(top_srcdir)/m4/closein.m4 \
-	$(top_srcdir)/m4/closeout.m4 $(top_srcdir)/m4/codeset.m4 \
-	$(top_srcdir)/m4/config-h.m4 $(top_srcdir)/m4/ctype.m4 \
+	$(top_srcdir)/m4/close-stream.m4 $(top_srcdir)/m4/close.m4 \
+	$(top_srcdir)/m4/closein.m4 $(top_srcdir)/m4/closeout.m4 \
+	$(top_srcdir)/m4/codeset.m4 $(top_srcdir)/m4/config-h.m4 \
+	$(top_srcdir)/m4/configmake.m4 $(top_srcdir)/m4/ctype.m4 \
 	$(top_srcdir)/m4/cycle-check.m4 $(top_srcdir)/m4/d-ino.m4 \
 	$(top_srcdir)/m4/d-type.m4 $(top_srcdir)/m4/dirent-safer.m4 \
 	$(top_srcdir)/m4/dirent_h.m4 $(top_srcdir)/m4/dirfd.m4 \
-	$(top_srcdir)/m4/dirname.m4 $(top_srcdir)/m4/dos.m4 \
+	$(top_srcdir)/m4/dirname.m4 \
 	$(top_srcdir)/m4/double-slash-root.m4 $(top_srcdir)/m4/dup2.m4 \
 	$(top_srcdir)/m4/eealloc.m4 $(top_srcdir)/m4/environ.m4 \
 	$(top_srcdir)/m4/errno_h.m4 $(top_srcdir)/m4/error.m4 \
 	$(top_srcdir)/m4/euidaccess-stat.m4 \
-	$(top_srcdir)/m4/euidaccess.m4 $(top_srcdir)/m4/exclude.m4 \
-	$(top_srcdir)/m4/exponentd.m4 $(top_srcdir)/m4/exponentf.m4 \
-	$(top_srcdir)/m4/exponentl.m4 $(top_srcdir)/m4/extensions.m4 \
-	$(top_srcdir)/m4/faccessat.m4 $(top_srcdir)/m4/fchdir.m4 \
-	$(top_srcdir)/m4/fclose.m4 $(top_srcdir)/m4/fcntl-o.m4 \
-	$(top_srcdir)/m4/fcntl-safer.m4 $(top_srcdir)/m4/fcntl.m4 \
-	$(top_srcdir)/m4/fcntl_h.m4 $(top_srcdir)/m4/fd-reopen.m4 \
-	$(top_srcdir)/m4/fdopendir.m4 $(top_srcdir)/m4/fflush.m4 \
-	$(top_srcdir)/m4/file-type.m4 $(top_srcdir)/m4/fileblocks.m4 \
+	$(top_srcdir)/m4/euidaccess.m4 $(top_srcdir)/m4/exponentd.m4 \
+	$(top_srcdir)/m4/exponentf.m4 $(top_srcdir)/m4/exponentl.m4 \
+	$(top_srcdir)/m4/extensions.m4 $(top_srcdir)/m4/faccessat.m4 \
+	$(top_srcdir)/m4/fchdir.m4 $(top_srcdir)/m4/fclose.m4 \
+	$(top_srcdir)/m4/fcntl-o.m4 $(top_srcdir)/m4/fcntl-safer.m4 \
+	$(top_srcdir)/m4/fcntl.m4 $(top_srcdir)/m4/fcntl_h.m4 \
+	$(top_srcdir)/m4/fd-reopen.m4 $(top_srcdir)/m4/fdopendir.m4 \
+	$(top_srcdir)/m4/fflush.m4 $(top_srcdir)/m4/fileblocks.m4 \
 	$(top_srcdir)/m4/filemode.m4 $(top_srcdir)/m4/filenamecat.m4 \
 	$(top_srcdir)/m4/flexmember.m4 $(top_srcdir)/m4/float_h.m4 \
 	$(top_srcdir)/m4/fnmatch.m4 $(top_srcdir)/m4/fopen.m4 \
 	$(top_srcdir)/m4/fpending.m4 $(top_srcdir)/m4/fpieee.m4 \
-	$(top_srcdir)/m4/fprintftime.m4 $(top_srcdir)/m4/fpurge.m4 \
-	$(top_srcdir)/m4/freading.m4 $(top_srcdir)/m4/freopen.m4 \
-	$(top_srcdir)/m4/frexp.m4 $(top_srcdir)/m4/frexpl.m4 \
+	$(top_srcdir)/m4/fpurge.m4 $(top_srcdir)/m4/freading.m4 \
+	$(top_srcdir)/m4/freopen.m4 $(top_srcdir)/m4/frexp.m4 \
+	$(top_srcdir)/m4/frexpl.m4 $(top_srcdir)/m4/fseek.m4 \
 	$(top_srcdir)/m4/fseeko.m4 $(top_srcdir)/m4/fstypename.m4 \
 	$(top_srcdir)/m4/fsusage.m4 $(top_srcdir)/m4/fsync.m4 \
-	$(top_srcdir)/m4/ftello.m4 $(top_srcdir)/m4/fts.m4 \
+	$(top_srcdir)/m4/ftell.m4 $(top_srcdir)/m4/ftello.m4 \
+	$(top_srcdir)/m4/fts.m4 $(top_srcdir)/m4/futimens.m4 \
 	$(top_srcdir)/m4/getaddrinfo.m4 \
 	$(top_srcdir)/m4/getcwd-abort-bug.m4 \
 	$(top_srcdir)/m4/getcwd-path-max.m4 $(top_srcdir)/m4/getcwd.m4 \
-	$(top_srcdir)/m4/getdate.m4 $(top_srcdir)/m4/getdelim.m4 \
-	$(top_srcdir)/m4/getdtablesize.m4 \
+	$(top_srcdir)/m4/getdelim.m4 $(top_srcdir)/m4/getdtablesize.m4 \
 	$(top_srcdir)/m4/getgroups.m4 $(top_srcdir)/m4/gethostname.m4 \
 	$(top_srcdir)/m4/gethrxtime.m4 $(top_srcdir)/m4/getline.m4 \
 	$(top_srcdir)/m4/getloadavg.m4 $(top_srcdir)/m4/getndelim2.m4 \
@@ -113,11 +110,11 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/00gnulib.m4 \
 	$(top_srcdir)/m4/gnulib-common.m4 \
 	$(top_srcdir)/m4/gnulib-comp.m4 \
 	$(top_srcdir)/m4/group-member.m4 \
-	$(top_srcdir)/m4/hard-locale.m4 $(top_srcdir)/m4/hash.m4 \
-	$(top_srcdir)/m4/host-os.m4 $(top_srcdir)/m4/hostent.m4 \
-	$(top_srcdir)/m4/human.m4 $(top_srcdir)/m4/i-ring.m4 \
-	$(top_srcdir)/m4/iconv.m4 $(top_srcdir)/m4/iconv_h.m4 \
-	$(top_srcdir)/m4/iconv_open.m4 $(top_srcdir)/m4/idcache.m4 \
+	$(top_srcdir)/m4/hard-locale.m4 $(top_srcdir)/m4/host-os.m4 \
+	$(top_srcdir)/m4/hostent.m4 $(top_srcdir)/m4/human.m4 \
+	$(top_srcdir)/m4/i-ring.m4 $(top_srcdir)/m4/iconv.m4 \
+	$(top_srcdir)/m4/iconv_h.m4 $(top_srcdir)/m4/iconv_open.m4 \
+	$(top_srcdir)/m4/idcache.m4 \
 	$(top_srcdir)/m4/include-exclude-prog.m4 \
 	$(top_srcdir)/m4/include_next.m4 $(top_srcdir)/m4/inet_ntop.m4 \
 	$(top_srcdir)/m4/inet_pton.m4 $(top_srcdir)/m4/inline.m4 \
@@ -127,18 +124,21 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/00gnulib.m4 \
 	$(top_srcdir)/m4/ioctl.m4 $(top_srcdir)/m4/isapipe.m4 \
 	$(top_srcdir)/m4/isblank.m4 $(top_srcdir)/m4/isnand.m4 \
 	$(top_srcdir)/m4/isnanf.m4 $(top_srcdir)/m4/isnanl.m4 \
-	$(top_srcdir)/m4/jm-macros.m4 $(top_srcdir)/m4/jm-winsz1.m4 \
-	$(top_srcdir)/m4/jm-winsz2.m4 $(top_srcdir)/m4/langinfo_h.m4 \
+	$(top_srcdir)/m4/iswblank.m4 $(top_srcdir)/m4/jm-macros.m4 \
+	$(top_srcdir)/m4/jm-winsz1.m4 $(top_srcdir)/m4/jm-winsz2.m4 \
+	$(top_srcdir)/m4/langinfo_h.m4 $(top_srcdir)/m4/largefile.m4 \
 	$(top_srcdir)/m4/lchmod.m4 $(top_srcdir)/m4/lchown.m4 \
+	$(top_srcdir)/m4/lcmessage.m4 $(top_srcdir)/m4/ldexp.m4 \
 	$(top_srcdir)/m4/ldexpl.m4 $(top_srcdir)/m4/lib-check.m4 \
 	$(top_srcdir)/m4/lib-ignore.m4 $(top_srcdir)/m4/lib-ld.m4 \
 	$(top_srcdir)/m4/lib-link.m4 $(top_srcdir)/m4/lib-prefix.m4 \
+	$(top_srcdir)/m4/libunistring-base.m4 \
 	$(top_srcdir)/m4/link-follow.m4 $(top_srcdir)/m4/link.m4 \
 	$(top_srcdir)/m4/linkat.m4 $(top_srcdir)/m4/localcharset.m4 \
 	$(top_srcdir)/m4/locale-fr.m4 $(top_srcdir)/m4/locale-ja.m4 \
 	$(top_srcdir)/m4/locale-tr.m4 $(top_srcdir)/m4/locale-zh.m4 \
-	$(top_srcdir)/m4/locale_h.m4 $(top_srcdir)/m4/lock.m4 \
-	$(top_srcdir)/m4/long-options.m4 $(top_srcdir)/m4/longlong.m4 \
+	$(top_srcdir)/m4/locale_h.m4 $(top_srcdir)/m4/localename.m4 \
+	$(top_srcdir)/m4/lock.m4 $(top_srcdir)/m4/longlong.m4 \
 	$(top_srcdir)/m4/ls-mntd-fs.m4 $(top_srcdir)/m4/lseek.m4 \
 	$(top_srcdir)/m4/lstat.m4 $(top_srcdir)/m4/malloc.m4 \
 	$(top_srcdir)/m4/malloca.m4 $(top_srcdir)/m4/manywarnings.m4 \
@@ -147,12 +147,10 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/00gnulib.m4 \
 	$(top_srcdir)/m4/mbrtowc.m4 $(top_srcdir)/m4/mbsinit.m4 \
 	$(top_srcdir)/m4/mbslen.m4 $(top_srcdir)/m4/mbsrtowcs.m4 \
 	$(top_srcdir)/m4/mbstate_t.m4 $(top_srcdir)/m4/mbswidth.m4 \
-	$(top_srcdir)/m4/md5.m4 $(top_srcdir)/m4/memcasecmp.m4 \
-	$(top_srcdir)/m4/memchr.m4 $(top_srcdir)/m4/memcmp.m4 \
-	$(top_srcdir)/m4/memcoll.m4 $(top_srcdir)/m4/memcpy.m4 \
-	$(top_srcdir)/m4/memmove.m4 $(top_srcdir)/m4/mempcpy.m4 \
-	$(top_srcdir)/m4/memrchr.m4 $(top_srcdir)/m4/memset.m4 \
-	$(top_srcdir)/m4/memxfrm.m4 $(top_srcdir)/m4/mgetgroups.m4 \
+	$(top_srcdir)/m4/mbtowc.m4 $(top_srcdir)/m4/md5.m4 \
+	$(top_srcdir)/m4/memcasecmp.m4 $(top_srcdir)/m4/memchr.m4 \
+	$(top_srcdir)/m4/memcoll.m4 $(top_srcdir)/m4/mempcpy.m4 \
+	$(top_srcdir)/m4/memrchr.m4 $(top_srcdir)/m4/mgetgroups.m4 \
 	$(top_srcdir)/m4/mkancesdirs.m4 $(top_srcdir)/m4/mkdir-p.m4 \
 	$(top_srcdir)/m4/mkdir.m4 $(top_srcdir)/m4/mkstemp.m4 \
 	$(top_srcdir)/m4/mktime.m4 $(top_srcdir)/m4/mmap-anon.m4 \
@@ -163,60 +161,64 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/00gnulib.m4 \
 	$(top_srcdir)/m4/nl_langinfo.m4 $(top_srcdir)/m4/nls.m4 \
 	$(top_srcdir)/m4/nocrash.m4 $(top_srcdir)/m4/nproc.m4 \
 	$(top_srcdir)/m4/open.m4 $(top_srcdir)/m4/openat.m4 \
-	$(top_srcdir)/m4/pathmax.m4 $(top_srcdir)/m4/perl.m4 \
-	$(top_srcdir)/m4/perror.m4 $(top_srcdir)/m4/physmem.m4 \
+	$(top_srcdir)/m4/parse-datetime.m4 $(top_srcdir)/m4/pathmax.m4 \
+	$(top_srcdir)/m4/perl.m4 $(top_srcdir)/m4/perror.m4 \
+	$(top_srcdir)/m4/physmem.m4 $(top_srcdir)/m4/pipe.m4 \
 	$(top_srcdir)/m4/po.m4 $(top_srcdir)/m4/posix-shell.m4 \
 	$(top_srcdir)/m4/posixtm.m4 $(top_srcdir)/m4/posixver.m4 \
 	$(top_srcdir)/m4/prereq.m4 $(top_srcdir)/m4/printf-frexp.m4 \
 	$(top_srcdir)/m4/printf-frexpl.m4 $(top_srcdir)/m4/printf.m4 \
 	$(top_srcdir)/m4/priv-set.m4 $(top_srcdir)/m4/progtest.m4 \
-	$(top_srcdir)/m4/putenv.m4 $(top_srcdir)/m4/quote.m4 \
-	$(top_srcdir)/m4/quotearg.m4 $(top_srcdir)/m4/read-file.m4 \
-	$(top_srcdir)/m4/readlink.m4 $(top_srcdir)/m4/readtokens.m4 \
-	$(top_srcdir)/m4/readutmp.m4 $(top_srcdir)/m4/realloc.m4 \
-	$(top_srcdir)/m4/regex.m4 $(top_srcdir)/m4/remove.m4 \
-	$(top_srcdir)/m4/rename.m4 $(top_srcdir)/m4/rmdir.m4 \
-	$(top_srcdir)/m4/root-dev-ino.m4 $(top_srcdir)/m4/rpmatch.m4 \
-	$(top_srcdir)/m4/safe-read.m4 $(top_srcdir)/m4/safe-write.m4 \
-	$(top_srcdir)/m4/same.m4 $(top_srcdir)/m4/save-cwd.m4 \
-	$(top_srcdir)/m4/savedir.m4 $(top_srcdir)/m4/savewd.m4 \
+	$(top_srcdir)/m4/pthread.m4 $(top_srcdir)/m4/putenv.m4 \
+	$(top_srcdir)/m4/quote.m4 $(top_srcdir)/m4/quotearg.m4 \
+	$(top_srcdir)/m4/read-file.m4 $(top_srcdir)/m4/read.m4 \
+	$(top_srcdir)/m4/readlink.m4 $(top_srcdir)/m4/readlinkat.m4 \
+	$(top_srcdir)/m4/readtokens.m4 $(top_srcdir)/m4/readutmp.m4 \
+	$(top_srcdir)/m4/realloc.m4 $(top_srcdir)/m4/regex.m4 \
+	$(top_srcdir)/m4/remove.m4 $(top_srcdir)/m4/rename.m4 \
+	$(top_srcdir)/m4/rmdir.m4 $(top_srcdir)/m4/root-dev-ino.m4 \
+	$(top_srcdir)/m4/rpmatch.m4 $(top_srcdir)/m4/safe-read.m4 \
+	$(top_srcdir)/m4/safe-write.m4 $(top_srcdir)/m4/same.m4 \
+	$(top_srcdir)/m4/save-cwd.m4 $(top_srcdir)/m4/savedir.m4 \
+	$(top_srcdir)/m4/savewd.m4 $(top_srcdir)/m4/sched_h.m4 \
 	$(top_srcdir)/m4/select.m4 \
 	$(top_srcdir)/m4/selinux-context-h.m4 \
 	$(top_srcdir)/m4/selinux-selinux-h.m4 \
 	$(top_srcdir)/m4/servent.m4 $(top_srcdir)/m4/setenv.m4 \
-	$(top_srcdir)/m4/settime.m4 $(top_srcdir)/m4/sha1.m4 \
-	$(top_srcdir)/m4/sha256.m4 $(top_srcdir)/m4/sha512.m4 \
-	$(top_srcdir)/m4/sig2str.m4 $(top_srcdir)/m4/sigaction.m4 \
-	$(top_srcdir)/m4/signal_h.m4 \
+	$(top_srcdir)/m4/setlocale.m4 $(top_srcdir)/m4/settime.m4 \
+	$(top_srcdir)/m4/sha1.m4 $(top_srcdir)/m4/sha256.m4 \
+	$(top_srcdir)/m4/sha512.m4 $(top_srcdir)/m4/sig2str.m4 \
+	$(top_srcdir)/m4/sigaction.m4 $(top_srcdir)/m4/signal_h.m4 \
 	$(top_srcdir)/m4/signalblocking.m4 $(top_srcdir)/m4/signbit.m4 \
 	$(top_srcdir)/m4/size_max.m4 $(top_srcdir)/m4/sleep.m4 \
-	$(top_srcdir)/m4/snprintf.m4 $(top_srcdir)/m4/sockets.m4 \
-	$(top_srcdir)/m4/socklen.m4 $(top_srcdir)/m4/sockpfaf.m4 \
-	$(top_srcdir)/m4/ssize_t.m4 $(top_srcdir)/m4/st_dm_mode.m4 \
-	$(top_srcdir)/m4/stat-prog.m4 $(top_srcdir)/m4/stat-time.m4 \
+	$(top_srcdir)/m4/snprintf.m4 $(top_srcdir)/m4/socketlib.m4 \
+	$(top_srcdir)/m4/sockets.m4 $(top_srcdir)/m4/socklen.m4 \
+	$(top_srcdir)/m4/sockpfaf.m4 $(top_srcdir)/m4/ssize_t.m4 \
+	$(top_srcdir)/m4/st_dm_mode.m4 $(top_srcdir)/m4/stat-prog.m4 \
+	$(top_srcdir)/m4/stat-size.m4 $(top_srcdir)/m4/stat-time.m4 \
 	$(top_srcdir)/m4/stat.m4 $(top_srcdir)/m4/stdarg.m4 \
 	$(top_srcdir)/m4/stdbool.m4 $(top_srcdir)/m4/stddef_h.m4 \
 	$(top_srcdir)/m4/stdint.m4 $(top_srcdir)/m4/stdint_h.m4 \
-	$(top_srcdir)/m4/stdio-safer.m4 $(top_srcdir)/m4/stdio_h.m4 \
-	$(top_srcdir)/m4/stdlib-safer.m4 $(top_srcdir)/m4/stdlib_h.m4 \
+	$(top_srcdir)/m4/stdio_h.m4 $(top_srcdir)/m4/stdlib_h.m4 \
 	$(top_srcdir)/m4/stpcpy.m4 $(top_srcdir)/m4/stpncpy.m4 \
-	$(top_srcdir)/m4/strcspn.m4 $(top_srcdir)/m4/strdup.m4 \
-	$(top_srcdir)/m4/strerror.m4 $(top_srcdir)/m4/strftime.m4 \
+	$(top_srcdir)/m4/strdup.m4 $(top_srcdir)/m4/strerror.m4 \
+	$(top_srcdir)/m4/strerror_r.m4 $(top_srcdir)/m4/strftime.m4 \
 	$(top_srcdir)/m4/string_h.m4 $(top_srcdir)/m4/strndup.m4 \
 	$(top_srcdir)/m4/strnlen.m4 $(top_srcdir)/m4/strnumcmp.m4 \
-	$(top_srcdir)/m4/strpbrk.m4 $(top_srcdir)/m4/strsignal.m4 \
-	$(top_srcdir)/m4/strstr.m4 $(top_srcdir)/m4/strtod.m4 \
-	$(top_srcdir)/m4/strtoimax.m4 $(top_srcdir)/m4/strtol.m4 \
-	$(top_srcdir)/m4/strtoll.m4 $(top_srcdir)/m4/strtoul.m4 \
-	$(top_srcdir)/m4/strtoull.m4 $(top_srcdir)/m4/strtoumax.m4 \
-	$(top_srcdir)/m4/symlink.m4 $(top_srcdir)/m4/symlinkat.m4 \
-	$(top_srcdir)/m4/sys_ioctl_h.m4 \
+	$(top_srcdir)/m4/strsignal.m4 $(top_srcdir)/m4/strstr.m4 \
+	$(top_srcdir)/m4/strtod.m4 $(top_srcdir)/m4/strtoimax.m4 \
+	$(top_srcdir)/m4/strtoll.m4 $(top_srcdir)/m4/strtoull.m4 \
+	$(top_srcdir)/m4/strtoumax.m4 $(top_srcdir)/m4/symlink.m4 \
+	$(top_srcdir)/m4/symlinkat.m4 $(top_srcdir)/m4/sys_ioctl_h.m4 \
 	$(top_srcdir)/m4/sys_select_h.m4 \
 	$(top_srcdir)/m4/sys_socket_h.m4 \
 	$(top_srcdir)/m4/sys_stat_h.m4 $(top_srcdir)/m4/sys_time_h.m4 \
-	$(top_srcdir)/m4/sys_utsname_h.m4 $(top_srcdir)/m4/tempname.m4 \
-	$(top_srcdir)/m4/thread.m4 $(top_srcdir)/m4/threadlib.m4 \
-	$(top_srcdir)/m4/time_h.m4 $(top_srcdir)/m4/time_r.m4 \
+	$(top_srcdir)/m4/sys_uio_h.m4 \
+	$(top_srcdir)/m4/sys_utsname_h.m4 \
+	$(top_srcdir)/m4/sys_wait_h.m4 $(top_srcdir)/m4/tempname.m4 \
+	$(top_srcdir)/m4/termios_h.m4 $(top_srcdir)/m4/thread.m4 \
+	$(top_srcdir)/m4/threadlib.m4 $(top_srcdir)/m4/time_h.m4 \
+	$(top_srcdir)/m4/time_r.m4 $(top_srcdir)/m4/timer_time.m4 \
 	$(top_srcdir)/m4/timespec.m4 $(top_srcdir)/m4/tls.m4 \
 	$(top_srcdir)/m4/tm_gmtoff.m4 $(top_srcdir)/m4/tzset.m4 \
 	$(top_srcdir)/m4/uname.m4 $(top_srcdir)/m4/ungetc.m4 \
@@ -226,15 +228,16 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/00gnulib.m4 \
 	$(top_srcdir)/m4/unlocked-io.m4 $(top_srcdir)/m4/uptime.m4 \
 	$(top_srcdir)/m4/userspec.m4 $(top_srcdir)/m4/usleep.m4 \
 	$(top_srcdir)/m4/utimbuf.m4 $(top_srcdir)/m4/utimecmp.m4 \
-	$(top_srcdir)/m4/utimens.m4 $(top_srcdir)/m4/utimes.m4 \
-	$(top_srcdir)/m4/vasnprintf.m4 \
+	$(top_srcdir)/m4/utimens.m4 $(top_srcdir)/m4/utimensat.m4 \
+	$(top_srcdir)/m4/utimes.m4 $(top_srcdir)/m4/vasnprintf.m4 \
 	$(top_srcdir)/m4/vasprintf-posix.m4 \
 	$(top_srcdir)/m4/vasprintf.m4 $(top_srcdir)/m4/version-etc.m4 \
 	$(top_srcdir)/m4/vfprintf-posix.m4 \
 	$(top_srcdir)/m4/vprintf-posix.m4 \
 	$(top_srcdir)/m4/warn-on-use.m4 $(top_srcdir)/m4/warnings.m4 \
 	$(top_srcdir)/m4/wchar_h.m4 $(top_srcdir)/m4/wchar_t.m4 \
-	$(top_srcdir)/m4/wcrtomb.m4 $(top_srcdir)/m4/wctob.m4 \
+	$(top_srcdir)/m4/wcrtomb.m4 $(top_srcdir)/m4/wcswidth.m4 \
+	$(top_srcdir)/m4/wctob.m4 $(top_srcdir)/m4/wctomb.m4 \
 	$(top_srcdir)/m4/wctype_h.m4 $(top_srcdir)/m4/wcwidth.m4 \
 	$(top_srcdir)/m4/wint_t.m4 $(top_srcdir)/m4/write-any-file.m4 \
 	$(top_srcdir)/m4/write.m4 $(top_srcdir)/m4/xalloc.m4 \
@@ -298,25 +301,33 @@ am__base_list = \
 am__rst_title = sed 's/.*/   &   /;h;s/./=/g;p;x;p;g;p;s/.*//'
 am__rst_section = sed 'p;s/./=/g;p;g'
 # Put stdin (possibly several lines separated by ".  ") in a box.
-am__text_box = $(AWK) '{				\
-  n = split($$0, lines, "\\.  "); max = 0;		\
-  for (i = 1; i <= n; ++i)				\
-    if (max < length(lines[i]))				\
-      max = length(lines[i]);				\
-  for (i = 0; i < max; ++i) line = line "=";		\
-  print line;						\
-  for (i = 1; i <= n; ++i) if (lines[i]) print lines[i];\
-  print line;						\
+# Prefix each line by 'col' and terminate each with 'std', for coloring.
+# Multi line coloring is problematic with "less -R", so we really need
+# to color each line individually.
+am__text_box = $(AWK) '{			\
+  n = split($$0, lines, "\\.  "); max = 0;	\
+  for (i = 1; i <= n; ++i)			\
+    if (max < length(lines[i]))			\
+      max = length(lines[i]);			\
+  for (i = 0; i < max; ++i)			\
+    line = line "=";				\
+  print col line std;				\
+  for (i = 1; i <= n; ++i)			\
+    if (lines[i])				\
+      print col lines[i] std;			\
+  print col line std;				\
 }'
 # Solaris 10 'make', and several other traditional 'make' implementations,
-# pass "-e" to $(SHELL).  This contradicts POSIX.  Work around the problem
+# pass "-e" to $(SHELL), and POSIX 2008 even requires this.  Work around it
 # by disabling -e (using the XSI extension "set +e") if it's set.
 am__sh_e_setup = case $$- in *e*) set +e;; esac
 # To be inserted before the command running the test.  Creates the
 # directory for the log if needed.  Stores in $dir the directory
-# containing $f, in $tst the test, in $log the log, and passes
-# TESTS_ENVIRONMENT.  Save and restore TERM around use of
-# TESTS_ENVIRONMENT, in case that unsets it.
+# containing $f, in $tst the test, in $log the log.  Executes the
+# developer- defined test setup AM_TESTS_ENVIRONMENT (if any), and
+# passes TESTS_ENVIRONMENT.  Saves and restores TERM around uses of
+# TESTS_ENVIRONMENT and AM_TESTS_ENVIRONMENT, in case any of them
+# unsets it.
 am__check_pre = \
 $(am__sh_e_setup);					\
 $(am__vpath_adj_setup) $(am__vpath_adj)			\
@@ -331,7 +342,37 @@ if test -f "./$$f"; then dir=./;			\
 elif test -f "$$f"; then dir=;				\
 else dir="$(srcdir)/"; fi;				\
 tst=$$dir$$f; log='$@'; __SAVED_TERM=$$TERM;		\
+$(AM_TESTS_ENVIRONMENT)					\
 $(TESTS_ENVIRONMENT)
+# To be appended to the command running the test.  Handle the stdout
+# and stderr redirection, and catch the exit status.
+am__check_post = \
+>$@-t 2>&1;						\
+estatus=$$?;						\
+if test -n '$(DISABLE_HARD_ERRORS)'			\
+   && test $$estatus -eq 99; then			\
+  estatus=1;						\
+fi;							\
+TERM=$$__SAVED_TERM; export TERM;			\
+$(am__tty_colors);					\
+xfailed=PASS;						\
+case " $(XFAIL_TESTS) " in				\
+  *[\ \	]$$f[\ \	]* | *[\ \	]$$dir$$f[\ \	]*) \
+    xfailed=XFAIL;;					\
+esac;							\
+case $$estatus.$$xfailed in				\
+    0.XFAIL) col=$$red; res=XPASS;;			\
+    0.*)     col=$$grn; res=PASS ;;			\
+    77.*)    col=$$blu; res=SKIP ;;			\
+    99.*)    col=$$red; res=FAIL ;;			\
+    *.XFAIL) col=$$lgn; res=XFAIL;;			\
+    *.*)     col=$$red; res=FAIL ;;			\
+esac;							\
+echo "$${col}$$res$${std}: $$f";			\
+echo "$$res: $$f (exit: $$estatus)" |			\
+  $(am__rst_section) >$@;				\
+cat $@-t >>$@;						\
+rm -f $@-t
 RECHECK_LOGS = $(TEST_LOGS)
 AM_RECURSIVE_TARGETS = check check-html recheck recheck-html
 TEST_SUITE_LOG = test-suite.log
@@ -345,12 +386,15 @@ TEST_LOG_COMPILE = $(TEST_LOG_COMPILER) $(AM_TEST_LOG_FLAGS) \
 	$(TEST_LOG_FLAGS)
 TEST_LOGS_TMP = $(TEST_LOGS:.log=.log-t)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+pkglibexecdir = @pkglibexecdir@
 ACLOCAL = @ACLOCAL@
 ALLOCA = @ALLOCA@
 ALLOCA_H = @ALLOCA_H@
 AMTAR = @AMTAR@
 AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
 APPLE_UNIVERSAL_BUILD = @APPLE_UNIVERSAL_BUILD@
+AR = @AR@
+ARFLAGS = @ARFLAGS@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
@@ -404,6 +448,7 @@ GNULIB_BIND = @GNULIB_BIND@
 GNULIB_BTOWC = @GNULIB_BTOWC@
 GNULIB_CALLOC_POSIX = @GNULIB_CALLOC_POSIX@
 GNULIB_CANONICALIZE_FILE_NAME = @GNULIB_CANONICALIZE_FILE_NAME@
+GNULIB_CEIL = @GNULIB_CEIL@
 GNULIB_CEILF = @GNULIB_CEILF@
 GNULIB_CEILL = @GNULIB_CEILL@
 GNULIB_CHOWN = @GNULIB_CHOWN@
@@ -426,6 +471,11 @@ GNULIB_FCLOSE = @GNULIB_FCLOSE@
 GNULIB_FCNTL = @GNULIB_FCNTL@
 GNULIB_FDOPENDIR = @GNULIB_FDOPENDIR@
 GNULIB_FFLUSH = @GNULIB_FFLUSH@
+GNULIB_FFSL = @GNULIB_FFSL@
+GNULIB_FFSLL = @GNULIB_FFSLL@
+GNULIB_FGETC = @GNULIB_FGETC@
+GNULIB_FGETS = @GNULIB_FGETS@
+GNULIB_FLOOR = @GNULIB_FLOOR@
 GNULIB_FLOORF = @GNULIB_FLOORF@
 GNULIB_FLOORL = @GNULIB_FLOORL@
 GNULIB_FOPEN = @GNULIB_FOPEN@
@@ -434,9 +484,11 @@ GNULIB_FPRINTF_POSIX = @GNULIB_FPRINTF_POSIX@
 GNULIB_FPURGE = @GNULIB_FPURGE@
 GNULIB_FPUTC = @GNULIB_FPUTC@
 GNULIB_FPUTS = @GNULIB_FPUTS@
+GNULIB_FREAD = @GNULIB_FREAD@
 GNULIB_FREOPEN = @GNULIB_FREOPEN@
 GNULIB_FREXP = @GNULIB_FREXP@
 GNULIB_FREXPL = @GNULIB_FREXPL@
+GNULIB_FSCANF = @GNULIB_FSCANF@
 GNULIB_FSEEK = @GNULIB_FSEEK@
 GNULIB_FSEEKO = @GNULIB_FSEEKO@
 GNULIB_FSTATAT = @GNULIB_FSTATAT@
@@ -447,6 +499,8 @@ GNULIB_FTRUNCATE = @GNULIB_FTRUNCATE@
 GNULIB_FUTIMENS = @GNULIB_FUTIMENS@
 GNULIB_FWRITE = @GNULIB_FWRITE@
 GNULIB_GETADDRINFO = @GNULIB_GETADDRINFO@
+GNULIB_GETC = @GNULIB_GETC@
+GNULIB_GETCHAR = @GNULIB_GETCHAR@
 GNULIB_GETCWD = @GNULIB_GETCWD@
 GNULIB_GETDELIM = @GNULIB_GETDELIM@
 GNULIB_GETDOMAINNAME = @GNULIB_GETDOMAINNAME@
@@ -459,12 +513,15 @@ GNULIB_GETLOGIN = @GNULIB_GETLOGIN@
 GNULIB_GETLOGIN_R = @GNULIB_GETLOGIN_R@
 GNULIB_GETPAGESIZE = @GNULIB_GETPAGESIZE@
 GNULIB_GETPEERNAME = @GNULIB_GETPEERNAME@
+GNULIB_GETS = @GNULIB_GETS@
 GNULIB_GETSOCKNAME = @GNULIB_GETSOCKNAME@
 GNULIB_GETSOCKOPT = @GNULIB_GETSOCKOPT@
 GNULIB_GETSUBOPT = @GNULIB_GETSUBOPT@
 GNULIB_GETTIMEOFDAY = @GNULIB_GETTIMEOFDAY@
 GNULIB_GETUSERSHELL = @GNULIB_GETUSERSHELL@
 GNULIB_GRANTPT = @GNULIB_GRANTPT@
+GNULIB_GROUP_MEMBER = @GNULIB_GROUP_MEMBER@
+GNULIB_ICONV = @GNULIB_ICONV@
 GNULIB_IMAXABS = @GNULIB_IMAXABS@
 GNULIB_IMAXDIV = @GNULIB_IMAXDIV@
 GNULIB_INET_NTOP = @GNULIB_INET_NTOP@
@@ -477,6 +534,8 @@ GNULIB_ISNAN = @GNULIB_ISNAN@
 GNULIB_ISNAND = @GNULIB_ISNAND@
 GNULIB_ISNANF = @GNULIB_ISNANF@
 GNULIB_ISNANL = @GNULIB_ISNANL@
+GNULIB_ISWBLANK = @GNULIB_ISWBLANK@
+GNULIB_ISWCTYPE = @GNULIB_ISWCTYPE@
 GNULIB_LCHMOD = @GNULIB_LCHMOD@
 GNULIB_LCHOWN = @GNULIB_LCHOWN@
 GNULIB_LDEXPL = @GNULIB_LDEXPL@
@@ -507,6 +566,7 @@ GNULIB_MBSSEP = @GNULIB_MBSSEP@
 GNULIB_MBSSPN = @GNULIB_MBSSPN@
 GNULIB_MBSSTR = @GNULIB_MBSSTR@
 GNULIB_MBSTOK_R = @GNULIB_MBSTOK_R@
+GNULIB_MBTOWC = @GNULIB_MBTOWC@
 GNULIB_MEMCHR = @GNULIB_MEMCHR@
 GNULIB_MEMMEM = @GNULIB_MEMMEM@
 GNULIB_MEMPCPY = @GNULIB_MEMPCPY@
@@ -524,23 +584,29 @@ GNULIB_MKSTEMPS = @GNULIB_MKSTEMPS@
 GNULIB_MKTIME = @GNULIB_MKTIME@
 GNULIB_NANOSLEEP = @GNULIB_NANOSLEEP@
 GNULIB_NL_LANGINFO = @GNULIB_NL_LANGINFO@
+GNULIB_NONBLOCKING = @GNULIB_NONBLOCKING@
 GNULIB_OBSTACK_PRINTF = @GNULIB_OBSTACK_PRINTF@
 GNULIB_OBSTACK_PRINTF_POSIX = @GNULIB_OBSTACK_PRINTF_POSIX@
 GNULIB_OPEN = @GNULIB_OPEN@
 GNULIB_OPENAT = @GNULIB_OPENAT@
 GNULIB_PERROR = @GNULIB_PERROR@
+GNULIB_PIPE = @GNULIB_PIPE@
 GNULIB_PIPE2 = @GNULIB_PIPE2@
 GNULIB_POPEN = @GNULIB_POPEN@
 GNULIB_PREAD = @GNULIB_PREAD@
 GNULIB_PRINTF = @GNULIB_PRINTF@
 GNULIB_PRINTF_POSIX = @GNULIB_PRINTF_POSIX@
+GNULIB_PSELECT = @GNULIB_PSELECT@
+GNULIB_PTHREAD_SIGMASK = @GNULIB_PTHREAD_SIGMASK@
 GNULIB_PTSNAME = @GNULIB_PTSNAME@
 GNULIB_PUTC = @GNULIB_PUTC@
 GNULIB_PUTCHAR = @GNULIB_PUTCHAR@
 GNULIB_PUTENV = @GNULIB_PUTENV@
 GNULIB_PUTS = @GNULIB_PUTS@
+GNULIB_PWRITE = @GNULIB_PWRITE@
 GNULIB_RANDOM_R = @GNULIB_RANDOM_R@
 GNULIB_RAWMEMCHR = @GNULIB_RAWMEMCHR@
+GNULIB_READ = @GNULIB_READ@
 GNULIB_READLINK = @GNULIB_READLINK@
 GNULIB_READLINKAT = @GNULIB_READLINKAT@
 GNULIB_REALLOC_POSIX = @GNULIB_REALLOC_POSIX@
@@ -556,10 +622,12 @@ GNULIB_ROUNDF = @GNULIB_ROUNDF@
 GNULIB_ROUNDL = @GNULIB_ROUNDL@
 GNULIB_RPMATCH = @GNULIB_RPMATCH@
 GNULIB_SCANDIR = @GNULIB_SCANDIR@
+GNULIB_SCANF = @GNULIB_SCANF@
 GNULIB_SELECT = @GNULIB_SELECT@
 GNULIB_SEND = @GNULIB_SEND@
 GNULIB_SENDTO = @GNULIB_SENDTO@
 GNULIB_SETENV = @GNULIB_SETENV@
+GNULIB_SETLOCALE = @GNULIB_SETLOCALE@
 GNULIB_SETSOCKOPT = @GNULIB_SETSOCKOPT@
 GNULIB_SHUTDOWN = @GNULIB_SHUTDOWN@
 GNULIB_SIGACTION = @GNULIB_SIGACTION@
@@ -573,6 +641,7 @@ GNULIB_SOCKET = @GNULIB_SOCKET@
 GNULIB_SPRINTF_POSIX = @GNULIB_SPRINTF_POSIX@
 GNULIB_SQRTL = @GNULIB_SQRTL@
 GNULIB_STAT = @GNULIB_STAT@
+GNULIB_STDIO_H_NONBLOCKING = @GNULIB_STDIO_H_NONBLOCKING@
 GNULIB_STDIO_H_SIGPIPE = @GNULIB_STDIO_H_SIGPIPE@
 GNULIB_STPCPY = @GNULIB_STPCPY@
 GNULIB_STPNCPY = @GNULIB_STPNCPY@
@@ -580,6 +649,7 @@ GNULIB_STRCASESTR = @GNULIB_STRCASESTR@
 GNULIB_STRCHRNUL = @GNULIB_STRCHRNUL@
 GNULIB_STRDUP = @GNULIB_STRDUP@
 GNULIB_STRERROR = @GNULIB_STRERROR@
+GNULIB_STRERROR_R = @GNULIB_STRERROR_R@
 GNULIB_STRNCAT = @GNULIB_STRNCAT@
 GNULIB_STRNDUP = @GNULIB_STRNDUP@
 GNULIB_STRNLEN = @GNULIB_STRNLEN@
@@ -597,16 +667,21 @@ GNULIB_STRTOUMAX = @GNULIB_STRTOUMAX@
 GNULIB_STRVERSCMP = @GNULIB_STRVERSCMP@
 GNULIB_SYMLINK = @GNULIB_SYMLINK@
 GNULIB_SYMLINKAT = @GNULIB_SYMLINKAT@
+GNULIB_SYSTEM_POSIX = @GNULIB_SYSTEM_POSIX@
 GNULIB_TANL = @GNULIB_TANL@
+GNULIB_TCGETSID = @GNULIB_TCGETSID@
+GNULIB_TEST_WARN_CFLAGS = @GNULIB_TEST_WARN_CFLAGS@
 GNULIB_TIMEGM = @GNULIB_TIMEGM@
 GNULIB_TIME_R = @GNULIB_TIME_R@
 GNULIB_TMPFILE = @GNULIB_TMPFILE@
+GNULIB_TOWCTRANS = @GNULIB_TOWCTRANS@
 GNULIB_TRUNC = @GNULIB_TRUNC@
 GNULIB_TRUNCF = @GNULIB_TRUNCF@
 GNULIB_TRUNCL = @GNULIB_TRUNCL@
 GNULIB_TTYNAME_R = @GNULIB_TTYNAME_R@
 GNULIB_UNAME = @GNULIB_UNAME@
 GNULIB_UNISTD_H_GETOPT = @GNULIB_UNISTD_H_GETOPT@
+GNULIB_UNISTD_H_NONBLOCKING = @GNULIB_UNISTD_H_NONBLOCKING@
 GNULIB_UNISTD_H_SIGPIPE = @GNULIB_UNISTD_H_SIGPIPE@
 GNULIB_UNLINK = @GNULIB_UNLINK@
 GNULIB_UNLINKAT = @GNULIB_UNLINKAT@
@@ -618,17 +693,52 @@ GNULIB_VASPRINTF = @GNULIB_VASPRINTF@
 GNULIB_VDPRINTF = @GNULIB_VDPRINTF@
 GNULIB_VFPRINTF = @GNULIB_VFPRINTF@
 GNULIB_VFPRINTF_POSIX = @GNULIB_VFPRINTF_POSIX@
+GNULIB_VFSCANF = @GNULIB_VFSCANF@
 GNULIB_VPRINTF = @GNULIB_VPRINTF@
 GNULIB_VPRINTF_POSIX = @GNULIB_VPRINTF_POSIX@
+GNULIB_VSCANF = @GNULIB_VSCANF@
 GNULIB_VSNPRINTF = @GNULIB_VSNPRINTF@
 GNULIB_VSPRINTF_POSIX = @GNULIB_VSPRINTF_POSIX@
+GNULIB_WAITPID = @GNULIB_WAITPID@
 GNULIB_WARN_CFLAGS = @GNULIB_WARN_CFLAGS@
+GNULIB_WCPCPY = @GNULIB_WCPCPY@
+GNULIB_WCPNCPY = @GNULIB_WCPNCPY@
 GNULIB_WCRTOMB = @GNULIB_WCRTOMB@
+GNULIB_WCSCASECMP = @GNULIB_WCSCASECMP@
+GNULIB_WCSCAT = @GNULIB_WCSCAT@
+GNULIB_WCSCHR = @GNULIB_WCSCHR@
+GNULIB_WCSCMP = @GNULIB_WCSCMP@
+GNULIB_WCSCOLL = @GNULIB_WCSCOLL@
+GNULIB_WCSCPY = @GNULIB_WCSCPY@
+GNULIB_WCSCSPN = @GNULIB_WCSCSPN@
+GNULIB_WCSDUP = @GNULIB_WCSDUP@
+GNULIB_WCSLEN = @GNULIB_WCSLEN@
+GNULIB_WCSNCASECMP = @GNULIB_WCSNCASECMP@
+GNULIB_WCSNCAT = @GNULIB_WCSNCAT@
+GNULIB_WCSNCMP = @GNULIB_WCSNCMP@
+GNULIB_WCSNCPY = @GNULIB_WCSNCPY@
+GNULIB_WCSNLEN = @GNULIB_WCSNLEN@
 GNULIB_WCSNRTOMBS = @GNULIB_WCSNRTOMBS@
+GNULIB_WCSPBRK = @GNULIB_WCSPBRK@
+GNULIB_WCSRCHR = @GNULIB_WCSRCHR@
 GNULIB_WCSRTOMBS = @GNULIB_WCSRTOMBS@
+GNULIB_WCSSPN = @GNULIB_WCSSPN@
+GNULIB_WCSSTR = @GNULIB_WCSSTR@
+GNULIB_WCSTOK = @GNULIB_WCSTOK@
+GNULIB_WCSWIDTH = @GNULIB_WCSWIDTH@
+GNULIB_WCSXFRM = @GNULIB_WCSXFRM@
 GNULIB_WCTOB = @GNULIB_WCTOB@
+GNULIB_WCTOMB = @GNULIB_WCTOMB@
+GNULIB_WCTRANS = @GNULIB_WCTRANS@
+GNULIB_WCTYPE = @GNULIB_WCTYPE@
 GNULIB_WCWIDTH = @GNULIB_WCWIDTH@
+GNULIB_WMEMCHR = @GNULIB_WMEMCHR@
+GNULIB_WMEMCMP = @GNULIB_WMEMCMP@
+GNULIB_WMEMCPY = @GNULIB_WMEMCPY@
+GNULIB_WMEMMOVE = @GNULIB_WMEMMOVE@
+GNULIB_WMEMSET = @GNULIB_WMEMSET@
 GNULIB_WRITE = @GNULIB_WRITE@
+GNULIB__EXIT = @GNULIB__EXIT@
 GREP = @GREP@
 HAVE_ACCEPT4 = @HAVE_ACCEPT4@
 HAVE_ACOSL = @HAVE_ACOSL@
@@ -638,7 +748,6 @@ HAVE_ASINL = @HAVE_ASINL@
 HAVE_ATANL = @HAVE_ATANL@
 HAVE_ATOLL = @HAVE_ATOLL@
 HAVE_BTOWC = @HAVE_BTOWC@
-HAVE_CALLOC_POSIX = @HAVE_CALLOC_POSIX@
 HAVE_CANONICALIZE_FILE_NAME = @HAVE_CANONICALIZE_FILE_NAME@
 HAVE_CHOWN = @HAVE_CHOWN@
 HAVE_COSL = @HAVE_COSL@
@@ -651,15 +760,19 @@ HAVE_DECL_COSL = @HAVE_DECL_COSL@
 HAVE_DECL_DIRFD = @HAVE_DECL_DIRFD@
 HAVE_DECL_ENVIRON = @HAVE_DECL_ENVIRON@
 HAVE_DECL_EXPL = @HAVE_DECL_EXPL@
+HAVE_DECL_FCHDIR = @HAVE_DECL_FCHDIR@
 HAVE_DECL_FDOPENDIR = @HAVE_DECL_FDOPENDIR@
 HAVE_DECL_FLOORF = @HAVE_DECL_FLOORF@
 HAVE_DECL_FLOORL = @HAVE_DECL_FLOORL@
 HAVE_DECL_FPURGE = @HAVE_DECL_FPURGE@
 HAVE_DECL_FREEADDRINFO = @HAVE_DECL_FREEADDRINFO@
 HAVE_DECL_FREXPL = @HAVE_DECL_FREXPL@
+HAVE_DECL_FSEEKO = @HAVE_DECL_FSEEKO@
+HAVE_DECL_FTELLO = @HAVE_DECL_FTELLO@
 HAVE_DECL_GAI_STRERROR = @HAVE_DECL_GAI_STRERROR@
 HAVE_DECL_GETADDRINFO = @HAVE_DECL_GETADDRINFO@
 HAVE_DECL_GETDELIM = @HAVE_DECL_GETDELIM@
+HAVE_DECL_GETDOMAINNAME = @HAVE_DECL_GETDOMAINNAME@
 HAVE_DECL_GETLINE = @HAVE_DECL_GETLINE@
 HAVE_DECL_GETLOADAVG = @HAVE_DECL_GETLOADAVG@
 HAVE_DECL_GETLOGIN_R = @HAVE_DECL_GETLOGIN_R@
@@ -671,6 +784,7 @@ HAVE_DECL_IMAXDIV = @HAVE_DECL_IMAXDIV@
 HAVE_DECL_INET_NTOP = @HAVE_DECL_INET_NTOP@
 HAVE_DECL_INET_PTON = @HAVE_DECL_INET_PTON@
 HAVE_DECL_LDEXPL = @HAVE_DECL_LDEXPL@
+HAVE_DECL_LOCALTIME_R = @HAVE_DECL_LOCALTIME_R@
 HAVE_DECL_LOGB = @HAVE_DECL_LOGB@
 HAVE_DECL_LOGL = @HAVE_DECL_LOGL@
 HAVE_DECL_MEMMEM = @HAVE_DECL_MEMMEM@
@@ -679,10 +793,12 @@ HAVE_DECL_OBSTACK_PRINTF = @HAVE_DECL_OBSTACK_PRINTF@
 HAVE_DECL_ROUND = @HAVE_DECL_ROUND@
 HAVE_DECL_ROUNDF = @HAVE_DECL_ROUNDF@
 HAVE_DECL_ROUNDL = @HAVE_DECL_ROUNDL@
+HAVE_DECL_SETENV = @HAVE_DECL_SETENV@
 HAVE_DECL_SINL = @HAVE_DECL_SINL@
 HAVE_DECL_SNPRINTF = @HAVE_DECL_SNPRINTF@
 HAVE_DECL_SQRTL = @HAVE_DECL_SQRTL@
 HAVE_DECL_STRDUP = @HAVE_DECL_STRDUP@
+HAVE_DECL_STRERROR_R = @HAVE_DECL_STRERROR_R@
 HAVE_DECL_STRNDUP = @HAVE_DECL_STRNDUP@
 HAVE_DECL_STRNLEN = @HAVE_DECL_STRNLEN@
 HAVE_DECL_STRSIGNAL = @HAVE_DECL_STRSIGNAL@
@@ -690,9 +806,12 @@ HAVE_DECL_STRTOIMAX = @HAVE_DECL_STRTOIMAX@
 HAVE_DECL_STRTOK_R = @HAVE_DECL_STRTOK_R@
 HAVE_DECL_STRTOUMAX = @HAVE_DECL_STRTOUMAX@
 HAVE_DECL_TANL = @HAVE_DECL_TANL@
+HAVE_DECL_TCGETSID = @HAVE_DECL_TCGETSID@
 HAVE_DECL_TRUNC = @HAVE_DECL_TRUNC@
 HAVE_DECL_TRUNCF = @HAVE_DECL_TRUNCF@
 HAVE_DECL_TRUNCL = @HAVE_DECL_TRUNCL@
+HAVE_DECL_TTYNAME_R = @HAVE_DECL_TTYNAME_R@
+HAVE_DECL_UNSETENV = @HAVE_DECL_UNSETENV@
 HAVE_DECL_VSNPRINTF = @HAVE_DECL_VSNPRINTF@
 HAVE_DECL_WCTOB = @HAVE_DECL_WCTOB@
 HAVE_DECL_WCWIDTH = @HAVE_DECL_WCWIDTH@
@@ -708,13 +827,15 @@ HAVE_FCHMODAT = @HAVE_FCHMODAT@
 HAVE_FCHOWNAT = @HAVE_FCHOWNAT@
 HAVE_FCNTL = @HAVE_FCNTL@
 HAVE_FDOPENDIR = @HAVE_FDOPENDIR@
+HAVE_FEATURES_H = @HAVE_FEATURES_H@
+HAVE_FFSL = @HAVE_FFSL@
+HAVE_FFSLL = @HAVE_FFSLL@
 HAVE_FSEEKO = @HAVE_FSEEKO@
 HAVE_FSTATAT = @HAVE_FSTATAT@
 HAVE_FSYNC = @HAVE_FSYNC@
 HAVE_FTELLO = @HAVE_FTELLO@
 HAVE_FTRUNCATE = @HAVE_FTRUNCATE@
 HAVE_FUTIMENS = @HAVE_FUTIMENS@
-HAVE_GETDOMAINNAME = @HAVE_GETDOMAINNAME@
 HAVE_GETDTABLESIZE = @HAVE_GETDTABLESIZE@
 HAVE_GETGROUPS = @HAVE_GETGROUPS@
 HAVE_GETHOSTNAME = @HAVE_GETHOSTNAME@
@@ -724,6 +845,7 @@ HAVE_GETPAGESIZE = @HAVE_GETPAGESIZE@
 HAVE_GETSUBOPT = @HAVE_GETSUBOPT@
 HAVE_GETTIMEOFDAY = @HAVE_GETTIMEOFDAY@
 HAVE_GRANTPT = @HAVE_GRANTPT@
+HAVE_GROUP_MEMBER = @HAVE_GROUP_MEMBER@
 HAVE_INTTYPES_H = @HAVE_INTTYPES_H@
 HAVE_ISBLANK = @HAVE_ISBLANK@
 HAVE_ISNAND = @HAVE_ISNAND@
@@ -734,15 +856,15 @@ HAVE_ISWCNTRL = @HAVE_ISWCNTRL@
 HAVE_LANGINFO_CODESET = @HAVE_LANGINFO_CODESET@
 HAVE_LANGINFO_ERA = @HAVE_LANGINFO_ERA@
 HAVE_LANGINFO_H = @HAVE_LANGINFO_H@
+HAVE_LANGINFO_T_FMT_AMPM = @HAVE_LANGINFO_T_FMT_AMPM@
+HAVE_LANGINFO_YESEXPR = @HAVE_LANGINFO_YESEXPR@
 HAVE_LCHMOD = @HAVE_LCHMOD@
 HAVE_LCHOWN = @HAVE_LCHOWN@
 HAVE_LINK = @HAVE_LINK@
 HAVE_LINKAT = @HAVE_LINKAT@
-HAVE_LOCALTIME_R = @HAVE_LOCALTIME_R@
 HAVE_LOGL = @HAVE_LOGL@
 HAVE_LONG_LONG_INT = @HAVE_LONG_LONG_INT@
 HAVE_LSTAT = @HAVE_LSTAT@
-HAVE_MALLOC_POSIX = @HAVE_MALLOC_POSIX@
 HAVE_MBRLEN = @HAVE_MBRLEN@
 HAVE_MBRTOWC = @HAVE_MBRTOWC@
 HAVE_MBSINIT = @HAVE_MBSINIT@
@@ -767,23 +889,31 @@ HAVE_NETINET_IN_H = @HAVE_NETINET_IN_H@
 HAVE_NL_LANGINFO = @HAVE_NL_LANGINFO@
 HAVE_OPENAT = @HAVE_OPENAT@
 HAVE_OS_H = @HAVE_OS_H@
+HAVE_PIPE = @HAVE_PIPE@
 HAVE_PIPE2 = @HAVE_PIPE2@
 HAVE_POSIX_SIGNALBLOCKING = @HAVE_POSIX_SIGNALBLOCKING@
 HAVE_PREAD = @HAVE_PREAD@
+HAVE_PSELECT = @HAVE_PSELECT@
+HAVE_PTHREAD_H = @HAVE_PTHREAD_H@
+HAVE_PTHREAD_SIGMASK = @HAVE_PTHREAD_SIGMASK@
+HAVE_PTHREAD_SPINLOCK_T = @HAVE_PTHREAD_SPINLOCK_T@
+HAVE_PTHREAD_T = @HAVE_PTHREAD_T@
 HAVE_PTSNAME = @HAVE_PTSNAME@
+HAVE_PWRITE = @HAVE_PWRITE@
 HAVE_RANDOM_H = @HAVE_RANDOM_H@
 HAVE_RANDOM_R = @HAVE_RANDOM_R@
 HAVE_RAWMEMCHR = @HAVE_RAWMEMCHR@
 HAVE_READLINK = @HAVE_READLINK@
 HAVE_READLINKAT = @HAVE_READLINKAT@
-HAVE_REALLOC_POSIX = @HAVE_REALLOC_POSIX@
 HAVE_REALPATH = @HAVE_REALPATH@
 HAVE_RENAMEAT = @HAVE_RENAMEAT@
 HAVE_RPMATCH = @HAVE_RPMATCH@
 HAVE_SA_FAMILY_T = @HAVE_SA_FAMILY_T@
 HAVE_SCANDIR = @HAVE_SCANDIR@
+HAVE_SCHED_H = @HAVE_SCHED_H@
 HAVE_SETENV = @HAVE_SETENV@
 HAVE_SIGACTION = @HAVE_SIGACTION@
+HAVE_SIGHANDLER_T = @HAVE_SIGHANDLER_T@
 HAVE_SIGINFO_T = @HAVE_SIGINFO_T@
 HAVE_SIGNED_SIG_ATOMIC_T = @HAVE_SIGNED_SIG_ATOMIC_T@
 HAVE_SIGNED_WCHAR_T = @HAVE_SIGNED_WCHAR_T@
@@ -805,8 +935,10 @@ HAVE_STRTOLL = @HAVE_STRTOLL@
 HAVE_STRTOULL = @HAVE_STRTOULL@
 HAVE_STRUCT_ADDRINFO = @HAVE_STRUCT_ADDRINFO@
 HAVE_STRUCT_RANDOM_DATA = @HAVE_STRUCT_RANDOM_DATA@
+HAVE_STRUCT_SCHED_PARAM = @HAVE_STRUCT_SCHED_PARAM@
 HAVE_STRUCT_SIGACTION_SA_SIGACTION = @HAVE_STRUCT_SIGACTION_SA_SIGACTION@
 HAVE_STRUCT_SOCKADDR_STORAGE = @HAVE_STRUCT_SOCKADDR_STORAGE@
+HAVE_STRUCT_SOCKADDR_STORAGE_SS_FAMILY = @HAVE_STRUCT_SOCKADDR_STORAGE_SS_FAMILY@
 HAVE_STRUCT_TIMEVAL = @HAVE_STRUCT_TIMEVAL@
 HAVE_STRUCT_UTSNAME = @HAVE_STRUCT_UTSNAME@
 HAVE_STRVERSCMP = @HAVE_STRVERSCMP@
@@ -821,16 +953,16 @@ HAVE_SYS_SELECT_H = @HAVE_SYS_SELECT_H@
 HAVE_SYS_SOCKET_H = @HAVE_SYS_SOCKET_H@
 HAVE_SYS_TIME_H = @HAVE_SYS_TIME_H@
 HAVE_SYS_TYPES_H = @HAVE_SYS_TYPES_H@
+HAVE_SYS_UIO_H = @HAVE_SYS_UIO_H@
 HAVE_SYS_UTSNAME_H = @HAVE_SYS_UTSNAME_H@
 HAVE_TANL = @HAVE_TANL@
+HAVE_TERMIOS_H = @HAVE_TERMIOS_H@
 HAVE_TIMEGM = @HAVE_TIMEGM@
-HAVE_TTYNAME_R = @HAVE_TTYNAME_R@
 HAVE_TYPE_VOLATILE_SIG_ATOMIC_T = @HAVE_TYPE_VOLATILE_SIG_ATOMIC_T@
 HAVE_UNAME = @HAVE_UNAME@
 HAVE_UNISTD_H = @HAVE_UNISTD_H@
 HAVE_UNLINKAT = @HAVE_UNLINKAT@
 HAVE_UNLOCKPT = @HAVE_UNLOCKPT@
-HAVE_UNSETENV = @HAVE_UNSETENV@
 HAVE_UNSIGNED_LONG_LONG_INT = @HAVE_UNSIGNED_LONG_LONG_INT@
 HAVE_USLEEP = @HAVE_USLEEP@
 HAVE_UTIMENSAT = @HAVE_UTIMENSAT@
@@ -838,17 +970,49 @@ HAVE_VASPRINTF = @HAVE_VASPRINTF@
 HAVE_VDPRINTF = @HAVE_VDPRINTF@
 HAVE_WCHAR_H = @HAVE_WCHAR_H@
 HAVE_WCHAR_T = @HAVE_WCHAR_T@
+HAVE_WCPCPY = @HAVE_WCPCPY@
+HAVE_WCPNCPY = @HAVE_WCPNCPY@
 HAVE_WCRTOMB = @HAVE_WCRTOMB@
+HAVE_WCSCASECMP = @HAVE_WCSCASECMP@
+HAVE_WCSCAT = @HAVE_WCSCAT@
+HAVE_WCSCHR = @HAVE_WCSCHR@
+HAVE_WCSCMP = @HAVE_WCSCMP@
+HAVE_WCSCOLL = @HAVE_WCSCOLL@
+HAVE_WCSCPY = @HAVE_WCSCPY@
+HAVE_WCSCSPN = @HAVE_WCSCSPN@
+HAVE_WCSDUP = @HAVE_WCSDUP@
+HAVE_WCSLEN = @HAVE_WCSLEN@
+HAVE_WCSNCASECMP = @HAVE_WCSNCASECMP@
+HAVE_WCSNCAT = @HAVE_WCSNCAT@
+HAVE_WCSNCMP = @HAVE_WCSNCMP@
+HAVE_WCSNCPY = @HAVE_WCSNCPY@
+HAVE_WCSNLEN = @HAVE_WCSNLEN@
 HAVE_WCSNRTOMBS = @HAVE_WCSNRTOMBS@
+HAVE_WCSPBRK = @HAVE_WCSPBRK@
+HAVE_WCSRCHR = @HAVE_WCSRCHR@
 HAVE_WCSRTOMBS = @HAVE_WCSRTOMBS@
+HAVE_WCSSPN = @HAVE_WCSSPN@
+HAVE_WCSSTR = @HAVE_WCSSTR@
+HAVE_WCSTOK = @HAVE_WCSTOK@
+HAVE_WCSWIDTH = @HAVE_WCSWIDTH@
+HAVE_WCSXFRM = @HAVE_WCSXFRM@
+HAVE_WCTRANS_T = @HAVE_WCTRANS_T@
 HAVE_WCTYPE_H = @HAVE_WCTYPE_H@
+HAVE_WCTYPE_T = @HAVE_WCTYPE_T@
 HAVE_WINSOCK2_H = @HAVE_WINSOCK2_H@
 HAVE_WINT_T = @HAVE_WINT_T@
+HAVE_WMEMCHR = @HAVE_WMEMCHR@
+HAVE_WMEMCMP = @HAVE_WMEMCMP@
+HAVE_WMEMCPY = @HAVE_WMEMCPY@
+HAVE_WMEMMOVE = @HAVE_WMEMMOVE@
+HAVE_WMEMSET = @HAVE_WMEMSET@
 HAVE_WS2TCPIP_H = @HAVE_WS2TCPIP_H@
 HAVE_XLOCALE_H = @HAVE_XLOCALE_H@
 HAVE__BOOL = @HAVE__BOOL@
+HAVE__EXIT = @HAVE__EXIT@
 HELP2MAN = @HELP2MAN@
 HOSTENT_LIB = @HOSTENT_LIB@
+ICONV_CONST = @ICONV_CONST@
 ICONV_H = @ICONV_H@
 IGNORE_UNUSED_LIBRARIES_CFLAGS = @IGNORE_UNUSED_LIBRARIES_CFLAGS@
 INCLUDE_NEXT = @INCLUDE_NEXT@
@@ -865,7 +1029,6 @@ INT32_MAX_LT_INTMAX_MAX = @INT32_MAX_LT_INTMAX_MAX@
 INT64_MAX_EQ_LONG_MAX = @INT64_MAX_EQ_LONG_MAX@
 INTLLIBS = @INTLLIBS@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
-KMEM_GROUP = @KMEM_GROUP@
 LDFLAGS = @LDFLAGS@
 LIBCOREUTILS_LIBDEPS = @LIBCOREUTILS_LIBDEPS@
 LIBCOREUTILS_LTLIBDEPS = @LIBCOREUTILS_LTLIBDEPS@
@@ -879,6 +1042,9 @@ LIBS = @LIBS@
 LIBSOCKET = @LIBSOCKET@
 LIBTESTS_LIBDEPS = @LIBTESTS_LIBDEPS@
 LIBTHREAD = @LIBTHREAD@
+LIBUNISTRING_UNISTR_H = @LIBUNISTRING_UNISTR_H@
+LIBUNISTRING_UNITYPES_H = @LIBUNISTRING_UNITYPES_H@
+LIBUNISTRING_UNIWIDTH_H = @LIBUNISTRING_UNIWIDTH_H@
 LIB_ACL = @LIB_ACL@
 LIB_CAP = @LIB_CAP@
 LIB_CLOCK_GETTIME = @LIB_CLOCK_GETTIME@
@@ -888,7 +1054,9 @@ LIB_FDATASYNC = @LIB_FDATASYNC@
 LIB_GETHRXTIME = @LIB_GETHRXTIME@
 LIB_GMP = @LIB_GMP@
 LIB_NANOSLEEP = @LIB_NANOSLEEP@
+LIB_PTHREAD = @LIB_PTHREAD@
 LIB_SELINUX = @LIB_SELINUX@
+LIB_TIMER_TIME = @LIB_TIMER_TIME@
 LIB_XATTR = @LIB_XATTR@
 LN_S = @LN_S@
 LOCALCHARSET_TESTS_ENVIRONMENT = @LOCALCHARSET_TESTS_ENVIRONMENT@
@@ -909,7 +1077,6 @@ MKDIR_P = @MKDIR_P@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
-NEED_SETGID = @NEED_SETGID@
 NETINET_IN_H = @NETINET_IN_H@
 NEXT_ARPA_INET_H = @NEXT_ARPA_INET_H@
 NEXT_AS_FIRST_DIRECTIVE_ARPA_INET_H = @NEXT_AS_FIRST_DIRECTIVE_ARPA_INET_H@
@@ -926,6 +1093,8 @@ NEXT_AS_FIRST_DIRECTIVE_LOCALE_H = @NEXT_AS_FIRST_DIRECTIVE_LOCALE_H@
 NEXT_AS_FIRST_DIRECTIVE_MATH_H = @NEXT_AS_FIRST_DIRECTIVE_MATH_H@
 NEXT_AS_FIRST_DIRECTIVE_NETDB_H = @NEXT_AS_FIRST_DIRECTIVE_NETDB_H@
 NEXT_AS_FIRST_DIRECTIVE_NETINET_IN_H = @NEXT_AS_FIRST_DIRECTIVE_NETINET_IN_H@
+NEXT_AS_FIRST_DIRECTIVE_PTHREAD_H = @NEXT_AS_FIRST_DIRECTIVE_PTHREAD_H@
+NEXT_AS_FIRST_DIRECTIVE_SCHED_H = @NEXT_AS_FIRST_DIRECTIVE_SCHED_H@
 NEXT_AS_FIRST_DIRECTIVE_SELINUX_SELINUX_H = @NEXT_AS_FIRST_DIRECTIVE_SELINUX_SELINUX_H@
 NEXT_AS_FIRST_DIRECTIVE_SIGNAL_H = @NEXT_AS_FIRST_DIRECTIVE_SIGNAL_H@
 NEXT_AS_FIRST_DIRECTIVE_STDARG_H = @NEXT_AS_FIRST_DIRECTIVE_STDARG_H@
@@ -939,7 +1108,10 @@ NEXT_AS_FIRST_DIRECTIVE_SYS_SELECT_H = @NEXT_AS_FIRST_DIRECTIVE_SYS_SELECT_H@
 NEXT_AS_FIRST_DIRECTIVE_SYS_SOCKET_H = @NEXT_AS_FIRST_DIRECTIVE_SYS_SOCKET_H@
 NEXT_AS_FIRST_DIRECTIVE_SYS_STAT_H = @NEXT_AS_FIRST_DIRECTIVE_SYS_STAT_H@
 NEXT_AS_FIRST_DIRECTIVE_SYS_TIME_H = @NEXT_AS_FIRST_DIRECTIVE_SYS_TIME_H@
+NEXT_AS_FIRST_DIRECTIVE_SYS_UIO_H = @NEXT_AS_FIRST_DIRECTIVE_SYS_UIO_H@
 NEXT_AS_FIRST_DIRECTIVE_SYS_UTSNAME_H = @NEXT_AS_FIRST_DIRECTIVE_SYS_UTSNAME_H@
+NEXT_AS_FIRST_DIRECTIVE_SYS_WAIT_H = @NEXT_AS_FIRST_DIRECTIVE_SYS_WAIT_H@
+NEXT_AS_FIRST_DIRECTIVE_TERMIOS_H = @NEXT_AS_FIRST_DIRECTIVE_TERMIOS_H@
 NEXT_AS_FIRST_DIRECTIVE_TIME_H = @NEXT_AS_FIRST_DIRECTIVE_TIME_H@
 NEXT_AS_FIRST_DIRECTIVE_UNISTD_H = @NEXT_AS_FIRST_DIRECTIVE_UNISTD_H@
 NEXT_AS_FIRST_DIRECTIVE_WCHAR_H = @NEXT_AS_FIRST_DIRECTIVE_WCHAR_H@
@@ -957,6 +1129,8 @@ NEXT_LOCALE_H = @NEXT_LOCALE_H@
 NEXT_MATH_H = @NEXT_MATH_H@
 NEXT_NETDB_H = @NEXT_NETDB_H@
 NEXT_NETINET_IN_H = @NEXT_NETINET_IN_H@
+NEXT_PTHREAD_H = @NEXT_PTHREAD_H@
+NEXT_SCHED_H = @NEXT_SCHED_H@
 NEXT_SELINUX_SELINUX_H = @NEXT_SELINUX_SELINUX_H@
 NEXT_SIGNAL_H = @NEXT_SIGNAL_H@
 NEXT_STDARG_H = @NEXT_STDARG_H@
@@ -970,7 +1144,10 @@ NEXT_SYS_SELECT_H = @NEXT_SYS_SELECT_H@
 NEXT_SYS_SOCKET_H = @NEXT_SYS_SOCKET_H@
 NEXT_SYS_STAT_H = @NEXT_SYS_STAT_H@
 NEXT_SYS_TIME_H = @NEXT_SYS_TIME_H@
+NEXT_SYS_UIO_H = @NEXT_SYS_UIO_H@
 NEXT_SYS_UTSNAME_H = @NEXT_SYS_UTSNAME_H@
+NEXT_SYS_WAIT_H = @NEXT_SYS_WAIT_H@
+NEXT_TERMIOS_H = @NEXT_TERMIOS_H@
 NEXT_TIME_H = @NEXT_TIME_H@
 NEXT_UNISTD_H = @NEXT_UNISTD_H@
 NEXT_WCHAR_H = @NEXT_WCHAR_H@
@@ -990,20 +1167,25 @@ PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
 POSIX_SHELL = @POSIX_SHELL@
 POSUB = @POSUB@
-POW_LIB = @POW_LIB@
+PRAGMA_COLUMNS = @PRAGMA_COLUMNS@
 PRAGMA_SYSTEM_HEADER = @PRAGMA_SYSTEM_HEADER@
 PREFERABLY_POSIX_SHELL = @PREFERABLY_POSIX_SHELL@
 PRIPTR_PREFIX = @PRIPTR_PREFIX@
 PRI_MACROS_BROKEN = @PRI_MACROS_BROKEN@
+PTHREAD_H = @PTHREAD_H@
+PTHREAD_H_DEFINES_STRUCT_TIMESPEC = @PTHREAD_H_DEFINES_STRUCT_TIMESPEC@
 PTRDIFF_T_SUFFIX = @PTRDIFF_T_SUFFIX@
 RANLIB = @RANLIB@
 REPLACE_BTOWC = @REPLACE_BTOWC@
+REPLACE_CALLOC = @REPLACE_CALLOC@
 REPLACE_CANONICALIZE_FILE_NAME = @REPLACE_CANONICALIZE_FILE_NAME@
+REPLACE_CEIL = @REPLACE_CEIL@
 REPLACE_CEILF = @REPLACE_CEILF@
 REPLACE_CEILL = @REPLACE_CEILL@
 REPLACE_CHOWN = @REPLACE_CHOWN@
 REPLACE_CLOSE = @REPLACE_CLOSE@
 REPLACE_CLOSEDIR = @REPLACE_CLOSEDIR@
+REPLACE_DIRFD = @REPLACE_DIRFD@
 REPLACE_DPRINTF = @REPLACE_DPRINTF@
 REPLACE_DUP = @REPLACE_DUP@
 REPLACE_DUP2 = @REPLACE_DUP2@
@@ -1013,6 +1195,7 @@ REPLACE_FCLOSE = @REPLACE_FCLOSE@
 REPLACE_FCNTL = @REPLACE_FCNTL@
 REPLACE_FDOPENDIR = @REPLACE_FDOPENDIR@
 REPLACE_FFLUSH = @REPLACE_FFLUSH@
+REPLACE_FLOOR = @REPLACE_FLOOR@
 REPLACE_FLOORF = @REPLACE_FLOORF@
 REPLACE_FLOORL = @REPLACE_FLOORL@
 REPLACE_FOPEN = @REPLACE_FOPEN@
@@ -1028,10 +1211,13 @@ REPLACE_FSTATAT = @REPLACE_FSTATAT@
 REPLACE_FTELL = @REPLACE_FTELL@
 REPLACE_FTELLO = @REPLACE_FTELLO@
 REPLACE_FUTIMENS = @REPLACE_FUTIMENS@
+REPLACE_GAI_STRERROR = @REPLACE_GAI_STRERROR@
 REPLACE_GETCWD = @REPLACE_GETCWD@
 REPLACE_GETDELIM = @REPLACE_GETDELIM@
+REPLACE_GETDOMAINNAME = @REPLACE_GETDOMAINNAME@
 REPLACE_GETGROUPS = @REPLACE_GETGROUPS@
 REPLACE_GETLINE = @REPLACE_GETLINE@
+REPLACE_GETLOGIN_R = @REPLACE_GETLOGIN_R@
 REPLACE_GETPAGESIZE = @REPLACE_GETPAGESIZE@
 REPLACE_GETTIMEOFDAY = @REPLACE_GETTIMEOFDAY@
 REPLACE_HUGE_VAL = @REPLACE_HUGE_VAL@
@@ -1042,6 +1228,7 @@ REPLACE_IOCTL = @REPLACE_IOCTL@
 REPLACE_ISFINITE = @REPLACE_ISFINITE@
 REPLACE_ISINF = @REPLACE_ISINF@
 REPLACE_ISNAN = @REPLACE_ISNAN@
+REPLACE_ISWBLANK = @REPLACE_ISWBLANK@
 REPLACE_ISWCNTRL = @REPLACE_ISWCNTRL@
 REPLACE_LCHOWN = @REPLACE_LCHOWN@
 REPLACE_LDEXPL = @REPLACE_LDEXPL@
@@ -1050,12 +1237,14 @@ REPLACE_LINKAT = @REPLACE_LINKAT@
 REPLACE_LOCALTIME_R = @REPLACE_LOCALTIME_R@
 REPLACE_LSEEK = @REPLACE_LSEEK@
 REPLACE_LSTAT = @REPLACE_LSTAT@
+REPLACE_MALLOC = @REPLACE_MALLOC@
 REPLACE_MBRLEN = @REPLACE_MBRLEN@
 REPLACE_MBRTOWC = @REPLACE_MBRTOWC@
 REPLACE_MBSINIT = @REPLACE_MBSINIT@
 REPLACE_MBSNRTOWCS = @REPLACE_MBSNRTOWCS@
 REPLACE_MBSRTOWCS = @REPLACE_MBSRTOWCS@
 REPLACE_MBSTATE_T = @REPLACE_MBSTATE_T@
+REPLACE_MBTOWC = @REPLACE_MBTOWC@
 REPLACE_MEMCHR = @REPLACE_MEMCHR@
 REPLACE_MEMMEM = @REPLACE_MEMMEM@
 REPLACE_MKDIR = @REPLACE_MKDIR@
@@ -1075,8 +1264,13 @@ REPLACE_PERROR = @REPLACE_PERROR@
 REPLACE_POPEN = @REPLACE_POPEN@
 REPLACE_PREAD = @REPLACE_PREAD@
 REPLACE_PRINTF = @REPLACE_PRINTF@
+REPLACE_PSELECT = @REPLACE_PSELECT@
+REPLACE_PTHREAD_SIGMASK = @REPLACE_PTHREAD_SIGMASK@
 REPLACE_PUTENV = @REPLACE_PUTENV@
+REPLACE_PWRITE = @REPLACE_PWRITE@
+REPLACE_READ = @REPLACE_READ@
 REPLACE_READLINK = @REPLACE_READLINK@
+REPLACE_REALLOC = @REPLACE_REALLOC@
 REPLACE_REALPATH = @REPLACE_REALPATH@
 REPLACE_REMOVE = @REPLACE_REMOVE@
 REPLACE_RENAME = @REPLACE_RENAME@
@@ -1087,17 +1281,21 @@ REPLACE_ROUNDF = @REPLACE_ROUNDF@
 REPLACE_ROUNDL = @REPLACE_ROUNDL@
 REPLACE_SELECT = @REPLACE_SELECT@
 REPLACE_SETENV = @REPLACE_SETENV@
+REPLACE_SETLOCALE = @REPLACE_SETLOCALE@
 REPLACE_SIGNBIT = @REPLACE_SIGNBIT@
 REPLACE_SIGNBIT_USING_GCC = @REPLACE_SIGNBIT_USING_GCC@
 REPLACE_SLEEP = @REPLACE_SLEEP@
 REPLACE_SNPRINTF = @REPLACE_SNPRINTF@
 REPLACE_SPRINTF = @REPLACE_SPRINTF@
 REPLACE_STAT = @REPLACE_STAT@
+REPLACE_STDIO_READ_FUNCS = @REPLACE_STDIO_READ_FUNCS@
 REPLACE_STDIO_WRITE_FUNCS = @REPLACE_STDIO_WRITE_FUNCS@
 REPLACE_STPNCPY = @REPLACE_STPNCPY@
 REPLACE_STRCASESTR = @REPLACE_STRCASESTR@
+REPLACE_STRCHRNUL = @REPLACE_STRCHRNUL@
 REPLACE_STRDUP = @REPLACE_STRDUP@
 REPLACE_STRERROR = @REPLACE_STRERROR@
+REPLACE_STRERROR_R = @REPLACE_STRERROR_R@
 REPLACE_STRNCAT = @REPLACE_STRNCAT@
 REPLACE_STRNDUP = @REPLACE_STRNDUP@
 REPLACE_STRNLEN = @REPLACE_STRNLEN@
@@ -1108,7 +1306,11 @@ REPLACE_STRTOK_R = @REPLACE_STRTOK_R@
 REPLACE_SYMLINK = @REPLACE_SYMLINK@
 REPLACE_TIMEGM = @REPLACE_TIMEGM@
 REPLACE_TMPFILE = @REPLACE_TMPFILE@
+REPLACE_TOWLOWER = @REPLACE_TOWLOWER@
+REPLACE_TRUNC = @REPLACE_TRUNC@
+REPLACE_TRUNCF = @REPLACE_TRUNCF@
 REPLACE_TRUNCL = @REPLACE_TRUNCL@
+REPLACE_TTYNAME_R = @REPLACE_TTYNAME_R@
 REPLACE_UNLINK = @REPLACE_UNLINK@
 REPLACE_UNLINKAT = @REPLACE_UNLINKAT@
 REPLACE_UNSETENV = @REPLACE_UNSETENV@
@@ -1123,9 +1325,12 @@ REPLACE_VSPRINTF = @REPLACE_VSPRINTF@
 REPLACE_WCRTOMB = @REPLACE_WCRTOMB@
 REPLACE_WCSNRTOMBS = @REPLACE_WCSNRTOMBS@
 REPLACE_WCSRTOMBS = @REPLACE_WCSRTOMBS@
+REPLACE_WCSWIDTH = @REPLACE_WCSWIDTH@
 REPLACE_WCTOB = @REPLACE_WCTOB@
+REPLACE_WCTOMB = @REPLACE_WCTOMB@
 REPLACE_WCWIDTH = @REPLACE_WCWIDTH@
 REPLACE_WRITE = @REPLACE_WRITE@
+SCHED_H = @SCHED_H@
 SELINUX_CONTEXT_H = @SELINUX_CONTEXT_H@
 SEQ_LIBM = @SEQ_LIBM@
 SERVENT_LIB = @SERVENT_LIB@
@@ -1200,6 +1405,7 @@ infodir = @infodir@
 install_sh = @install_sh@
 libdir = @libdir@
 libexecdir = @libexecdir@
+lispdir = @lispdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
 mandir = @mandir@
@@ -1222,9 +1428,10 @@ top_srcdir = @top_srcdir@
 # otherwise we may get into trouble with distinct strings that the
 # current locale considers to be equal.
 ASSORT = LC_ALL=C sort
-EXTRA_DIST = Coreutils.pm CuTmpdir.pm check.mk envvar-check \
-	lang-default other-fs-tmpdir require-perl sample-test \
-	test-lib.sh $(pr_data) $(TESTS)
+EXTRA_DIST = Coreutils.pm CuSkip.pm CuTmpdir.pm check.mk d_type-check \
+	envvar-check filefrag-extent-compare fiemap-capable init.cfg \
+	init.sh lang-default other-fs-tmpdir sample-test shell-or-perl \
+	$(pr_data) $(TESTS)
 root_tests = \
   chown/basic					\
   cp/cp-a-selinux				\
@@ -1232,6 +1439,7 @@ root_tests = \
   cp/special-bits				\
   cp/cp-mv-enotsup-xattr			\
   cp/capability					\
+  cp/sparse-fiemap				\
   dd/skip-seek-past-dev				\
   install/install-C-root			\
   ls/capability					\
@@ -1274,6 +1482,7 @@ TESTS = \
   cp/link-heap					\
   tail-2/inotify-hash-abuse			\
   tail-2/inotify-hash-abuse2			\
+  tail-2/F-vs-missing				\
   tail-2/F-vs-rename				\
   tail-2/inotify-rotate				\
   chmod/no-x					\
@@ -1319,6 +1528,7 @@ TESTS = \
   rm/unread3					\
   rm/unreadable					\
   rm/v-slash					\
+  rm/many-dir-entries-vs-OOM			\
   chgrp/default-no-deref			\
   chgrp/deref					\
   chgrp/no-x					\
@@ -1339,6 +1549,7 @@ TESTS = \
   misc/xstrtol					\
   tail-2/pid					\
   misc/od					\
+  misc/od-float					\
   misc/mktemp					\
   misc/arch					\
   misc/pr					\
@@ -1346,7 +1557,6 @@ TESTS = \
   pr/pr-tests					\
   misc/df-P					\
   misc/pwd-option				\
-  misc/pwd-unreadable-parent			\
   misc/chcon-fail				\
   misc/cut					\
   misc/wc					\
@@ -1361,6 +1571,8 @@ TESTS = \
   misc/chroot-fail				\
   misc/comm					\
   misc/csplit					\
+  misc/csplit-1000				\
+  misc/csplit-heap				\
   misc/date-sec					\
   misc/dircolors				\
   misc/df					\
@@ -1413,19 +1625,36 @@ TESTS = \
   misc/shred-remove				\
   misc/shuf					\
   misc/sort					\
+  misc/sort-benchmark-random			\
   misc/sort-compress				\
+  misc/sort-compress-hang			\
+  misc/sort-compress-proc			\
   misc/sort-continue				\
+  misc/sort-debug-keys				\
+  misc/sort-debug-warn				\
   misc/sort-files0-from				\
+  misc/sort-float				\
   misc/sort-merge				\
   misc/sort-merge-fdlimit			\
   misc/sort-month				\
   misc/sort-rand				\
+  misc/sort-spinlock-abuse			\
+  misc/sort-stale-thread-mem			\
+  misc/sort-unique				\
+  misc/sort-unique-segv				\
   misc/sort-version				\
-  misc/split-a					\
-  misc/split-fail				\
-  misc/split-l					\
+  split/filter					\
+  split/suffix-length				\
+  split/b-chunk					\
+  split/fail					\
+  split/lines					\
+  split/l-chunk					\
+  split/r-chunk					\
+  misc/stat-birthtime				\
   misc/stat-fmt					\
   misc/stat-hyphen				\
+  misc/stat-mount				\
+  misc/stat-nanoseconds				\
   misc/stat-printf				\
   misc/stat-slash				\
   misc/stdbuf					\
@@ -1442,8 +1671,10 @@ TESTS = \
   misc/tee-dash					\
   misc/test-diag				\
   misc/timeout					\
+  misc/timeout-group				\
   misc/timeout-parameters			\
   misc/tr					\
+  misc/tr-case-class				\
   misc/truncate-dangling-symlink		\
   misc/truncate-dir-fail			\
   misc/truncate-fail-diag			\
@@ -1456,6 +1687,7 @@ TESTS = \
   misc/tty-eof					\
   misc/unexpand					\
   misc/uniq					\
+  misc/uniq-perf				\
   misc/xattr					\
   tail-2/wait					\
   chmod/c-option				\
@@ -1485,13 +1717,18 @@ TESTS = \
   cp/dir-rm-dest				\
   cp/dir-slash					\
   cp/dir-vs-file				\
+  cp/existing-perm-dir				\
   cp/existing-perm-race				\
   cp/fail-perm					\
+  cp/fiemap-empty                               \
+  cp/fiemap-perf                                \
+  cp/fiemap-2                                   \
   cp/file-perm-race				\
   cp/into-self					\
   cp/link					\
   cp/link-no-deref				\
   cp/link-preserve				\
+  cp/link-symlink				\
   cp/no-deref-link1				\
   cp/no-deref-link2				\
   cp/no-deref-link3				\
@@ -1499,6 +1736,7 @@ TESTS = \
   cp/parent-perm-race				\
   cp/perm					\
   cp/preserve-2					\
+  cp/preserve-link				\
   cp/preserve-slink-time			\
   cp/proc-short-read				\
   cp/proc-zero-len				\
@@ -1508,6 +1746,7 @@ TESTS = \
   cp/same-file					\
   cp/slink-2-slink				\
   cp/sparse					\
+  cp/sparse-to-pipe				\
   cp/special-f					\
   cp/src-base-dot				\
   cp/symlink-slash				\
@@ -1515,6 +1754,7 @@ TESTS = \
   df/unreadable					\
   dd/direct					\
   dd/misc					\
+  dd/nocache					\
   dd/not-rewound				\
   dd/reblock					\
   dd/skip-seek					\
@@ -1527,17 +1767,21 @@ TESTS = \
   du/2g						\
   du/8gb					\
   du/basic					\
+  du/bigtime					\
   du/deref					\
   du/deref-args					\
   du/exclude					\
   du/fd-leak					\
   du/files0-from				\
+  du/files0-from-dir				\
   du/hard-link					\
   du/inacc-dest					\
   du/inacc-dir					\
   du/inaccessible-cwd				\
   du/long-from-unreadable			\
   du/long-sloop					\
+  du/max-depth					\
+  du/move-dir-while-traversing			\
   du/no-deref					\
   du/no-x					\
   du/one-file-system				\
@@ -1581,6 +1825,7 @@ TESTS = \
   ls/rt-1					\
   ls/stat-dtype					\
   ls/stat-failed				\
+  ls/stat-free-color				\
   ls/stat-free-symlinks				\
   ls/stat-vs-dirent				\
   ls/symlink-slash				\
@@ -1645,6 +1890,7 @@ TESTS = \
   tail-2/assert-2				\
   tail-2/big-4gb				\
   tail-2/flush-initial				\
+  tail-2/follow-name				\
   tail-2/follow-stdin				\
   tail-2/pipe-f					\
   tail-2/pipe-f2				\
@@ -1833,8 +2079,11 @@ pr_data = \
 # one that does not end in '\'.
 _v = TESTS
 _w = root_tests
-built_programs = \
-  (cd $(top_builddir)/src && MAKEFLAGS= $(MAKE) -s built_programs.list)
+CLEANFILES = .built-programs
+LOG_COMPILER = \
+  $(SHELL) $(srcdir)/shell-or-perl \
+  --test-name "$$f" --srcdir '$(srcdir)' \
+  --shell '$(SHELL)' --perl '$(PERL)' --
 
 
 # Note that the first lines are statements.  They ensure that environment
@@ -1843,25 +2092,10 @@ built_programs = \
 # variables to test scripts.
 TESTS_ENVIRONMENT = \
   . $(srcdir)/lang-default;			\
-  tmp__=$$TMPDIR; test -d "$$tmp__" || tmp__=.;	\
+  tmp__=$${TMPDIR-/tmp};			\
+  test -d "$$tmp__" && test -w "$$tmp__" || tmp__=.;	\
   . $(srcdir)/envvar-check;			\
   TMPDIR=$$tmp__; export TMPDIR;		\
-  exec 9>&2;					\
-  shell_or_perl_() {				\
-    if grep '^\#!/usr/bin/perl' "$$1" > /dev/null; then			\
-      if $(PERL) -e 'use warnings' > /dev/null 2>&1; then		\
-	grep '^\#!/usr/bin/perl -T' "$$1" > /dev/null && T_=T || T_=;	\
-        $(PERL) -w$$T_ -I$(srcdir) -MCoreutils				\
-	      -M"CuTmpdir qw($$f)" -- "$$1";	\
-      else					\
-	echo 1>&2 "$$tst: configure did not find a usable version of Perl," \
-	  "so skipping this test";		\
-	(exit 77);				\
-      fi;					\
-    else					\
-      $(SHELL) "$$1";				\
-    fi;						\
-  };						\
   export					\
   VERSION='$(VERSION)'				\
   LOCALE_FR='$(LOCALE_FR)'			\
@@ -1869,7 +2103,7 @@ TESTS_ENVIRONMENT = \
   abs_top_builddir='$(abs_top_builddir)'	\
   abs_top_srcdir='$(abs_top_srcdir)'		\
   abs_srcdir='$(abs_srcdir)'			\
-  built_programs="`$(built_programs)`"		\
+  built_programs="`cat .built-programs`"	\
   host_os=$(host_os)				\
   host_triplet='$(host_triplet)'		\
   srcdir='$(srcdir)'				\
@@ -1888,7 +2122,7 @@ TESTS_ENVIRONMENT = \
   REPLACE_GETCWD=$(REPLACE_GETCWD)		\
   ; test -d /usr/xpg4/bin && PATH='/usr/xpg4/bin$(PATH_SEPARATOR)'"$$PATH"; \
   PATH='$(abs_top_builddir)/src$(PATH_SEPARATOR)'"$$PATH" \
-  ; shell_or_perl_
+  ; 9>&2
 
 VERBOSE = yes
 all: all-am
@@ -1934,41 +2168,12 @@ CTAGS:
 cscope cscopelist:
 
 
-# To be appended to the command running the test.  Handle the stdout
-# and stderr redirection, and catch the exit status.
-am__check_post =					\
->$@-t 2>&1;						\
-estatus=$$?;						\
-if test -n '$(DISABLE_HARD_ERRORS)'			\
-   && test $$estatus -eq 99; then			\
-  estatus=1;						\
-fi;							\
-TERM=$$__SAVED_TERM; export TERM;			\
-$(am__tty_colors);					\
-xfailed=PASS;						\
-case " $(XFAIL_TESTS) " in				\
-  *[\ \	]$$f[\ \	]* | *[\ \	]$$dir$$f[\ \	]*) \
-    xfailed=XFAIL;;					\
-esac;							\
-case $$estatus:$$xfailed in				\
-    0:XFAIL) col=$$red; res=XPASS;;			\
-    0:*)     col=$$grn; res=PASS ;;			\
-    77:*)    col=$$blu; res=SKIP ;;			\
-    99:*)    col=$$red; res=FAIL ;;			\
-    *:XFAIL) col=$$lgn; res=XFAIL;;			\
-    *:*)     col=$$red; res=FAIL ;;			\
-esac;							\
-echo "$${col}$$res$${std}: $$f";			\
-echo "$$res: $$f (exit: $$estatus)" |			\
-  $(am__rst_section) >$@;				\
-cat $@-t >>$@;						\
-rm -f $@-t
-
 $(TEST_SUITE_LOG): $(TEST_LOGS)
 	@$(am__sh_e_setup);						\
 	list='$(TEST_LOGS)';						\
 	results=`for f in $$list; do					\
-		   read line < $$f && echo "$$line" || echo FAIL;	\
+		   test -r $$f && read line < $$f && echo "$$line"	\
+		     || echo FAIL;					\
 		 done`;							\
 	all=`echo "$$results" | sed '/^$$/d' | wc -l | sed -e 's/^[	 ]*//'`; \
 	fail=`echo "$$results" | grep -c '^FAIL'`;			\
@@ -2017,7 +2222,7 @@ $(TEST_SUITE_LOG): $(TEST_LOGS)
 	  echo ".. contents:: :depth: 2";				\
 	  echo;								\
 	  for f in $$list; do						\
-	    read line < $$f;						\
+	    test -r $$f && read line < $$f || line=;			\
 	    case $$line in						\
 	      PASS:*|XFAIL:*);;						\
 	      *) echo; cat $$f;;					\
@@ -2034,12 +2239,11 @@ $(TEST_SUITE_LOG): $(TEST_LOGS)
 	test x"$$VERBOSE" = x || $$exit || cat $(TEST_SUITE_LOG);	\
 	$(am__tty_colors);						\
 	if $$exit; then							\
-	  echo $(ECHO_N) "$$grn$(ECHO_C)";				\
+	  col="$$grn";							\
 	 else								\
-	  echo $(ECHO_N) "$$red$(ECHO_C)";				\
+	  col="$$red";							\
 	fi;								\
-	echo "$$msg" | $(am__text_box);					\
-	echo $(ECHO_N) "$$std$(ECHO_C)";				\
+	echo "$$msg" | $(am__text_box) "col=$$col" "std=$$std";		\
 	$$exit
 
 # Run all the tests.
@@ -2081,10 +2285,11 @@ recheck recheck-html:
 	list='$(TEST_LOGS)';						\
 	list=`for f in $$list; do					\
 	        test -f $$f || continue;				\
-	        if read line < $$f; then				\
+	        if test -r $$f && read line < $$f; then			\
 	          case $$line in FAIL*|XPASS*) echo $$f;; esac;		\
 	        else echo $$f; fi;					\
 	      done | tr '\012\015' '  '`;				\
+	list=`echo "$$list" | sed 's/ *$$//'`;				\
 	$(MAKE) $(AM_MAKEFLAGS) $$target AM_MAKEFLAGS='$(AM_MAKEFLAGS) TEST_LOGS="'"$$list"'"'
 misc/help-version.log: misc/help-version
 	@p='misc/help-version'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
@@ -2102,6 +2307,8 @@ tail-2/inotify-hash-abuse.log: tail-2/inotify-hash-abuse
 	@p='tail-2/inotify-hash-abuse'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 tail-2/inotify-hash-abuse2.log: tail-2/inotify-hash-abuse2
 	@p='tail-2/inotify-hash-abuse2'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+tail-2/F-vs-missing.log: tail-2/F-vs-missing
+	@p='tail-2/F-vs-missing'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 tail-2/F-vs-rename.log: tail-2/F-vs-rename
 	@p='tail-2/F-vs-rename'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 tail-2/inotify-rotate.log: tail-2/inotify-rotate
@@ -2192,6 +2399,8 @@ rm/unreadable.log: rm/unreadable
 	@p='rm/unreadable'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 rm/v-slash.log: rm/v-slash
 	@p='rm/v-slash'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+rm/many-dir-entries-vs-OOM.log: rm/many-dir-entries-vs-OOM
+	@p='rm/many-dir-entries-vs-OOM'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 chgrp/default-no-deref.log: chgrp/default-no-deref
 	@p='chgrp/default-no-deref'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 chgrp/deref.log: chgrp/deref
@@ -2232,6 +2441,8 @@ tail-2/pid.log: tail-2/pid
 	@p='tail-2/pid'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/od.log: misc/od
 	@p='misc/od'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/od-float.log: misc/od-float
+	@p='misc/od-float'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/mktemp.log: misc/mktemp
 	@p='misc/mktemp'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/arch.log: misc/arch
@@ -2246,8 +2457,6 @@ misc/df-P.log: misc/df-P
 	@p='misc/df-P'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/pwd-option.log: misc/pwd-option
 	@p='misc/pwd-option'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
-misc/pwd-unreadable-parent.log: misc/pwd-unreadable-parent
-	@p='misc/pwd-unreadable-parent'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/chcon-fail.log: misc/chcon-fail
 	@p='misc/chcon-fail'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/cut.log: misc/cut
@@ -2276,6 +2485,10 @@ misc/comm.log: misc/comm
 	@p='misc/comm'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/csplit.log: misc/csplit
 	@p='misc/csplit'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/csplit-1000.log: misc/csplit-1000
+	@p='misc/csplit-1000'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/csplit-heap.log: misc/csplit-heap
+	@p='misc/csplit-heap'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/date-sec.log: misc/date-sec
 	@p='misc/date-sec'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/dircolors.log: misc/dircolors
@@ -2380,12 +2593,24 @@ misc/shuf.log: misc/shuf
 	@p='misc/shuf'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/sort.log: misc/sort
 	@p='misc/sort'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/sort-benchmark-random.log: misc/sort-benchmark-random
+	@p='misc/sort-benchmark-random'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/sort-compress.log: misc/sort-compress
 	@p='misc/sort-compress'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/sort-compress-hang.log: misc/sort-compress-hang
+	@p='misc/sort-compress-hang'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/sort-compress-proc.log: misc/sort-compress-proc
+	@p='misc/sort-compress-proc'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/sort-continue.log: misc/sort-continue
 	@p='misc/sort-continue'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/sort-debug-keys.log: misc/sort-debug-keys
+	@p='misc/sort-debug-keys'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/sort-debug-warn.log: misc/sort-debug-warn
+	@p='misc/sort-debug-warn'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/sort-files0-from.log: misc/sort-files0-from
 	@p='misc/sort-files0-from'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/sort-float.log: misc/sort-float
+	@p='misc/sort-float'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/sort-merge.log: misc/sort-merge
 	@p='misc/sort-merge'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/sort-merge-fdlimit.log: misc/sort-merge-fdlimit
@@ -2394,18 +2619,40 @@ misc/sort-month.log: misc/sort-month
 	@p='misc/sort-month'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/sort-rand.log: misc/sort-rand
 	@p='misc/sort-rand'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/sort-spinlock-abuse.log: misc/sort-spinlock-abuse
+	@p='misc/sort-spinlock-abuse'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/sort-stale-thread-mem.log: misc/sort-stale-thread-mem
+	@p='misc/sort-stale-thread-mem'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/sort-unique.log: misc/sort-unique
+	@p='misc/sort-unique'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/sort-unique-segv.log: misc/sort-unique-segv
+	@p='misc/sort-unique-segv'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/sort-version.log: misc/sort-version
 	@p='misc/sort-version'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
-misc/split-a.log: misc/split-a
-	@p='misc/split-a'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
-misc/split-fail.log: misc/split-fail
-	@p='misc/split-fail'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
-misc/split-l.log: misc/split-l
-	@p='misc/split-l'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+split/filter.log: split/filter
+	@p='split/filter'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+split/suffix-length.log: split/suffix-length
+	@p='split/suffix-length'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+split/b-chunk.log: split/b-chunk
+	@p='split/b-chunk'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+split/fail.log: split/fail
+	@p='split/fail'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+split/lines.log: split/lines
+	@p='split/lines'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+split/l-chunk.log: split/l-chunk
+	@p='split/l-chunk'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+split/r-chunk.log: split/r-chunk
+	@p='split/r-chunk'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/stat-birthtime.log: misc/stat-birthtime
+	@p='misc/stat-birthtime'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/stat-fmt.log: misc/stat-fmt
 	@p='misc/stat-fmt'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/stat-hyphen.log: misc/stat-hyphen
 	@p='misc/stat-hyphen'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/stat-mount.log: misc/stat-mount
+	@p='misc/stat-mount'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/stat-nanoseconds.log: misc/stat-nanoseconds
+	@p='misc/stat-nanoseconds'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/stat-printf.log: misc/stat-printf
 	@p='misc/stat-printf'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/stat-slash.log: misc/stat-slash
@@ -2438,10 +2685,14 @@ misc/test-diag.log: misc/test-diag
 	@p='misc/test-diag'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/timeout.log: misc/timeout
 	@p='misc/timeout'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/timeout-group.log: misc/timeout-group
+	@p='misc/timeout-group'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/timeout-parameters.log: misc/timeout-parameters
 	@p='misc/timeout-parameters'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/tr.log: misc/tr
 	@p='misc/tr'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/tr-case-class.log: misc/tr-case-class
+	@p='misc/tr-case-class'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/truncate-dangling-symlink.log: misc/truncate-dangling-symlink
 	@p='misc/truncate-dangling-symlink'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/truncate-dir-fail.log: misc/truncate-dir-fail
@@ -2466,6 +2717,8 @@ misc/unexpand.log: misc/unexpand
 	@p='misc/unexpand'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/uniq.log: misc/uniq
 	@p='misc/uniq'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+misc/uniq-perf.log: misc/uniq-perf
+	@p='misc/uniq-perf'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 misc/xattr.log: misc/xattr
 	@p='misc/xattr'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 tail-2/wait.log: tail-2/wait
@@ -2524,10 +2777,18 @@ cp/dir-slash.log: cp/dir-slash
 	@p='cp/dir-slash'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 cp/dir-vs-file.log: cp/dir-vs-file
 	@p='cp/dir-vs-file'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+cp/existing-perm-dir.log: cp/existing-perm-dir
+	@p='cp/existing-perm-dir'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 cp/existing-perm-race.log: cp/existing-perm-race
 	@p='cp/existing-perm-race'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 cp/fail-perm.log: cp/fail-perm
 	@p='cp/fail-perm'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+cp/fiemap-empty.log: cp/fiemap-empty
+	@p='cp/fiemap-empty'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+cp/fiemap-perf.log: cp/fiemap-perf
+	@p='cp/fiemap-perf'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+cp/fiemap-2.log: cp/fiemap-2
+	@p='cp/fiemap-2'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 cp/file-perm-race.log: cp/file-perm-race
 	@p='cp/file-perm-race'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 cp/into-self.log: cp/into-self
@@ -2538,6 +2799,8 @@ cp/link-no-deref.log: cp/link-no-deref
 	@p='cp/link-no-deref'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 cp/link-preserve.log: cp/link-preserve
 	@p='cp/link-preserve'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+cp/link-symlink.log: cp/link-symlink
+	@p='cp/link-symlink'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 cp/no-deref-link1.log: cp/no-deref-link1
 	@p='cp/no-deref-link1'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 cp/no-deref-link2.log: cp/no-deref-link2
@@ -2552,6 +2815,8 @@ cp/perm.log: cp/perm
 	@p='cp/perm'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 cp/preserve-2.log: cp/preserve-2
 	@p='cp/preserve-2'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+cp/preserve-link.log: cp/preserve-link
+	@p='cp/preserve-link'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 cp/preserve-slink-time.log: cp/preserve-slink-time
 	@p='cp/preserve-slink-time'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 cp/proc-short-read.log: cp/proc-short-read
@@ -2570,6 +2835,8 @@ cp/slink-2-slink.log: cp/slink-2-slink
 	@p='cp/slink-2-slink'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 cp/sparse.log: cp/sparse
 	@p='cp/sparse'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+cp/sparse-to-pipe.log: cp/sparse-to-pipe
+	@p='cp/sparse-to-pipe'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 cp/special-f.log: cp/special-f
 	@p='cp/special-f'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 cp/src-base-dot.log: cp/src-base-dot
@@ -2584,6 +2851,8 @@ dd/direct.log: dd/direct
 	@p='dd/direct'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 dd/misc.log: dd/misc
 	@p='dd/misc'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+dd/nocache.log: dd/nocache
+	@p='dd/nocache'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 dd/not-rewound.log: dd/not-rewound
 	@p='dd/not-rewound'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 dd/reblock.log: dd/reblock
@@ -2608,6 +2877,8 @@ du/8gb.log: du/8gb
 	@p='du/8gb'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 du/basic.log: du/basic
 	@p='du/basic'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+du/bigtime.log: du/bigtime
+	@p='du/bigtime'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 du/deref.log: du/deref
 	@p='du/deref'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 du/deref-args.log: du/deref-args
@@ -2618,6 +2889,8 @@ du/fd-leak.log: du/fd-leak
 	@p='du/fd-leak'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 du/files0-from.log: du/files0-from
 	@p='du/files0-from'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+du/files0-from-dir.log: du/files0-from-dir
+	@p='du/files0-from-dir'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 du/hard-link.log: du/hard-link
 	@p='du/hard-link'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 du/inacc-dest.log: du/inacc-dest
@@ -2630,6 +2903,10 @@ du/long-from-unreadable.log: du/long-from-unreadable
 	@p='du/long-from-unreadable'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 du/long-sloop.log: du/long-sloop
 	@p='du/long-sloop'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+du/max-depth.log: du/max-depth
+	@p='du/max-depth'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+du/move-dir-while-traversing.log: du/move-dir-while-traversing
+	@p='du/move-dir-while-traversing'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 du/no-deref.log: du/no-deref
 	@p='du/no-deref'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 du/no-x.log: du/no-x
@@ -2716,6 +2993,8 @@ ls/stat-dtype.log: ls/stat-dtype
 	@p='ls/stat-dtype'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 ls/stat-failed.log: ls/stat-failed
 	@p='ls/stat-failed'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+ls/stat-free-color.log: ls/stat-free-color
+	@p='ls/stat-free-color'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 ls/stat-free-symlinks.log: ls/stat-free-symlinks
 	@p='ls/stat-free-symlinks'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 ls/stat-vs-dirent.log: ls/stat-vs-dirent
@@ -2844,6 +3123,8 @@ tail-2/big-4gb.log: tail-2/big-4gb
 	@p='tail-2/big-4gb'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 tail-2/flush-initial.log: tail-2/flush-initial
 	@p='tail-2/flush-initial'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+tail-2/follow-name.log: tail-2/follow-name
+	@p='tail-2/follow-name'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 tail-2/follow-stdin.log: tail-2/follow-stdin
 	@p='tail-2/follow-stdin'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 tail-2/pipe-f.log: tail-2/pipe-f
@@ -2892,6 +3173,8 @@ cp/cp-mv-enotsup-xattr.log: cp/cp-mv-enotsup-xattr
 	@p='cp/cp-mv-enotsup-xattr'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 cp/capability.log: cp/capability
 	@p='cp/capability'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
+cp/sparse-fiemap.log: cp/sparse-fiemap
+	@p='cp/sparse-fiemap'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 dd/skip-seek-past-dev.log: dd/skip-seek-past-dev
 	@p='dd/skip-seek-past-dev'; $(am__check_pre) $(LOG_COMPILE) "$$tst" $(am__check_post)
 install/install-C-root.log: install/install-C-root
@@ -2974,10 +3257,15 @@ install-am: all-am
 
 installcheck: installcheck-am
 install-strip:
-	$(MAKE) $(AM_MAKEFLAGS) INSTALL_PROGRAM="$(INSTALL_STRIP_PROGRAM)" \
-	  install_sh_PROGRAM="$(INSTALL_STRIP_PROGRAM)" INSTALL_STRIP_FLAG=-s \
-	  `test -z '$(STRIP)' || \
-	    echo "INSTALL_PROGRAM_ENV=STRIPPROG='$(STRIP)'"` install
+	if test -z '$(STRIP)'; then \
+	  $(MAKE) $(AM_MAKEFLAGS) INSTALL_PROGRAM="$(INSTALL_STRIP_PROGRAM)" \
+	    install_sh_PROGRAM="$(INSTALL_STRIP_PROGRAM)" INSTALL_STRIP_FLAG=-s \
+	      install; \
+	else \
+	  $(MAKE) $(AM_MAKEFLAGS) INSTALL_PROGRAM="$(INSTALL_STRIP_PROGRAM)" \
+	    install_sh_PROGRAM="$(INSTALL_STRIP_PROGRAM)" INSTALL_STRIP_FLAG=-s \
+	    "INSTALL_PROGRAM_ENV=STRIPPROG='$(STRIP)'" install; \
+	fi
 mostlyclean-generic:
 	-test -z "$(TEST_LOGS)" || rm -f $(TEST_LOGS)
 	-test -z "$(TEST_LOGS_TMP)" || rm -f $(TEST_LOGS_TMP)
@@ -2985,6 +3273,7 @@ mostlyclean-generic:
 	-test -z "$(TEST_SUITE_LOG)" || rm -f $(TEST_SUITE_LOG)
 
 clean-generic:
+	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
@@ -3088,8 +3377,8 @@ root-hint:
 	@echo "  See the 'Running tests as root' section in README."
 	@echo '***********************************************************'
 vc_exe_in_TESTS: Makefile
-	@rm -f t1 t2
-	@if test -d $(top_srcdir)/.git && test $(srcdir) = .; then	\
+	$(AM_V_GEN)rm -f t1 t2;						\
+	if test -d $(top_srcdir)/.git && test $(srcdir) = .; then	\
 	  { sed -n '/^$(_v) =[	 ]*\\$$/,/[^\]$$/p'			\
 		$(srcdir)/Makefile.am					\
 	    | sed 's/^  *//;/^\$$.*/d;/^$(_v) =/d';			\
@@ -3107,6 +3396,11 @@ vc_exe_in_TESTS: Makefile
 
 check: vc_exe_in_TESTS
 .PHONY: vc_exe_in_TESTS
+check-am: .built-programs
+.built-programs:
+	$(AM_V_GEN)(cd $(top_builddir)/src				\
+            && MAKEFLAGS= $(MAKE) -s built_programs.list)		\
+          > $@-t && mv $@-t $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

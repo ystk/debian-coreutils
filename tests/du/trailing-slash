@@ -2,7 +2,7 @@
 # Ensure that du works properly for an argument that refers to a
 # symbolic link, and that is specified with a trailing slash.
 
-# Copyright (C) 2002-2010 Free Software Foundation, Inc.
+# Copyright (C) 2002-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,15 +19,11 @@
 
 # Before coreutils-4.5.3, it would remove a single trailing slash.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  du --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ du
 
-. $srcdir/test-lib.sh
-
-mkdir -p dir/1/2 || framework_failure
-ln -s dir slink || framework_failure
+mkdir -p dir/1/2 || framework_failure_
+ln -s dir slink || framework_failure_
 
 
 du slink/ | sed 's/^[0-9][0-9]*	//' > out

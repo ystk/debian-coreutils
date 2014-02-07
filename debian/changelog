@@ -1,3 +1,98 @@
+coreutils (8.13-3.5) wheezy; urgency=low
+
+  * Non-maintainer upload.
+  * Multiple test-suite fixes. Closes: #687906
+    + Extend the fix for #685238: recognise if valgrind is not
+      installed and skip the test
+    + Apply upstream fix in the test for parse-datetime so that it works
+      regardless of system DST status
+
+ -- Steve McIntyre <93sam@debian.org>  Sat, 26 Jan 2013 12:10:17 +0000
+
+coreutils (8.13-3.4) wheezy; urgency=low
+
+  * Non-maintainer upload.
+  * Backport upstream patches to fix data-loss and free-memory read bugs in
+    'sort -u' (closes: #685238).  Thanks, Colin Watson!
+
+ -- Julien Cristau <jcristau@debian.org>  Mon, 26 Nov 2012 14:35:00 +0100
+
+coreutils (8.13-3.3) unstable; urgency=low
+
+  * Non-maintainer upload
+  * [50] Updates to Danish, German, Spanish, French, and Vietnamese
+    translations from translationproject.org (Closes: #671807)
+  * [51] (Etienne Millon) Fix typo in "/usr/bin/[ --help" output with
+    LANG=fr (Closes: #598481)
+  * [52] (Michael Below) Fix typos in ln -s "permission denied"
+    message with LANG=de (Closes: #683401)
+  * [55] Touch pot file to ensure binary message catalogs are
+    regenerated during the build.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 10 Sep 2012 22:02:19 -0700
+
+coreutils (8.13-3.2) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Don't declare separate build-arch/build-indep targets when they just
+    fall through to the same common build rule, since they don't have correct
+    target dependencies themselves.  Closes: #670481.
+  * Enable hardening build flags.  Thanks to Moritz Muehlenhoff for the
+    patch.  Closes: #653743.
+  * debian/patches/99_Werror-format-string.dpatch: fix the gnulib test suite
+    so that it doesn't fail to build with hardening flags on.
+  * Mark coreutils Multi-Arch: foreign.  Thanks to Colin Watson.
+    Closes: #649397.
+  * debian/patches/99_tests-misc-sort-continue-Port-to-Fedora-15.dpatch:
+    cherry-pick from upstream to fix a build failure whenever the build
+    system happens to be holding an fd open, as happens when running in
+    certain environments (e.g., Lucas's test rebuild farm, or bzr-builddeb).
+    Closes: #669555.
+
+ -- Steve Langasek <vorlon@debian.org>  Wed, 02 May 2012 02:27:43 +0000
+
+coreutils (8.13-3.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Use architecture wildcards instead of type-handling virtual packages in
+    Build-Depends (closes: #587859). Thanks to Sebastian Andrzej Siewior for
+    the bug report and Guillem Jover for the patch.
+
+ -- Jakub Wilk <jwilk@debian.org>  Wed, 29 Feb 2012 00:11:27 +0100
+
+coreutils (8.13-3) unstable; urgency=low
+
+  * [86] upstream patch for ppc float issue (Closes: #642291)
+  * revert previous change to -mlong-double-64
+
+ -- Michael Stone <mstone@debian.org>  Sat, 01 Oct 2011 12:31:33 -0400
+
+coreutils (8.13-2) unstable; urgency=low
+
+  * Fix typo in kfbsd test patch
+  * Move libstdbuf.so back to /usr/lib
+  * [84] upstream patch to gnulib getcwd which fixes build test failure on kfbsd
+  * [85] kfbsd ignores fractional part of timeouts over 100000s
+    (Closes: #641832)
+  * PPC uses -mlong-double-64 to prevent test failures (Closes: #641907)
+  * Minor build changes
+
+ -- Michael Stone <mstone@debian.org>  Mon, 19 Sep 2011 19:52:02 -0400
+
+coreutils (8.13-1) unstable; urgency=low
+
+  * New upstream version
+    - no diagnostic when tail -f from pipe (Closes: #622182)
+    - du ignores specified dir when part of cycle (Closes: #598438)
+    - corrects translation errors (Closes: #595019, #545347)
+    - fixes missing prototype which caused FTBFS in some cases (Closes: #585509)
+    - documentation updates (Closes: #395430, #115833, #545347)
+  * preserve upstream man pages in clean (Closes: #630735)
+  * respect CFLAGS in build (Closes: #596262)
+  * remove LC_TIME symlinks (Closes: #584837)
+
+ -- Michael Stone <mstone@debian.org>  Mon, 12 Sep 2011 17:21:19 -0400
+
 coreutils (8.5-1) unstable; urgency=low
 
   * New upstream version

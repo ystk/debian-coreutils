@@ -1,5 +1,5 @@
 /* `ln' program to create links between files.
-   Copyright (C) 1986, 1989-1991, 1995-2010 Free Software Foundation, Inc.
+   Copyright (C) 1986, 1989-1991, 1995-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -304,14 +304,14 @@ do_link (const char *source, const char *dest)
       error (0, errno,
              (symbolic_link
               ? (errno != ENAMETOOLONG && *source
-                 ? _("creating symbolic link %s")
-                 : _("creating symbolic link %s -> %s"))
+                 ? _("failed to create symbolic link %s")
+                 : _("failed to create symbolic link %s -> %s"))
               : (errno == EMLINK && !source_is_dir
-                 ? _("creating hard link to %.0s%s")
+                 ? _("failed to create hard link to %.0s%s")
                  : (errno == EDQUOT || errno == EEXIST || errno == ENOSPC
                     || errno == EROFS)
-                 ? _("creating hard link %s")
-                 : _("creating hard link %s => %s"))),
+                 ? _("failed to create hard link %s")
+                 : _("failed to create hard link %s => %s"))),
              quote_n (0, dest), quote_n (1, source));
 
       if (dest_backup)

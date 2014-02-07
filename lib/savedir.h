@@ -1,6 +1,6 @@
 /* Save the list of files in a directory in a string.
 
-   Copyright (C) 1997, 1999, 2001, 2003, 2005, 2009-2010 Free Software
+   Copyright (C) 1997, 1999, 2001, 2003, 2005, 2009-2011 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -18,10 +18,12 @@
 
 /* Written by David MacKenzie <djm@gnu.ai.mit.edu>. */
 
-#if !defined SAVEDIR_H_
-# define SAVEDIR_H_
+#ifndef _GL_SAVEDIR_H
+#define _GL_SAVEDIR_H
 
+#include <dirent.h>
+char *streamsavedir (DIR *dirp);
 char *savedir (char const *dir);
-char *fdsavedir (int fd);
+char *fdsavedir (int fd); /* deprecated */
 
 #endif

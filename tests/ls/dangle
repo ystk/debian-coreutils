@@ -1,7 +1,7 @@
 #!/bin/sh
 # Make sure ls properly handles dangling symlinks vs. ls's -L, -H, options.
 
-# Copyright (C) 2003, 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2003, 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,20 +16,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  ls --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ ls
 
-. $srcdir/test-lib.sh
-
-ln -s no-such-file dangle || framework_failure
-mkdir -p dir/sub || framework_failure
-ln -s dir slink-to-dir || framework_failure
-mkdir d || framework_failure
-ln -s no-such d/dangle || framework_failure
-printf '? dangle\n' > subdir_Li_exp || framework_failure
-printf 'total 0\n? dangle\n' > subdir_Ls_exp || framework_failure
+ln -s no-such-file dangle || framework_failure_
+mkdir -p dir/sub || framework_failure_
+ln -s dir slink-to-dir || framework_failure_
+mkdir d || framework_failure_
+ln -s no-such d/dangle || framework_failure_
+printf '? dangle\n' > subdir_Li_exp || framework_failure_
+printf 'total 0\n? dangle\n' > subdir_Ls_exp || framework_failure_
 
 
 # This must exit nonzero.

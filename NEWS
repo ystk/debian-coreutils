@@ -1,5 +1,417 @@
 GNU coreutils NEWS                                    -*- outline -*-
 
+* Noteworthy changes in release 8.13 (2011-09-08) [stable]
+
+** Bug fixes
+
+  chown and chgrp with the -v --from= options, now output the correct owner.
+  I.E. for skipped files, the original ownership is output, not the new one.
+  [bug introduced in sh-utils-2.0g]
+
+  cp -r could mistakenly change the permissions of an existing destination
+  directory.  [bug introduced in coreutils-6.8]
+
+  cp -u -p would fail to preserve one hard link for each up-to-date copy
+  of a src-hard-linked name in the destination tree.  I.e., if s/a and s/b
+  are hard-linked and dst/s/a is up to date, "cp -up s dst" would copy s/b
+  to dst/s/b rather than simply linking dst/s/b to dst/s/a.
+  [This bug appears to have been present in "the beginning".]
+
+  fts-using tools (rm, du, chmod, chgrp, chown, chcon) no longer use memory
+  proportional to the number of entries in each directory they process.
+  Before, rm -rf 4-million-entry-directory would consume about 1GiB of memory.
+  Now, it uses less than 30MB, no matter how many entries there are.
+  [this bug was inherent in the use of fts: thus, for rm the bug was
+  introduced in coreutils-8.0.  The prior implementation of rm did not use
+  as much memory.  du, chmod, chgrp and chown started using fts in 6.0.
+  chcon was added in coreutils-6.9.91 with fts support.  ]
+
+  pr -T no longer ignores a specified LAST_PAGE to stop at.
+  [bug introduced in textutils-1.19q]
+
+  printf '%d' '"' no longer accesses out-of-bounds memory in the diagnostic.
+  [bug introduced in sh-utils-1.16]
+
+  split --number l/... no longer creates extraneous files in certain cases.
+  [bug introduced in coreutils-8.8]
+
+  timeout now sends signals to commands that create their own process group.
+  timeout is no longer confused when starting off with a child process.
+  [bugs introduced in coreutils-7.0]
+
+  unexpand -a now aligns correctly when there are spaces spanning a tabstop,
+  followed by a tab.  In that case a space was dropped, causing misalignment.
+  We also now ensure that a space never precedes a tab.
+  [bug introduced in coreutils-5.3.0]
+
+** Changes in behavior
+
+  chmod, chown and chgrp now output the original attributes in messages,
+  when -v or -c specified.
+
+  cp -au (where --preserve=links is implicit) may now replace newer
+  files in the destination, to mirror hard links from the source.
+
+** New features
+
+  date now accepts ISO 8601 date-time strings with "T" as the
+  separator.  It has long parsed dates like "2004-02-29 16:21:42"
+  with a space between the date and time strings.  Now it also parses
+  "2004-02-29T16:21:42" and fractional-second and time-zone-annotated
+  variants like "2004-02-29T16:21:42.333-07:00"
+
+  md5sum accepts the new --strict option.  With --check, it makes the
+  tool exit non-zero for any invalid input line, rather than just warning.
+  This also affects sha1sum, sha224sum, sha384sum and sha512sum.
+
+  split accepts a new --filter=CMD option.  With it, split filters output
+  through CMD.  CMD may use the $FILE environment variable, which is set to
+  the nominal output file name for each invocation of CMD.  For example, to
+  split a file into 3 approximately equal parts, which are then compressed:
+    split -n3 --filter='xz > $FILE.xz' big
+  Note the use of single quotes, not double quotes.
+  That creates files named xaa.xz, xab.xz and xac.xz.
+
+  timeout accepts a new --foreground option, to support commands not started
+  directly from a shell prompt, where the command is interactive or needs to
+  receive signals initiated from the terminal.
+
+** Improvements
+
+  cp -p now copies trivial NSFv4 ACLs on Solaris 10.  Before, it would
+  mistakenly apply a non-trivial ACL to the destination file.
+
+  cp and ls now support HP-UX 11.11's ACLs, thanks to improved support
+  in gnulib.
+
+  df now supports disk partitions larger than 4 TiB on MacOS X 10.5
+  or newer and on AIX 5.2 or newer.
+
+  join --check-order now prints "join: FILE:LINE_NUMBER: bad_line" for an
+  unsorted input, rather than e.g., "join: file 1 is not in sorted order".
+
+  shuf outputs small subsets of large permutations much more efficiently.
+  For example `shuf -i1-$((2**32-1)) -n2` no longer exhausts memory.
+
+  stat -f now recognizes the GPFS, MQUEUE and PSTOREFS file system types.
+
+  timeout now supports sub-second timeouts.
+
+** Build-related
+
+  Changes inherited from gnulib address a build failure on HP-UX 11.11
+  when using /opt/ansic/bin/cc.
+
+  Numerous portability and build improvements inherited via gnulib.
+
+
+* Noteworthy changes in release 8.12 (2011-04-26) [stable]
+
+** Bug fixes
+
+  tail's --follow=name option no longer implies --retry on systems
+  with inotify support.  [bug introduced in coreutils-7.5]
+
+** Changes in behavior
+
+  cp's extent-based (FIEMAP) copying code is more reliable in the face
+  of varying and undocumented file system semantics:
+  - it no longer treats unwritten extents specially
+  - a FIEMAP-based extent copy always uses the FIEMAP_FLAG_SYNC flag.
+      Before, it would incur the performance penalty of that sync only
+      for 2.6.38 and older kernels.  We thought all problems would be
+      resolved for 2.6.39.
+  - it now attempts a FIEMAP copy only on a file that appears sparse.
+      Sparse files are relatively unusual, and the copying code incurs
+      the performance penalty of the now-mandatory sync only for them.
+
+** Portability
+
+  dd once again compiles on AIX 5.1 and 5.2
+
+
+* Noteworthy changes in release 8.11 (2011-04-13) [stable]
+
+** Bug fixes
+
+  cp -a --link would not create a hardlink to a symlink, instead
+  copying the symlink and then not preserving its timestamp.
+  [bug introduced in coreutils-8.0]
+
+  cp now avoids FIEMAP issues with BTRFS before Linux 2.6.38,
+  which could result in corrupt copies of sparse files.
+  [bug introduced in coreutils-8.10]
+
+  cut could segfault when invoked with a user-specified output
+  delimiter and an unbounded range like "-f1234567890-".
+  [bug introduced in coreutils-5.3.0]
+
+  du would infloop when given --files0-from=DIR
+  [bug introduced in coreutils-7.1]
+
+  sort no longer spawns 7 worker threads to sort 16 lines
+  [bug introduced in coreutils-8.6]
+
+  touch built on Solaris 9 would segfault when run on Solaris 10
+  [bug introduced in coreutils-8.8]
+
+  wc would dereference a NULL pointer upon an early out-of-memory error
+  [bug introduced in coreutils-7.1]
+
+** New features
+
+  dd now accepts the 'nocache' flag to the iflag and oflag options,
+  which will discard any cache associated with the files, or
+  processed portion thereof.
+
+  dd now warns that 'iflag=fullblock' should be used,
+  in various cases where partial reads can cause issues.
+
+** Changes in behavior
+
+  cp now avoids syncing files when possible, when doing a FIEMAP copy.
+  The sync is only needed on Linux kernels before 2.6.39.
+  [The sync was introduced in coreutils-8.10]
+
+  cp now copies empty extents efficiently, when doing a FIEMAP copy.
+  It no longer reads the zero bytes from the input, and also can efficiently
+  create a hole in the output file when --sparse=always is specified.
+
+  df now aligns columns consistently, and no longer wraps entries
+  with longer device identifiers, over two lines.
+
+  install now rejects its long-deprecated --preserve_context option.
+  Use --preserve-context instead.
+
+  test now accepts "==" as a synonym for "="
+
+
+* Noteworthy changes in release 8.10 (2011-02-04) [stable]
+
+** Bug fixes
+
+  du would abort with a failed assertion when two conditions are met:
+  part of the hierarchy being traversed is moved to a higher level in the
+  directory tree, and there is at least one more command line directory
+  argument following the one containing the moved sub-tree.
+  [bug introduced in coreutils-5.1.0]
+
+  join --header now skips the ordering check for the first line
+  even if the other file is empty.  [bug introduced in coreutils-8.5]
+
+  rm -f no longer fails for EINVAL or EILSEQ on file systems that
+  reject file names invalid for that file system.
+
+  uniq -f NUM no longer tries to process fields after end of line.
+  [bug introduced in coreutils-7.0]
+
+** New features
+
+  cp now copies sparse files efficiently on file systems with FIEMAP
+  support (ext4, btrfs, xfs, ocfs2).  Before, it had to read 2^20 bytes
+  when copying a 1MiB sparse file.  Now, it copies bytes only for the
+  non-sparse sections of a file.  Similarly, to induce a hole in the
+  output file, it had to detect a long sequence of zero bytes.  Now,
+  it knows precisely where each hole in an input file is, and can
+  reproduce them efficiently in the output file.  mv also benefits
+  when it resorts to copying, e.g., between file systems.
+
+  join now supports -o 'auto' which will automatically infer the
+  output format from the first line in each file, to ensure
+  the same number of fields are output for each line.
+
+** Changes in behavior
+
+  join no longer reports disorder when one of the files is empty.
+  This allows one to use join as a field extractor like:
+  join -a1 -o 1.3,1.1 - /dev/null
+
+
+* Noteworthy changes in release 8.9 (2011-01-04) [stable]
+
+** Bug fixes
+
+  split no longer creates files with a suffix length that
+  is dependent on the number of bytes or lines per file.
+  [bug introduced in coreutils-8.8]
+
+
+* Noteworthy changes in release 8.8 (2010-12-22) [stable]
+
+** Bug fixes
+
+  cp -u no longer does unnecessary copying merely because the source
+  has finer-grained time stamps than the destination.
+
+  od now prints floating-point numbers without losing information, and
+  it no longer omits spaces between floating-point columns in some cases.
+
+  sort -u with at least two threads could attempt to read through a
+  corrupted pointer. [bug introduced in coreutils-8.6]
+
+  sort with at least two threads and with blocked output would busy-loop
+  (spinlock) all threads, often using 100% of available CPU cycles to
+  do no work.  I.e., "sort < big-file | less" could waste a lot of power.
+  [bug introduced in coreutils-8.6]
+
+  sort with at least two threads no longer segfaults due to use of pointers
+  into the stack of an expired thread. [bug introduced in coreutils-8.6]
+
+  sort --compress no longer mishandles subprocesses' exit statuses,
+  no longer hangs indefinitely due to a bug in waiting for subprocesses,
+  and no longer generates many more than NMERGE subprocesses.
+
+  sort -m -o f f ... f no longer dumps core when file descriptors are limited.
+
+** Changes in behavior
+
+  sort will not create more than 8 threads by default due to diminishing
+  performance gains.  Also the --parallel option is no longer restricted
+  to the number of available processors.
+
+** New features
+
+  split accepts the --number option to generate a specific number of files.
+
+
+* Noteworthy changes in release 8.7 (2010-11-13) [stable]
+
+** Bug fixes
+
+  cp, install, mv, and touch no longer crash when setting file times
+  on Solaris 10 Update 9 [Solaris PatchID 144488 and newer expose a
+  latent bug introduced in coreutils 8.1, and possibly a second latent
+  bug going at least as far back as coreutils 5.97]
+
+  csplit no longer corrupts heap when writing more than 999 files,
+  nor does it leak memory for every chunk of input processed
+  [the bugs were present in the initial implementation]
+
+  tail -F once again notices changes in a currently unavailable
+  remote directory [bug introduced in coreutils-7.5]
+
+** Changes in behavior
+
+  cp --attributes-only now completely overrides --reflink.
+  Previously a reflink was needlessly attempted.
+
+  stat's %X, %Y, and %Z directives once again print only the integer
+  part of seconds since the epoch.  This reverts a change from
+  coreutils-8.6, that was deemed unnecessarily disruptive.
+  To obtain a nanosecond-precision time stamp for %X use %.X;
+  if you want (say) just 3 fractional digits, use %.3X.
+  Likewise for %Y and %Z.
+
+  stat's new %W format directive would print floating point seconds.
+  However, with the above change to %X, %Y and %Z, we've made %W work
+  the same way as the others.
+
+
+* Noteworthy changes in release 8.6 (2010-10-15) [stable]
+
+** Bug fixes
+
+  du no longer multiply counts a file that is a directory or whose
+  link count is 1, even if the file is reached multiple times by
+  following symlinks or via multiple arguments.
+
+  du -H and -L now consistently count pointed-to files instead of
+  symbolic links, and correctly diagnose dangling symlinks.
+
+  du --ignore=D now ignores directory D even when that directory is
+  found to be part of a directory cycle.  Before, du would issue a
+  "NOTIFY YOUR SYSTEM MANAGER" diagnostic and fail.
+
+  split now diagnoses read errors rather than silently exiting.
+  [bug introduced in coreutils-4.5.8]
+
+  tac would perform a double-free when given an input line longer than 16KiB.
+  [bug introduced in coreutils-8.3]
+
+  tail -F once again notices changes in a currently unavailable directory,
+  and works around a Linux kernel bug where inotify runs out of resources.
+  [bugs introduced in coreutils-7.5]
+
+  tr now consistently handles case conversion character classes.
+  In some locales, valid conversion specifications caused tr to abort,
+  while in all locales, some invalid specifications were undiagnosed.
+  [bugs introduced in coreutils 6.9.90 and 6.9.92]
+
+** New features
+
+  cp now accepts the --attributes-only option to not copy file data,
+  which is useful for efficiently modifying files.
+
+  du recognizes -d N as equivalent to --max-depth=N, for compatibility
+  with FreeBSD.
+
+  sort now accepts the --debug option, to highlight the part of the
+  line significant in the sort, and warn about questionable options.
+
+  sort now supports -d, -f, -i, -R, and -V in any combination.
+
+  stat now accepts the %m format directive to output the mount point
+  for a file.  It also accepts the %w and %W format directives for
+  outputting the birth time of a file, if one is available.
+
+** Changes in behavior
+
+  df now consistently prints the device name for a bind mounted file,
+  rather than its aliased target.
+
+  du now uses less than half as much memory when operating on trees
+  with many hard-linked files.  With --count-links (-l), or when
+  operating on trees with no hard-linked files, there is no change.
+
+  ls -l now uses the traditional three field time style rather than
+  the wider two field numeric ISO style, in locales where a style has
+  not been specified.  The new approach has nicer behavior in some
+  locales, including English, which was judged to outweigh the disadvantage
+  of generating less-predictable and often worse output in poorly-configured
+  locales where there is an onus to specify appropriate non-default styles.
+  [The old behavior was introduced in coreutils-6.0 and had been removed
+   for English only using a different method since coreutils-8.1]
+
+  rm's -d now evokes an error;  before, it was silently ignored.
+
+  sort -g now uses long doubles for greater range and precision.
+
+  sort -h no longer rejects numbers with leading or trailing ".", and
+  no longer accepts numbers with multiple ".".  It now considers all
+  zeros to be equal.
+
+  sort now uses the number of available processors to parallelize
+  the sorting operation.  The number of sorts run concurrently can be
+  limited with the --parallel option or with external process
+  control like taskset for example.
+
+  stat now provides translated output when no format is specified.
+
+  stat no longer accepts the --context (-Z) option.  Initially it was
+  merely accepted and ignored, for compatibility.  Starting two years
+  ago, with coreutils-7.0, its use evoked a warning.  Printing the
+  SELinux context of a file can be done with the %C format directive,
+  and the default output when no format is specified now automatically
+  includes %C when context information is available.
+
+  stat no longer accepts the %C directive when the --file-system
+  option is in effect, since security context is a file attribute
+  rather than a file system attribute.
+
+  stat now outputs the full sub-second resolution for the atime,
+  mtime, and ctime values since the Epoch, when using the %X, %Y, and
+  %Z directives of the --format option.  This matches the fact that
+  %x, %y, and %z were already doing so for the human-readable variant.
+
+  touch's --file option is no longer recognized.  Use --reference=F (-r)
+  instead.  --file has not been documented for 15 years, and its use has
+  elicited a warning since coreutils-7.1.
+
+  truncate now supports setting file sizes relative to a reference file.
+  Also errors are no longer suppressed for unsupported file types, and
+  relative sizes are restricted to supported file types.
+
+
 * Noteworthy changes in release 8.5 (2010-04-23) [stable]
 
 ** Bug fixes
@@ -141,7 +553,7 @@ GNU coreutils NEWS                                    -*- outline -*-
   if it uses helper processes for compression and its parent
   ignores CHLD signals. [bug introduced in coreutils-6.9]
 
-  tail without -f no longer access uninitialized memory
+  tail without -f no longer accesses uninitialized memory
   [bug introduced in coreutils-7.6]
 
   timeout is now immune to the signal handling of its parent.
@@ -270,7 +682,7 @@ GNU coreutils NEWS                                    -*- outline -*-
 
   ls -LR exits with status 2, not 0, when it encounters a cycle
 
-  ls -is is now consistent with ls -lis in ignoring values returned
+  "ls -is" is now consistent with ls -lis in ignoring values returned
   from a failed stat/lstat.  For example ls -Lis now prints "?", not "0",
   for the inode number and allocated size of a dereferenced dangling symlink.
 
@@ -732,7 +1144,8 @@ GNU coreutils NEWS                                    -*- outline -*-
   join has significantly better performance due to better memory management
 
   ls now uses constant memory when not sorting and using one_per_line format,
-  no matter how many files are in a given directory
+  no matter how many files are in a given directory.  I.e., to list a directory
+  with very many files, ls -1U is much more efficient.
 
   od now aligns fields across lines when printing multiple -t
   specifiers, and no longer prints fields that resulted entirely from
@@ -745,6 +1158,12 @@ GNU coreutils NEWS                                    -*- outline -*-
 
 
 * Noteworthy changes in release 6.12 (2008-05-31) [stable]
+
+** New features
+
+  cp, install, mv, and touch now preserve nanosecond resolution on
+  file timestamps, on platforms that have the 'utimensat' and
+  'futimens' system calls.
 
 ** Bug fixes
 
@@ -1158,7 +1577,7 @@ GNU coreutils NEWS                                    -*- outline -*-
 
   "rm --interactive=never F" no longer prompts for an unwritable F
 
-  "rm -rf D" would emit an misleading diagnostic when failing to
+  "rm -rf D" would emit a misleading diagnostic when failing to
   remove a symbolic link within the unwritable directory, D.
   Introduced in coreutils-6.0.  Similarly, when a cross-partition
   "mv" fails because the source directory is unwritable, it now gives
@@ -2955,7 +3374,7 @@ packages, see ./old/*/NEWS.
 
 ========================================================================
 
-Copyright (C) 2001-2010 Free Software Foundation, Inc.
+Copyright (C) 2001-2011 Free Software Foundation, Inc.
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or

@@ -1,5 +1,5 @@
 /* tail -- output the last part of file(s)
-   Copyright (C) 1989-1991, 1995-2006, 2008-2010 Free Software Foundation, Inc.
+   Copyright (C) 1989-1991, 1995-2006, 2008-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -159,8 +159,8 @@ struct File_spec
 #if HAVE_INOTIFY
 /* The events mask used with inotify on files.  This mask is not used on
    directories.  */
-const uint32_t inotify_wd_mask = (IN_MODIFY | IN_ATTRIB | IN_DELETE_SELF
-                                  | IN_MOVE_SELF);
+static const uint32_t inotify_wd_mask = (IN_MODIFY | IN_ATTRIB
+                                         | IN_DELETE_SELF | IN_MOVE_SELF);
 #endif
 
 /* Keep trying to open a file even if it is inaccessible when tail starts
@@ -286,7 +286,8 @@ Mandatory arguments to long options are mandatory for short options too.\n\
                            with --follow=name, reopen a FILE which has not\n\
                            changed size after N (default %d) iterations\n\
                            to see if it has been unlinked or renamed\n\
-                           (this is the usual case of rotated log files)\n\
+                           (this is the usual case of rotated log files).\n\
+                           With inotify, this option is rarely useful.\n\
 "),
              DEFAULT_N_LINES,
              DEFAULT_MAX_N_UNCHANGED_STATS_BETWEEN_OPENS
@@ -300,7 +301,9 @@ Mandatory arguments to long options are mandatory for short options too.\n\
 "), stdout);
      fputs (_("\
   -s, --sleep-interval=N   with -f, sleep for approximately N seconds\n\
-                             (default 1.0) between iterations\n\
+                             (default 1.0) between iterations.\n\
+                             With inotify and --pid=P, check process P at\n\
+                             least once every N seconds.\n\
   -v, --verbose            always output headers giving file names\n\
 "), stdout);
      fputs (HELP_OPTION_DESCRIPTION, stdout);
@@ -434,7 +437,7 @@ static off_t
 xlseek (int fd, off_t offset, int whence, char const *filename)
 {
   off_t new_offset = lseek (fd, offset, whence);
-  char buf[INT_BUFSIZE_BOUND (off_t)];
+  char buf[INT_BUFSIZE_BOUND (offset)];
   char *s;
 
   if (0 <= new_offset)
@@ -815,7 +818,7 @@ start_bytes (const char *pretty_filename, int fd, uintmax_t n_bytes,
           error (0, errno, _("error reading %s"), quote (pretty_filename));
           return 1;
         }
-      read_pos += bytes_read;
+      *read_pos += bytes_read;
       if (bytes_read <= n_bytes)
         n_bytes -= bytes_read;
       else
@@ -885,8 +888,11 @@ fremote (int fd, const char *name)
   int err = fstatfs (fd, &buf);
   if (err != 0)
     {
-      error (0, errno, _("cannot determine location of %s. "
-                         "reverting to polling"), quote (name));
+      /* On at least linux-2.6.38, fstatfs fails with ENOSYS when FD
+         is open on a pipe.  Treat that like a remote file.  */
+      if (errno != ENOSYS)
+        error (0, errno, _("cannot determine location of %s. "
+                           "reverting to polling"), quote (name));
     }
   else
     {
@@ -1300,9 +1306,10 @@ check_fspec (struct File_spec *fspec, int wd, int *prev_wd)
     error (EXIT_FAILURE, errno, _("write error"));
 }
 
-/* Tail N_FILES files forever, or until killed.
-   Check modifications using the inotify events system.  */
-static void
+/* Attempt to tail N_FILES files forever, or until killed.
+   Check modifications using the inotify events system.
+   Return false on error, or true to revert to polling.  */
+static bool
 tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
                       double sleep_interval)
 {
@@ -1311,7 +1318,9 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
   /* Map an inotify watch descriptor to the name of the file it's watching.  */
   Hash_table *wd_to_name;
 
-  bool found_watchable = false;
+  bool found_watchable_file = false;
+  bool found_unwatchable_dir = false;
+  bool no_inotify_resources = false;
   bool writer_is_dead = false;
   int prev_wd;
   size_t evlen = 0;
@@ -1355,9 +1364,15 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
 
               if (f[i].parent_wd < 0)
                 {
-                  error (0, errno, _("cannot watch parent directory of %s"),
-                         quote (f[i].name));
-                  continue;
+                  if (errno != ENOSPC) /* suppress confusing error.  */
+                    error (0, errno, _("cannot watch parent directory of %s"),
+                           quote (f[i].name));
+                  else
+                    error (0, 0, _("inotify resources exhausted"));
+                  found_unwatchable_dir = true;
+                  /* We revert to polling below.  Note invalid uses
+                     of the inotify API will still be diagnosed.  */
+                  break;
                 }
             }
 
@@ -1365,7 +1380,12 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
 
           if (f[i].wd < 0)
             {
-              if (errno != f[i].errnum)
+              if (errno == ENOSPC)
+                {
+                  no_inotify_resources = true;
+                  error (0, 0, _("inotify resources exhausted"));
+                }
+              else if (errno != f[i].errnum)
                 error (0, errno, _("cannot watch %s"), quote (f[i].name));
               continue;
             }
@@ -1373,12 +1393,22 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
           if (hash_insert (wd_to_name, &(f[i])) == NULL)
             xalloc_die ();
 
-          found_watchable = true;
+          found_watchable_file = true;
         }
     }
 
-  if (follow_mode == Follow_descriptor && !found_watchable)
-    return;
+  /* Linux kernel 2.6.24 at least has a bug where eventually, ENOSPC is always
+     returned by inotify_add_watch.  In any case we should revert to polling
+     when there are no inotify resources.  Also a specified directory may not
+     be currently present or accessible, so revert to polling.  */
+  if (no_inotify_resources || found_unwatchable_dir)
+    {
+      /* FIXME: release hash and inotify resources allocated above.  */
+      errno = 0;
+      return true;
+    }
+  if (follow_mode == Follow_descriptor && !found_watchable_file)
+    return false;
 
   prev_wd = f[n_files - 1].wd;
 
@@ -1393,13 +1423,24 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
   evlen += sizeof (struct inotify_event) + 1;
   evbuf = xmalloc (evlen);
 
-  /* Wait for inotify events and handle them.  Events on directories make sure
-     that watched files can be re-added when -F is used.
-     This loop sleeps on the `safe_read' call until a new event is notified.  */
+  /* Wait for inotify events and handle them.  Events on directories
+     ensure that watched files can be re-added when following by name.
+     This loop blocks on the `safe_read' call until a new event is notified.
+     But when --pid=P is specified, tail usually waits via the select.  */
   while (1)
     {
       struct File_spec *fspec;
       struct inotify_event *ev;
+
+      /* When following by name without --retry, and the last file has
+         been unlinked or renamed-away, diagnose it and return.  */
+      if (follow_mode == Follow_name
+          && ! reopen_inaccessible_files
+          && hash_get_n_entries (wd_to_name) == 0)
+        {
+          error (0, 0, _("no files remaining"));
+          return false;
+        }
 
       /* When watching a PID, ensure that a read from WD will not block
          indefinitely.  */
@@ -1520,7 +1561,8 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
              must continue to watch the file.  It's only when following
              by file descriptor that we must remove the watch.  */
           if ((ev->mask & IN_DELETE_SELF)
-              || ((ev->mask & IN_MOVE_SELF) && follow_mode == Follow_descriptor))
+              || ((ev->mask & IN_MOVE_SELF)
+                  && follow_mode == Follow_descriptor))
             {
               inotify_rm_watch (wd, fspec->wd);
               hash_delete (wd_to_name, fspec);
@@ -2140,16 +2182,19 @@ main (int argc, char **argv)
          When follow_mode == Follow_name we would ideally like to detect that.
          Note if there is a change to the original file then we'll
          recheck it and follow the new file, or ignore it if the
-         file has changed to being remote.  */
-      if (tailable_stdin (F, n_files) || any_remote_file (F, n_files))
+         file has changed to being remote.
+
+         FIXME: when using inotify, and a directory for a watched file
+         is recreated, then we don't recheck any new file when
+         follow_mode == Follow_name  */
+      if (!disable_inotify && (tailable_stdin (F, n_files)
+                               || any_remote_file (F, n_files)))
         disable_inotify = true;
 
       if (!disable_inotify)
         {
           int wd = inotify_init ();
-          if (wd < 0)
-            error (0, errno, _("inotify cannot be used, reverting to polling"));
-          else
+          if (0 <= wd)
             {
               /* Flush any output from tail_file, now, since
                  tail_forever_inotify flushes only after writing,
@@ -2157,13 +2202,13 @@ main (int argc, char **argv)
               if (fflush (stdout) != 0)
                 error (EXIT_FAILURE, errno, _("write error"));
 
-              tail_forever_inotify (wd, F, n_files, sleep_interval);
-
-              /* The only way the above returns is upon failure.  */
-              exit (EXIT_FAILURE);
+              if (!tail_forever_inotify (wd, F, n_files, sleep_interval))
+                exit (EXIT_FAILURE);
             }
+          error (0, errno, _("inotify cannot be used, reverting to polling"));
         }
 #endif
+      disable_inotify = true;
       tail_forever (F, n_files, sleep_interval);
     }
 

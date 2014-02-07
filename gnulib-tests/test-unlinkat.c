@@ -1,7 +1,7 @@
 /* -*- buffer-read-only: t -*- vi: set ro: */
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Tests of unlinkat.
-   Copyright (C) 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ SIGNATURE_CHECK (unlinkat, int, (int, char const *, int));
 #include <stdlib.h>
 #include <sys/stat.h>
 
+#include "progname.h"
 #include "unlinkdir.h"
 #include "ignore-value.h"
 #include "macros.h"
@@ -58,11 +59,13 @@ unlinker (char const *name)
 }
 
 int
-main (void)
+main (int argc _GL_UNUSED, char *argv[])
 {
   /* FIXME: Add tests of fd other than ".".  */
   int result1;
   int result2;
+
+  set_program_name (argv[0]);
 
   /* Remove any leftovers from a previous partial run.  */
   ignore_value (system ("rm -rf " BASE "*"));

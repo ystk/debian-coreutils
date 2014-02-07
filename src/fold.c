@@ -1,5 +1,5 @@
 /* fold -- wrap each input line to fit in specified width.
-   Copyright (C) 1991, 1995-2006, 2008-2010 Free Software Foundation, Inc.
+   Copyright (C) 1991, 1995-2006, 2008-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 
 #include "system.h"
 #include "error.h"
+#include "fadvise.h"
 #include "quote.h"
 #include "xstrtol.h"
 
@@ -141,6 +142,8 @@ fold_file (char const *filename, size_t width)
       error (0, errno, "%s", filename);
       return false;
     }
+
+  fadvise (istream, FADVISE_SEQUENTIAL);
 
   while ((c = getc (istream)) != EOF)
     {

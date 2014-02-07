@@ -1,7 +1,7 @@
 #!/bin/sh
 # Compare actual numbers from du, assuming block size matches mine.
 
-# Copyright (C) 2003, 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2003, 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,19 +16,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  du --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ du
 
-. $srcdir/test-lib.sh
-
-mkdir -p a/b d d/sub || framework_failure
+mkdir -p a/b d d/sub || framework_failure_
 
 # Ensure that these files contain more than 64 bytes, so that we don't
 # immediately disqualify file systems (e.g., NetApp) on which smaller
 # files take up zero disk blocks.
-printf '%*s' 257 make-sure-the-file-is-non-empty > a/b/F || framework_failure
+printf '%*s' 257 make-sure-the-file-is-non-empty > a/b/F || framework_failure_
 printf %4096s x > d/1
 cp d/1 d/sub/2
 
@@ -63,7 +59,7 @@ compare out exp || fail=1
 
 # Perform this test only if "." is on a local file system.
 # Otherwise, it would fail e.g., on an NFS-mounted Solaris ZFS file system.
-if df --local . >/dev/null 2>&1; then
+if is_local_dir_ .; then
   rm -f out exp
   du --block-size=$B -a d | sort -r -k2,2 > out || fail=1
   echo === >> out

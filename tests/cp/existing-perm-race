@@ -1,7 +1,7 @@
 #!/bin/sh
 # Make sure cp -p isn't too generous with existing file permissions.
 
-# Copyright (C) 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,13 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  cp --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ cp
 
-. $srcdir/test-lib.sh
 require_membership_in_two_groups_
+
+# cp -p gives ENOTSUP on NFS on Linux 2.6.9 at least
+require_local_dir_
 
 set _ $groups; shift
 g1=$1
@@ -30,8 +30,7 @@ g2=$2
 
 
 umask 077
-mkfifo fifo ||
-  skip_test_ "fifos not supported"
+mkfifo_or_skip_ fifo
 
 touch fifo-copy &&
 chgrp $g1 fifo &&
@@ -71,8 +70,8 @@ case $mode in
   # a $g2 process can maintain an open file descriptor to the
   # destination, but it's safer anyway.
   -rw-r-----*)
-    # If the file has group $g1 and is group-readable, that is definitely
-    # bogus, as neither the source nor the destination was readable to group $g1.
+    # If the file has group $g1 and is group-readable, that is definitely bogus,
+    # as neither the source nor the destination was readable to group $g1.
     test "$group" = "$g1" && fail=1;;
 
   *) fail=1;;

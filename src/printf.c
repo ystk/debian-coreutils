@@ -1,5 +1,5 @@
 /* printf - format and print data
-   Copyright (C) 1990-2010 Free Software Foundation, Inc.
+   Copyright (C) 1990-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -160,7 +160,7 @@ FUNC_NAME (char const *s)						 \
   char *end;								 \
   TYPE val;								 \
                                                                          \
-  if (*s == '\"' || *s == '\'')						 \
+  if ((*s == '\"' || *s == '\'') && *(s + 1))				 \
     {									 \
       unsigned char ch = *++s;						 \
       val = ch;								 \
@@ -533,7 +533,7 @@ print_formatted (const char *format, int argc, char **argv)
               default:
                 goto no_more_flag_characters;
               }
-        no_more_flag_characters:;
+        no_more_flag_characters:
 
           if (*f == '*')
             {

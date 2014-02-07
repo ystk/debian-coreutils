@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 2008-2010 Free Software Foundation, Inc.
+# Copyright (C) 2008-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,9 @@ my $prog = 'tac';
 @ENV{qw(LANGUAGE LANG LC_ALL)} = ('C') x 3;
 
 my $bad_dir = 'no/such/dir';
+
+# This must be longer than 16KiB to trigger the double free in coreutils-8.5.
+my $long_line = 'o' x (16 * 1024 + 1);
 
 my @Tests =
 (
@@ -67,6 +70,9 @@ my @Tests =
    {ERR_SUBST => "s,`$bad_dir': .*,...,"},
    {ERR => "$prog: cannot create temporary file in ...\n"},
    {EXIT => 1}],
+
+  # coreutils-8.5's tac would double-free its primary buffer.
+  ['double-free', {IN=>$long_line}, {OUT=>$long_line}],
 );
 
 @Tests = triple_test \@Tests;

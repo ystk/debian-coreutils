@@ -1,6 +1,6 @@
 ## Makefile for gnulib/lib				-*-Makefile-*-
 
-# Copyright (C) 1995-2007, 2009-2010 Free Software Foundation, Inc.
+# Copyright (C) 1995-2007, 2009-2011 Free Software Foundation, Inc.
 
 ## This program is free software: you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -20,8 +20,7 @@ include gnulib.mk
 AM_CFLAGS += $(GNULIB_WARN_CFLAGS) $(WERROR_CFLAGS)
 
 libcoreutils_a_SOURCES += \
-  buffer-lcm.c buffer-lcm.h \
-  xmemxfrm.c xmemxfrm.h
+  buffer-lcm.c buffer-lcm.h
 
 libcoreutils_a_LIBADD += $(LIBOBJS)
 libcoreutils_a_DEPENDENCIES += $(LIBOBJS)

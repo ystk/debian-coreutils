@@ -2,7 +2,7 @@
 # Make sure that touch gives reasonable diagnostics when applied
 # to an unwritable directory owned by some other user.
 
-# Copyright (C) 2003-2010 Free Software Foundation, Inc.
+# Copyright (C) 2003-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,19 +17,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  touch --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ touch
 
 if env -- test -w /; then
-  skip_test_ you have write access to /.
+  skip_ you have write access to /.
 fi
 
 if env -- test -O / || env -- test -G /; then
-  skip_test_ "you own /."
+  skip_ "you own /."
 fi
 
 skip_if_root_

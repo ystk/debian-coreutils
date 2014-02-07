@@ -1,5 +1,5 @@
 /* stdbuf -- setup the standard streams for a command
-   Copyright (C) 2009-2010 Free Software Foundation, Inc.
+   Copyright (C) 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -25,7 +25,6 @@
 #include "system.h"
 #include "error.h"
 #include "filenamecat.h"
-#include "posixver.h"
 #include "quote.h"
 #include "xreadlink.h"
 #include "xstrtol.h"
@@ -194,22 +193,21 @@ set_LD_PRELOAD (void)
   char *LD_PRELOAD;
 
   /* Note this would auto add the appropriate search path for "libstdbuf.so":
-     gcc stdbuf.c -Wl,-rpath,'$ORIGIN' -Wl,-rpath,$PKGLIBDIR
+     gcc stdbuf.c -Wl,-rpath,'$ORIGIN' -Wl,-rpath,$PKGLIBEXECDIR
      However we want the lookup done for the exec'd command not stdbuf.
 
-     Since we don't link against libstdbuf.so add it to LIBDIR rather than
-     LIBEXECDIR, as we'll search for it in the "sys default" case below.  */
+     Since we don't link against libstdbuf.so add it to PKGLIBEXECDIR
+     rather than to LIBDIR.  */
   char const *const search_path[] = {
     program_path,
-    PKGLIBDIR,
-    "",                         /* sys default */
+    PKGLIBEXECDIR,
     NULL
   };
 
   char const *const *path = search_path;
   char *libstdbuf;
 
-  do
+  while (true)
     {
       struct stat sb;
 
@@ -224,8 +222,11 @@ set_LD_PRELOAD (void)
       if (stat (libstdbuf, &sb) == 0)   /* file_exists  */
         break;
       free (libstdbuf);
+
+      ++path;
+      if ( ! *path)
+        error (EXIT_CANCELED, 0, _("failed to find %s"), quote (LIB_NAME));
     }
-  while (*++path);
 
   /* FIXME: Do we need to support libstdbuf.dll, c:, '\' separators etc?  */
 
@@ -254,7 +255,7 @@ set_LD_PRELOAD (void)
 static void
 set_libstdbuf_options (void)
 {
-  int i;
+  unsigned int i;
 
   for (i = 0; i < ARRAY_CARDINALITY (stdbuf); i++)
     {
@@ -353,7 +354,7 @@ main (int argc, char **argv)
 
   /* Try to preload libstdbuf first from the same path as
      stdbuf is running from.  */
-  set_program_path (argv[0]);
+  set_program_path (program_name);
   if (!program_path)
     program_path = xstrdup (PKGLIBDIR);  /* Need to init to non NULL.  */
   set_LD_PRELOAD ();

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure "install -C" compares SELinux context.
 
-# Copyright (C) 2008-2010 Free Software Foundation, Inc.
+# Copyright (C) 2008-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,17 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  ginstall --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ ginstall
 require_selinux_
 
 
-echo test > a || framework_failure
-chcon -u system_u a || skip_test_ "chcon doesn't work"
+echo test > a || framework_failure_
+chcon -u system_u a || skip_ "chcon doesn't work"
 
 echo "\`a' -> \`b'" > out_installed_first
 echo "removed \`b'
@@ -46,7 +42,7 @@ ginstall -v --preserve-context a b > out || fail=1
 compare out out_installed_second || fail=1
 
 # destination file exists but SELinux context differs
-chcon -u unconfined_u a || skip_test_ "chcon doesn't work"
+chcon -u unconfined_u a || skip_ "chcon doesn't work"
 ginstall -Cv --preserve-context a b > out || fail=1
 compare out out_installed_second || fail=1
 ginstall -Cv --preserve-context a b > out || fail=1

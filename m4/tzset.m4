@@ -1,6 +1,6 @@
-# serial 4
+# serial 6
 
-# Copyright (C) 2003, 2007, 2009-2010 Free Software Foundation, Inc.
+# Copyright (C) 2003, 2007, 2009-2011 Free Software Foundation, Inc.
 # This file is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
 # with or without modifications, as long as this notice is preserved.
@@ -13,6 +13,10 @@
 
 # Written by Paul Eggert and Jim Meyering.
 
+# A placeholder to ensure that this m4 file gets included by aclocal.
+AC_DEFUN([gl_FUNC_TZSET], [])
+
+# Set gl_cv_func_tzset_clobber.
 AC_DEFUN([gl_FUNC_TZSET_CLOBBER],
 [
   AC_REQUIRE([gl_HEADER_SYS_TIME_H])
@@ -47,13 +51,4 @@ main ()
 
   AC_DEFINE([HAVE_RUN_TZSET_TEST], [1],
     [Define to 1 if you have run the test for working tzset.])
-
-  if test $gl_cv_func_tzset_clobber = yes; then
-    gl_GETTIMEOFDAY_REPLACE_LOCALTIME
-
-    AC_DEFINE([tzset], [rpl_tzset],
-      [Define to rpl_tzset if the wrapper function should be used.])
-    AC_DEFINE([TZSET_CLOBBERS_LOCALTIME], [1],
-      [Define if tzset clobbers localtime's static buffer.])
-  fi
 ])

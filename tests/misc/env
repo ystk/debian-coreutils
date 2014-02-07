@@ -1,7 +1,7 @@
 #!/bin/sh
 # Verify behavior of env.
 
-# Copyright (C) 2009-2010 Free Software Foundation, Inc.
+# Copyright (C) 2009-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,12 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-if test "$VERBOSE" = yes; then
-  set -x
-  env --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ env
 
 
 # Verify clearing the environment
@@ -35,7 +31,7 @@ test -s out && fail=1
 env -u a -i -u a -- > out || fail=1
 test -s out && fail=1
 env -i -- a=b > out || fail=1
-echo a=b > exp || framework_failure
+echo a=b > exp || framework_failure_
 compare exp out || fail=1
 
 # These tests verify exact status of internal failure.
@@ -61,25 +57,25 @@ test $? = 127 || fail=1
 # For these reasons, it is more portable to grep that our desired changes
 # took place, rather than comparing output of env over an entire environment.
 if env | grep '^ENV_TEST' >/dev/null ; then
-  skip_test_ "environment has potential interference from ENV_TEST*"
+  skip_ "environment has potential interference from ENV_TEST*"
 fi
 
 ENV_TEST1=a
 export ENV_TEST1
-: >out || framework_failure
+: >out || framework_failure_
 env ENV_TEST2= > all || fail=1
-grep '^ENV_TEST' all | LC_ALL=C sort >> out || framework_failure
+grep '^ENV_TEST' all | LC_ALL=C sort >> out || framework_failure_
 env -u ENV_TEST1 ENV_TEST3=c > all || fail=1
-grep '^ENV_TEST' all | LC_ALL=C sort >> out || framework_failure
+grep '^ENV_TEST' all | LC_ALL=C sort >> out || framework_failure_
 env ENV_TEST1=b > all || fail=1
-grep '^ENV_TEST' all | LC_ALL=C sort >> out || framework_failure
+grep '^ENV_TEST' all | LC_ALL=C sort >> out || framework_failure_
 env ENV_TEST2= env > all || fail=1
-grep '^ENV_TEST' all | LC_ALL=C sort >> out || framework_failure
+grep '^ENV_TEST' all | LC_ALL=C sort >> out || framework_failure_
 env -u ENV_TEST1 ENV_TEST3=c env > all || fail=1
-grep '^ENV_TEST' all | LC_ALL=C sort >> out || framework_failure
+grep '^ENV_TEST' all | LC_ALL=C sort >> out || framework_failure_
 env ENV_TEST1=b env > all || fail=1
-grep '^ENV_TEST' all | LC_ALL=C sort >> out || framework_failure
-cat <<EOF >exp || framework_failure
+grep '^ENV_TEST' all | LC_ALL=C sort >> out || framework_failure_
+cat <<EOF >exp || framework_failure_
 ENV_TEST1=a
 ENV_TEST2=
 ENV_TEST3=c
@@ -92,12 +88,12 @@ EOF
 compare exp out || fail=1
 
 # PATH modifications affect exec.
-mkdir unlikely_name || framework_failure
-cat <<EOF > unlikely_name/also_unlikely || framework_failure
+mkdir unlikely_name || framework_failure_
+cat <<EOF > unlikely_name/also_unlikely || framework_failure_
 #!/bin/sh
 echo pass
 EOF
-chmod +x unlikely_name/also_unlikely || framework_failure
+chmod +x unlikely_name/also_unlikely || framework_failure_
 env also_unlikely && fail=1
 test x`PATH=$PATH:unlikely_name env also_unlikely` = xpass || fail=1
 test x`env PATH="$PATH":unlikely_name also_unlikely` = xpass || fail=1
@@ -111,7 +107,7 @@ export PATH
 # '/bin/sh -i', rather than '/bin/sh -- -i', which doesn't do what we want.
 # Avoid the issue by using an executable rather than a script.
 # Test -u, rather than -i, to minimize PATH problems.
-ln -s "$abs_top_builddir/src/echo" ./-u || framework_failure
+ln -s "$abs_top_builddir/src/echo" ./-u || framework_failure_
 case `env -u echo echo good` in
   good) ;;
   *) fail=1 ;;
@@ -128,23 +124,24 @@ esac
 # After options have ended, the first argument not containing = is a program.
 env a=b -- true
 test $? = 127 || fail=1
-ln -s "$abs_top_builddir/src/echo" ./-- || framework_failure
+ln -s "$abs_top_builddir/src/echo" ./-- || framework_failure_
 case `env a=b -- true || echo fail` in
   true) ;;
   *) fail=1 ;;
 esac
 
 # No way to directly invoke program name containing =.
-cat <<EOF >./c=d || framework_failure
+cat <<EOF >./c=d || framework_failure_
 #!/bin/sh
 echo pass
 EOF
-chmod +x c=d || framework_failure
+chmod +x c=d || framework_failure_
 test "x`env c=d echo fail`" = xfail || fail=1
 test "x`env -- c=d echo fail`" = xfail || fail=1
 test "x`env ./c=d echo fail`" = xfail || fail=1
-test "x$(env sh -c '\c=d echo fail')" = xpass || fail=1
 test "x$(env sh -c 'exec "$@"' sh c=d echo fail)" = xpass || fail=1
+test "x$(sh -c '\c=d echo fail')" = xpass && #dash 0.5.4 fails so check first
+  { test "x$(env sh -c '\c=d echo fail')" = xpass || fail=1; }
 
 # catch unsetenv failure, broken through coreutils 8.0
 env -u a=b true && fail=1

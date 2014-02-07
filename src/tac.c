@@ -1,5 +1,5 @@
 /* tac - concatenate and print files in reverse
-   Copyright (C) 1988-1991, 1995-2006, 2008-2010 Free Software Foundation, Inc.
+   Copyright (C) 1988-1991, 1995-2006, 2008-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -215,7 +215,7 @@ tac_seekable (int input_fd, const char *file)
   size_t match_length1 = match_length - 1; /* Speed optimization, non-regexp. */
 
   /* Find the size of the input file. */
-  file_pos = lseek (input_fd, (off_t) 0, SEEK_END);
+  file_pos = lseek (input_fd, 0, SEEK_END);
   if (file_pos < 1)
     return true;			/* It's an empty file. */
 
@@ -245,7 +245,7 @@ tac_seekable (int input_fd, const char *file)
   if (sentinel_length)
     match_start -= match_length1;
 
-  for (;;)
+  while (true)
     {
       /* Search backward from `match_start' - 1 to `G_buffer' for a match
          with `separator'; for speed, use strncmp if `separator' contains no
@@ -546,7 +546,7 @@ tac_file (const char *filename)
         }
     }
 
-  file_size = lseek (fd, (off_t) 0, SEEK_END);
+  file_size = lseek (fd, 0, SEEK_END);
 
   ok = (file_size < 0 || isatty (fd)
         ? tac_nonseekable (fd, filename)
@@ -633,7 +633,6 @@ main (int argc, char **argv)
   if (! (read_size < half_buffer_size && half_buffer_size < G_buffer_size))
     xalloc_die ();
   G_buffer = xmalloc (G_buffer_size);
-  void *buf = G_buffer;
   if (sentinel_length)
     {
       strcpy (G_buffer, separator);
@@ -666,6 +665,11 @@ main (int argc, char **argv)
       error (0, errno, "-");
       ok = false;
     }
-  free (buf);
+
+#ifdef lint
+  size_t offset = sentinel_length ? sentinel_length : 1;
+  free (G_buffer - offset);
+#endif
+
   exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
 }

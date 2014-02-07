@@ -1,7 +1,7 @@
 #! /bin/sh
 # Test "mv" with special files.
 
-# Copyright (C) 1998-2000, 2002, 2004-2010 Free Software Foundation, Inc.
+# Copyright (C) 1998-2000, 2002, 2004-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,23 +16,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  mv --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ mv
 cleanup_() { rm -rf "$other_partition_tmpdir"; }
 . "$abs_srcdir/other-fs-tmpdir"
 
 null=mv-null
 dir=mv-dir
 
-rm -f $null || framework_failure
-mknod $null p || framework_failure
-test -p $null || framework_failure
-mkdir -p $dir/a/b/c $dir/d/e/f || framework_failure
-touch $dir/a/b/c/file1 $dir/d/e/f/file2 || framework_failure
+rm -f $null || framework_failure_
+mknod $null p || framework_failure_
+test -p $null || framework_failure_
+mkdir -p $dir/a/b/c $dir/d/e/f || framework_failure_
+touch $dir/a/b/c/file1 $dir/d/e/f/file2 || framework_failure_
 
 # We used to...
 # exit 77 here to indicate that we couldn't run the test.

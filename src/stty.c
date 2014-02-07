@@ -1,5 +1,5 @@
 /* stty -- change and print terminal line settings
-   Copyright (C) 1990-2005, 2007-2010 Free Software Foundation, Inc.
+   Copyright (C) 1990-2005, 2007-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -36,15 +36,11 @@
 #include <stdio.h>
 #include <sys/types.h>
 
-#if HAVE_TERMIOS_H
-# include <termios.h>
-#endif
+#include <termios.h>
 #if HAVE_STROPTS_H
 # include <stropts.h>
 #endif
-#ifdef HAVE_SYS_IOCTL_H
-# include <sys/ioctl.h>
-#endif
+#include <sys/ioctl.h>
 
 #ifdef WINSIZE_IN_PTEM
 # include <sys/stream.h>
@@ -734,7 +730,7 @@ main (int argc, char **argv)
 {
   /* Initialize to all zeroes so there is no risk memcmp will report a
      spurious difference in an uninitialized portion of the structure.  */
-  DECLARE_ZEROED_AGGREGATE (struct termios, mode);
+  struct termios mode = { 0, };
 
   enum output_type output_type;
   int optc;
@@ -1007,7 +1003,7 @@ main (int argc, char **argv)
     {
       /* Initialize to all zeroes so there is no risk memcmp will report a
          spurious difference in an uninitialized portion of the structure.  */
-      DECLARE_ZEROED_AGGREGATE (struct termios, new_mode);
+      struct termios new_mode = { 0, };
 
       if (tcsetattr (STDIN_FILENO, TCSADRAIN, &mode))
         error (EXIT_FAILURE, errno, "%s", device_name);
@@ -1432,7 +1428,7 @@ screen_columns (void)
   }
 }
 
-static tcflag_t *
+static tcflag_t * _GL_ATTRIBUTE_PURE
 mode_type_flag (enum mode_type type, struct termios *mode)
 {
   switch (type)
@@ -1793,7 +1789,7 @@ static struct speed_map const speeds[] =
   {NULL, 0, 0}
 };
 
-static speed_t
+static speed_t _GL_ATTRIBUTE_PURE
 string_to_baud (const char *arg)
 {
   int i;
@@ -1804,7 +1800,7 @@ string_to_baud (const char *arg)
   return (speed_t) -1;
 }
 
-static unsigned long int
+static unsigned long int _GL_ATTRIBUTE_PURE
 baud_to_value (speed_t speed)
 {
   int i;

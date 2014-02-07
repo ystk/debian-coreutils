@@ -1,5 +1,5 @@
-/* Compute MD5, SHA1, SHA224, SHA256, SHA384 or SHA512 checksum of files or strings
-   Copyright (C) 1995-2010 Free Software Foundation, Inc.
+/* Compute checksums of files or strings.
+   Copyright (C) 1995-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@
 # include "sha512.h"
 #endif
 #include "error.h"
+#include "fadvise.h"
 #include "stdio--.h"
 #include "xfreopen.h"
 
@@ -121,12 +122,17 @@ static bool warn = false;
 /* With --check, suppress the "OK" printed for each verified file.  */
 static bool quiet = false;
 
+/* With --check, exit with a non-zero return code if any line is
+   improperly formatted. */
+static bool strict = false;
+
 /* For long options that have no equivalent short option, use a
    non-character as a pseudo short option, starting with CHAR_MAX + 1.  */
 enum
 {
   STATUS_OPTION = CHAR_MAX + 1,
-  QUIET_OPTION
+  QUIET_OPTION,
+  STRICT_OPTION
 };
 
 static struct option const long_options[] =
@@ -137,6 +143,7 @@ static struct option const long_options[] =
   { "status", no_argument, NULL, STATUS_OPTION },
   { "text", no_argument, NULL, 't' },
   { "warn", no_argument, NULL, 'w' },
+  { "strict", no_argument, NULL, STRICT_OPTION },
   { GETOPT_HELP_OPTION_DECL },
   { GETOPT_VERSION_OPTION_DECL },
   { NULL, 0, NULL, 0 }
@@ -161,30 +168,33 @@ With no FILE, or when FILE is -, read standard input.\n\
               DIGEST_BITS);
       if (O_BINARY)
         fputs (_("\
-  -b, --binary            read in binary mode (default unless reading tty stdin)\n\
+  -b, --binary         read in binary mode (default unless reading tty stdin)\n\
 "), stdout);
       else
         fputs (_("\
-  -b, --binary            read in binary mode\n\
+  -b, --binary         read in binary mode\n\
 "), stdout);
       printf (_("\
-  -c, --check             read %s sums from the FILEs and check them\n"),
+  -c, --check          read %s sums from the FILEs and check them\n"),
               DIGEST_TYPE_STRING);
       if (O_BINARY)
         fputs (_("\
-  -t, --text              read in text mode (default if reading tty stdin)\n\
+  -t, --text           read in text mode (default if reading tty stdin)\n\
 "), stdout);
       else
         fputs (_("\
-  -t, --text              read in text mode (default)\n\
+  -t, --text           read in text mode (default)\n\
 "), stdout);
       fputs (_("\
 \n\
 The following three options are useful only when verifying checksums:\n\
-      --quiet             don't print OK for each successfully verified file\n\
-      --status            don't output anything, status code shows success\n\
-  -w, --warn              warn about improperly formatted checksum lines\n\
+      --quiet          don't print OK for each successfully verified file\n\
+      --status         don't output anything, status code shows success\n\
+  -w, --warn           warn about improperly formatted checksum lines\n\
 \n\
+"), stdout);
+      fputs (_("\
+      --strict         with --check, exit non-zero for any invalid input\n\
 "), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
@@ -208,7 +218,8 @@ text), and name for each FILE.\n"),
    name.  S is modified.  Return true if successful.  */
 
 static bool
-bsd_split_3 (char *s, size_t s_len, unsigned char **hex_digest, char **file_name)
+bsd_split_3 (char *s, size_t s_len, unsigned char **hex_digest,
+             char **file_name)
 {
   size_t i;
 
@@ -260,7 +271,7 @@ split_3 (char *s, size_t s_len,
 
   /* Check for BSD-style checksum line. */
   algo_name_len = strlen (DIGEST_TYPE_STRING);
-  if (strncmp (s + i, DIGEST_TYPE_STRING, algo_name_len) == 0)
+  if (STREQ_LEN (s + i, DIGEST_TYPE_STRING, algo_name_len))
     {
       if (s[i + algo_name_len] == ' ')
         ++i;
@@ -353,7 +364,7 @@ split_3 (char *s, size_t s_len,
 
 /* Return true if S is a NUL-terminated string of DIGEST_HEX_BYTES hex digits.
    Otherwise, return false.  */
-static bool
+static bool _GL_ATTRIBUTE_PURE
 hex_digits (unsigned char const *s)
 {
   unsigned int i;
@@ -406,6 +417,8 @@ digest_file (const char *filename, int *binary, unsigned char *bin_result)
         }
     }
 
+  fadvise (fp, FADVISE_SEQUENTIAL);
+
   err = DIGEST_STREAM (fp, bin_result);
   if (err)
     {
@@ -428,7 +441,9 @@ static bool
 digest_check (const char *checkfile_name)
 {
   FILE *checkfile_stream;
+  uintmax_t n_misformatted_lines = 0;
   uintmax_t n_properly_formatted_lines = 0;
+  uintmax_t n_improperly_formatted_lines = 0;
   uintmax_t n_mismatched_checksums = 0;
   uintmax_t n_open_or_read_failures = 0;
   unsigned char bin_buffer_unaligned[DIGEST_BIN_BYTES + DIGEST_ALIGN];
@@ -460,9 +475,9 @@ digest_check (const char *checkfile_name)
   line_chars_allocated = 0;
   do
     {
-      char *filename IF_LINT (= NULL);
+      char *filename IF_LINT ( = NULL);
       int binary;
-      unsigned char *hex_digest IF_LINT (= NULL);
+      unsigned char *hex_digest IF_LINT ( = NULL);
       ssize_t line_length;
 
       ++line_number;
@@ -486,6 +501,8 @@ digest_check (const char *checkfile_name)
              && ! (is_stdin && STREQ (filename, "-"))
              && hex_digits (hex_digest)))
         {
+          ++n_misformatted_lines;
+
           if (warn)
             {
               error (0, 0,
@@ -494,6 +511,8 @@ digest_check (const char *checkfile_name)
                      checkfile_name, line_number,
                      DIGEST_TYPE_STRING);
             }
+
+          ++n_improperly_formatted_lines;
         }
       else
         {
@@ -568,33 +587,36 @@ digest_check (const char *checkfile_name)
     {
       if (!status_only)
         {
+          if (n_misformatted_lines != 0)
+            error (0, 0,
+                   (ngettext
+                    ("WARNING: %" PRIuMAX " line is improperly formatted",
+                     "WARNING: %" PRIuMAX " lines are improperly formatted",
+                     select_plural (n_misformatted_lines))),
+                   n_misformatted_lines);
+
           if (n_open_or_read_failures != 0)
             error (0, 0,
-                   ngettext ("WARNING: %" PRIuMAX " of %" PRIuMAX
-                             " listed file could not be read",
-                             "WARNING: %" PRIuMAX " of %" PRIuMAX
-                             " listed files could not be read",
-                             select_plural (n_properly_formatted_lines)),
-                   n_open_or_read_failures, n_properly_formatted_lines);
+                   (ngettext
+                    ("WARNING: %" PRIuMAX " listed file could not be read",
+                     "WARNING: %" PRIuMAX " listed files could not be read",
+                     select_plural (n_open_or_read_failures))),
+                   n_open_or_read_failures);
 
           if (n_mismatched_checksums != 0)
-            {
-              uintmax_t n_computed_checksums =
-                (n_properly_formatted_lines - n_open_or_read_failures);
-              error (0, 0,
-                     ngettext ("WARNING: %" PRIuMAX " of %" PRIuMAX
-                               " computed checksum did NOT match",
-                               "WARNING: %" PRIuMAX " of %" PRIuMAX
-                               " computed checksums did NOT match",
-                               select_plural (n_computed_checksums)),
-                     n_mismatched_checksums, n_computed_checksums);
-            }
+            error (0, 0,
+                   (ngettext
+                    ("WARNING: %" PRIuMAX " computed checksum did NOT match",
+                     "WARNING: %" PRIuMAX " computed checksums did NOT match",
+                     select_plural (n_mismatched_checksums))),
+                   n_mismatched_checksums);
         }
     }
 
   return (n_properly_formatted_lines != 0
           && n_mismatched_checksums == 0
-          && n_open_or_read_failures == 0);
+          && n_open_or_read_failures == 0
+          && (!strict || n_improperly_formatted_lines == 0));
 }
 
 int
@@ -648,6 +670,9 @@ main (int argc, char **argv)
         warn = false;
         quiet = true;
         break;
+      case STRICT_OPTION:
+        strict = true;
+        break;
       case_GETOPT_HELP_CHAR;
       case_GETOPT_VERSION_CHAR (PROGRAM_NAME, AUTHORS);
       default:
@@ -684,6 +709,13 @@ main (int argc, char **argv)
        _("the --quiet option is meaningful only when verifying checksums"));
       usage (EXIT_FAILURE);
     }
+
+  if (strict & !do_check)
+   {
+     error (0, 0,
+        _("the --strict option is meaningful only when verifying checksums"));
+     usage (EXIT_FAILURE);
+   }
 
   if (!O_BINARY && binary < 0)
     binary = 0;

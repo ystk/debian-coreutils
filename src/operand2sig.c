@@ -1,5 +1,5 @@
 /* operand2sig.c -- common function for parsing signal specifications
-   Copyright (C) 2008-2010 Free Software Foundation, Inc.
+   Copyright (C) 2008-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -24,16 +24,7 @@
 #include <config.h>
 #include <stdio.h>
 #include <sys/types.h>
-
-#if HAVE_SYS_WAIT_H
-# include <sys/wait.h>
-#endif
-#ifndef WIFSIGNALED
-# define WIFSIGNALED(s) (((s) & 0xFFFF) - 1 < (unsigned int) 0xFF)
-#endif
-#ifndef WTERMSIG
-# define WTERMSIG(s) ((s) & 0x7F)
-#endif
+#include <sys/wait.h>
 
 #include "system.h"
 #include "error.h"

@@ -1,5 +1,5 @@
 /* chmod -- change permission modes of files
-   Copyright (C) 1989-1991, 1995-2010 Free Software Foundation, Inc.
+   Copyright (C) 1989-1991, 1995-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -137,10 +137,11 @@ mode_changed (char const *file, mode_t old_mode, mode_t new_mode)
    CHANGED describes what (if anything) has happened. */
 
 static void
-describe_change (const char *file, mode_t mode,
+describe_change (const char *file, mode_t old_mode, mode_t mode,
                  enum Change_status changed)
 {
   char perms[12];		/* "-rwxrwxrwx" ls-style modes. */
+  char old_perms[12];
   const char *fmt;
 
   if (changed == CH_NOT_APPLIED)
@@ -152,21 +153,28 @@ describe_change (const char *file, mode_t mode,
 
   strmode (mode, perms);
   perms[10] = '\0';		/* Remove trailing space.  */
+
+  strmode (old_mode, old_perms);
+  old_perms[10] = '\0';		/* Remove trailing space.  */
+
   switch (changed)
     {
     case CH_SUCCEEDED:
-      fmt = _("mode of %s changed to %04lo (%s)\n");
+      fmt = _("mode of %s changed from %04lo (%s) to %04lo (%s)\n");
       break;
     case CH_FAILED:
-      fmt = _("failed to change mode of %s to %04lo (%s)\n");
+      fmt = _("failed to change mode of %s from %04lo (%s) to %04lo (%s)\n");
       break;
     case CH_NO_CHANGE_REQUESTED:
       fmt = _("mode of %s retained as %04lo (%s)\n");
-      break;
+      printf (fmt, quote (file),
+              (unsigned long int) (mode & CHMOD_MODE_BITS), &perms[1]);
+      return;
     default:
       abort ();
     }
   printf (fmt, quote (file),
+          (unsigned long int) (old_mode & CHMOD_MODE_BITS), &old_perms[1],
           (unsigned long int) (mode & CHMOD_MODE_BITS), &perms[1]);
 }
 
@@ -180,8 +188,8 @@ process_file (FTS *fts, FTSENT *ent)
   char const *file_full_name = ent->fts_path;
   char const *file = ent->fts_accpath;
   const struct stat *file_stats = ent->fts_statp;
-  mode_t old_mode IF_LINT (= 0);
-  mode_t new_mode IF_LINT (= 0);
+  mode_t old_mode IF_LINT ( = 0);
+  mode_t new_mode IF_LINT ( = 0);
   bool ok = true;
   bool chmod_succeeded = false;
 
@@ -212,7 +220,7 @@ process_file (FTS *fts, FTSENT *ent)
 
     case FTS_ERR:
       if (! force_silent)
-        error (0, ent->fts_errno, _("%s"), quote (file_full_name));
+        error (0, ent->fts_errno, "%s", quote (file_full_name));
       ok = false;
       break;
 
@@ -248,7 +256,7 @@ process_file (FTS *fts, FTSENT *ent)
       /* Tell fts not to traverse into this hierarchy.  */
       fts_set (fts, ent, FTS_SKIP);
       /* Ensure that we do not process "/" on the second visit.  */
-      ignore_ptr (fts_read (fts));
+      ignore_value (fts_read (fts));
       return false;
     }
 
@@ -284,7 +292,7 @@ process_file (FTS *fts, FTSENT *ent)
              : !chmod_succeeded ? CH_NOT_APPLIED
              : !changed ? CH_NO_CHANGE_REQUESTED
              : CH_SUCCEEDED);
-          describe_change (file_full_name, new_mode, ch_status);
+          describe_change (file_full_name, old_mode, new_mode, ch_status);
         }
     }
 

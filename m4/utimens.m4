@@ -1,14 +1,12 @@
-dnl Copyright (C) 2003-2010 Free Software Foundation, Inc.
+dnl Copyright (C) 2003-2011 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
 
-dnl serial 4
+dnl serial 6
 
 AC_DEFUN([gl_UTIMENS],
 [
-  AC_LIBOBJ([utimens])
-
   dnl Prerequisites of lib/utimens.c.
   AC_REQUIRE([gl_FUNC_UTIMES])
   AC_REQUIRE([gl_CHECK_TYPE_STRUCT_TIMESPEC])
@@ -25,6 +23,7 @@ AC_DEFUN([gl_UTIMENS],
        AC_RUN_IFELSE([AC_LANG_PROGRAM([[
 #include <stddef.h>
 #include <sys/times.h>
+#include <fcntl.h>
 ]], [[    int fd = open ("conftest.file", O_RDWR);
           if (fd < 0) return 1;
           if (futimesat (fd, NULL, NULL)) return 2;

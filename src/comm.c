@@ -1,5 +1,5 @@
 /* comm -- compare two sorted files line by line.
-   Copyright (C) 1986, 1990-1991, 1995-2005, 2008-2010 Free Software
+   Copyright (C) 1986, 1990-1991, 1995-2005, 2008-2011 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include "system.h"
 #include "linebuffer.h"
 #include "error.h"
+#include "fadvise.h"
 #include "hard-locale.h"
 #include "quote.h"
 #include "stdio--.h"
@@ -139,7 +140,7 @@ Note, comparisons honor the rules specified by `LC_COLLATE'.\n\
 \n\
 Examples:\n\
   %s -12 file1 file2  Print only lines present in both file1 and file2.\n\
-  %s -3  file1 file2  Print lines in file1 not in file2, and vice versa.\n\
+  %s -3 file1 file2  Print lines in file1 not in file2, and vice versa.\n\
 "),
               program_name, program_name);
       emit_ancillary_info ();
@@ -272,6 +273,8 @@ compare_files (char **infiles)
       streams[i] = (STREQ (infiles[i], "-") ? stdin : fopen (infiles[i], "r"));
       if (!streams[i])
         error (EXIT_FAILURE, errno, "%s", infiles[i]);
+
+      fadvise (streams[i], FADVISE_SEQUENTIAL);
 
       thisline[i] = readlinebuffer (all_line[i][alt[i][0]], streams[i]);
       if (ferror (streams[i]))

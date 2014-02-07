@@ -1,5 +1,5 @@
 /* factor -- print prime factors of n.
-   Copyright (C) 1986, 1995-2005, 2007-2010 Free Software Foundation, Inc.
+   Copyright (C) 1986, 1995-2005, 2007-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -107,7 +107,7 @@ factor_using_division (mpz_t t, unsigned int limit)
       --f;
     }
 
-  for (;;)
+  while (true)
     {
       mpz_tdiv_qr_ui (q, r, t, 3);
       if (mpz_cmp_ui (r, 0) != 0)
@@ -116,7 +116,7 @@ factor_using_division (mpz_t t, unsigned int limit)
       emit_ul_factor (3);
     }
 
-  for (;;)
+  while (true)
     {
       mpz_tdiv_qr_ui (q, r, t, 5);
       if (mpz_cmp_ui (r, 0) != 0)
@@ -160,7 +160,7 @@ factor_using_pollard_rho (mpz_t n, int a_int)
   mpz_t a;
   mpz_t g;
   mpz_t t1, t2;
-  int k, l, c, i;
+  int k, l, c;
 
   debug ("[pollard-rho (%d)] ", a_int);
 
@@ -204,6 +204,7 @@ S2:
       mpz_set (x1, x);
       k = l;
       l = 2 * l;
+      unsigned int i;
       for (i = 0; i < k; i++)
         {
           mpz_mul (x, x, x); mpz_add (x, x, a); mpz_mod (x, x, n);
@@ -516,7 +517,7 @@ do_stdin (void)
 
   init_tokenbuffer (&tokenbuffer);
 
-  for (;;)
+  while (true)
     {
       size_t token_length = readtoken (stdin, DELIM, sizeof (DELIM) - 1,
                                        &tokenbuffer);

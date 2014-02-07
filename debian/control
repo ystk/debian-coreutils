@@ -2,15 +2,17 @@ Source: coreutils
 Maintainer: Michael Stone <mstone@debian.org>
 Section: utils
 Priority: required
-Standards-Version: 3.8.3.0
-Build-Depends: gettext (>= 0.10.37), debhelper (>= 5.0.0), dh-buildinfo, texinfo (>= 4.2), groff, dpatch, libattr1-dev | not+linux-gnu, libacl1-dev | not+linux-gnu, libselinux1-dev (>= 1.32) | not+linux-gnu, gperf, bison
+Standards-Version: 3.9.2.0
+Build-Depends: gettext (>= 0.10.37), debhelper (>= 5.0.0), dh-buildinfo, texinfo (>= 4.2), groff, dpatch, libattr1-dev [linux-any], libacl1-dev [linux-any], libselinux1-dev (>= 1.32) [linux-any], gperf, bison
 
 Package: coreutils
 Architecture: any
+Multi-Arch: foreign
 Pre-Depends: ${shlibs:Depends}
 Essential: yes
 Replaces: mktemp, timeout
 Conflicts: timeout
+Depends: ${misc:Depends}
 Description: GNU core utilities
  This package contains the basic file, shell and text manipulation
  utilities which are expected to exist on every operating system.

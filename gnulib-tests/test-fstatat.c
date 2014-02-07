@@ -1,7 +1,7 @@
 /* -*- buffer-read-only: t -*- vi: set ro: */
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Tests of fstatat.
-   Copyright (C) 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ SIGNATURE_CHECK (fstatat, int, (int, char const *, struct stat *, int));
 #include <unistd.h>
 
 #include "openat.h"
-#include "pathmax.h"
+#include "progname.h"
 #include "same-inode.h"
 #include "ignore-value.h"
 #include "macros.h"
@@ -60,9 +60,11 @@ do_lstat (char const *name, struct stat *st)
 }
 
 int
-main (void)
+main (int argc _GL_UNUSED, char *argv[])
 {
   int result;
+
+  set_program_name (argv[0]);
 
   /* Remove any leftovers from a previous partial run.  */
   ignore_value (system ("rm -rf " BASE "*"));

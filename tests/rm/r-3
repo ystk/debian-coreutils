@@ -1,7 +1,7 @@
 #!/bin/sh
 # Create and remove a directory with more than 254 files.
 
-# Copyright (C) 1997, 2001-2004, 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 1997, 2001-2004, 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,15 +23,11 @@
 # And the rm from coreutils-5.0 exposes the same problem when there
 # are 338 or more files in a directory on a Darwin-6.5 system
 
-if test "$VERBOSE" = yes; then
-  set -x
-  rm --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ rm
 
-. $srcdir/test-lib.sh
-
-mkdir t || framework_failure
-cd t || framework_failure
+mkdir t || framework_failure_
+cd t || framework_failure_
 
 # Create 500 files (20 * 25).
 for i in 0 1 2 3 4 5 6 7 8 9 a b c d e f g h i j; do
@@ -39,12 +35,12 @@ for i in 0 1 2 3 4 5 6 7 8 9 a b c d e f g h i j; do
   for j in a b c d e f g h i j k l m n o p q r s t u v w x y; do
     files="$files $i$j"
   done
-  touch $files || framework_failure
+  touch $files || framework_failure_
 done
 
-test -f 0a || framework_failure
-test -f by || framework_failure
-cd .. || framework_failure
+test -f 0a || framework_failure_
+test -f by || framework_failure_
+cd .. || framework_failure_
 
 rm -rf t || fail=1
 test -d t && fail=1

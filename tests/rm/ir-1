@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test "rm -ir".
 
-# Copyright (C) 1997-1998, 2002, 2004, 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 1997-1998, 2002, 2004, 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,18 +18,14 @@
 
 test=ir-1
 
-if test "$VERBOSE" = yes; then
-  set -x
-  rm --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ rm
 
 t=t
-mkdir -p $t $t/a $t/b $t/c || framework_failure
-> $t/a/a || framework_failure
-> $t/b/bb || framework_failure
-> $t/c/cc || framework_failure
+mkdir -p $t $t/a $t/b $t/c || framework_failure_
+> $t/a/a || framework_failure_
+> $t/b/bb || framework_failure_
+> $t/c/cc || framework_failure_
 
 cat <<EOF > $test.I
 y

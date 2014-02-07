@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure that an empty "ca=" attribute disables ls's capability-checking
 
-# Copyright (C) 2008-2010 Free Software Foundation, Inc.
+# Copyright (C) 2008-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,16 +16,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  ls --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ ls
 require_strace_ capget
 
 strace -e capget ls --color=always > /dev/null 2> out || fail=1
-$EGREP 'capget\(' out || skip_test_ "your ls doesn't call capget"
+$EGREP 'capget\(' out || skip_ "your ls doesn't call capget"
 
 rm -f out
 eval "$(TERM=xterm dircolors -b | sed 's/ca=[^:]*:/ca=:/')"

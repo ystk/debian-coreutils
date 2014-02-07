@@ -1,7 +1,7 @@
 package Coreutils;
 # This is a testing framework.
 
-# Copyright (C) 1998, 2000-2002, 2004-2010 Free Software Foundation, Inc.
+# Copyright (C) 1998, 2000-2002, 2004-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -67,7 +67,7 @@ defined $ENV{DJDIR}
 # {ERR => ...}
 #           Same as for OUT, but compare with stderr, not stdout.
 # {OUT_SUBST => 's/variable_output/expected_output/'}
-#   Transform actual standard output before comparing it against expected output.
+#   Transform actual standard output before comparing it against expected.
 #   This is useful e.g. for programs like du that produce output that
 #   varies a lot from system.  E.g., an empty file may consume zero file
 #   blocks, or more, depending on the OS and on the file system type.
@@ -507,7 +507,8 @@ sub run_tests ($$$$$)
             {
               my $out_file = $actual{$eo};
               open IN, $out_file
-                or (warn "$program_name: cannot open $out_file for reading: $!\n"),
+                or (warn
+                    "$program_name: cannot open $out_file for reading: $!\n"),
                   $fail = 1, next;
               $actual_data{$eo} = <IN>;
               close IN

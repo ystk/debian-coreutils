@@ -1,5 +1,5 @@
 /* expand - convert tabs to spaces
-   Copyright (C) 1989, 1991, 1995-2006, 2008-2010 Free Software Foundation,
+   Copyright (C) 1989, 1991, 1995-2006, 2008-2011 Free Software Foundation,
    Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -40,6 +40,7 @@
 #include <sys/types.h>
 #include "system.h"
 #include "error.h"
+#include "fadvise.h"
 #include "quote.h"
 #include "xstrndup.h"
 
@@ -144,8 +145,8 @@ static void
 parse_tab_stops (char const *stops)
 {
   bool have_tabval = false;
-  uintmax_t tabval IF_LINT (= 0);
-  char const *num_start IF_LINT (= NULL);
+  uintmax_t tabval IF_LINT ( = 0);
+  char const *num_start IF_LINT ( = NULL);
   bool ok = true;
 
   for (; *stops; stops++)
@@ -243,13 +244,14 @@ next_file (FILE *fp)
       if (STREQ (file, "-"))
         {
           have_read_stdin = true;
-          prev_file = file;
-          return stdin;
+          fp = stdin;
         }
-      fp = fopen (file, "r");
+      else
+        fp = fopen (file, "r");
       if (fp)
         {
           prev_file = file;
+          fadvise (fp, FADVISE_SEQUENTIAL);
           return fp;
         }
       error (0, errno, "%s", file);
@@ -270,7 +272,7 @@ expand (void)
   if (!fp)
     return;
 
-  for (;;)
+  while (true)
     {
       /* Input character, or EOF.  */
       int c;
@@ -306,7 +308,7 @@ expand (void)
                   if (tab_size)
                     next_tab_column = column + (tab_size - column % tab_size);
                   else
-                    for (;;)
+                    while (true)
                       if (tab_index == first_free_tab)
                         {
                           next_tab_column = column + 1;

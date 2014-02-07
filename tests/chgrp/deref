@@ -1,7 +1,7 @@
 #!/bin/sh
 # see if chgrp can change the group of a symlink
 
-# Copyright (C) 2000, 2004-2010 Free Software Foundation, Inc.
+# Copyright (C) 2000, 2004-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,12 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  chgrp --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ chgrp
 require_membership_in_two_groups_
 
 set _ $groups; shift
@@ -35,7 +31,7 @@ chgrp -h $g2 symlink 2> /dev/null
 set _ `ls -ln symlink`
 g=$5
 test "$g" = $g2 ||
-  skip_test_ "your system doesn't support changing the owner or group" \
+  skip_ "your system doesn't support changing the owner or group" \
       "of a symbolic link."
 
 

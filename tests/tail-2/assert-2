@@ -3,7 +3,7 @@
 # Due to a race condition in the test, the `assert' script would get
 # the UMR on Solaris only some of the time, and not at all on Linux/GNU.
 
-# Copyright (C) 2000, 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2000, 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,13 +18,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  tail --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ tail
 
 # Not "expensive" per se, but sleeping for so long is annoying.
-. $srcdir/test-lib.sh
 very_expensive_
 
 ok='ok ok ok'

@@ -1,5 +1,5 @@
 /* mv -- move or rename files
-   Copyright (C) 1986, 1989-1991, 1995-2010 Free Software Foundation, Inc.
+   Copyright (C) 1986, 1989-1991, 1995-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -119,6 +119,7 @@ cp_option_init (struct cp_options *x)
   x->preserve_timestamps = true;
   x->preserve_security_context = selinux_enabled;
   x->reduce_diagnostics = false;
+  x->data_copy_required = true;
   x->require_preserve = false;  /* FIXME: maybe make this an option */
   x->require_preserve_context = false;
   x->preserve_xattr = true;
@@ -295,7 +296,8 @@ Rename SOURCE to DEST, or move SOURCE(s) to DIRECTORY.\n\
 Mandatory arguments to long options are mandatory for short options too.\n\
 "), stdout);
       fputs (_("\
-      --backup[=CONTROL]       make a backup of each existing destination file\n\
+      --backup[=CONTROL]       make a backup of each existing destination file\
+\n\
   -b                           like --backup but does not accept an argument\n\
   -f, --force                  do not prompt before overwriting\n\
   -i, --interactive            prompt before overwrite\n\

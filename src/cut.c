@@ -1,5 +1,5 @@
 /* cut - remove parts of lines of files
-   Copyright (C) 1997-2010 Free Software Foundation, Inc.
+   Copyright (C) 1997-2011 Free Software Foundation, Inc.
    Copyright (C) 1984 David M. Ihnat
 
    This program is free software: you can redistribute it and/or modify
@@ -31,6 +31,7 @@
 #include "system.h"
 
 #include "error.h"
+#include "fadvise.h"
 #include "getndelim2.h"
 #include "hash.h"
 #include "quote.h"
@@ -358,7 +359,7 @@ set_fields (const char *fieldstr)
   /* Collect and store in RP the range end points.
      It also sets EOL_RANGE_START if appropriate.  */
 
-  for (;;)
+  while (true)
     {
       if (*fieldstr == '-')
         {
@@ -495,6 +496,8 @@ set_fields (const char *fieldstr)
       if (rp[i].hi > max_range_endpoint)
         max_range_endpoint = rp[i].hi;
     }
+  if (max_range_endpoint < eol_range_start)
+    max_range_endpoint = eol_range_start;
 
   /* Allocate an array large enough so that it may be indexed by
      the field numbers corresponding to all finite ranges
@@ -733,6 +736,8 @@ cut_file (char const *file)
         }
     }
 
+  fadvise (stream, FADVISE_SEQUENTIAL);
+
   cut_stream (stream);
 
   if (ferror (stream))
@@ -756,7 +761,7 @@ main (int argc, char **argv)
   int optc;
   bool ok;
   bool delim_specified = false;
-  char *spec_list_string IF_LINT (= NULL);
+  char *spec_list_string IF_LINT ( = NULL);
 
   initialize_main (&argc, &argv);
   set_program_name (argv[0]);

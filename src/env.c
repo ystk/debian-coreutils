@@ -1,5 +1,5 @@
 /* env - run a program in a modified environment
-   Copyright (C) 1986, 1991-2005, 2007-2010 Free Software Foundation, Inc.
+   Copyright (C) 1986, 1991-2005, 2007-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -123,13 +123,17 @@ main (int argc, char **argv)
   if (optind < argc && STREQ (argv[optind], "-"))
     ++optind;
 
-  while (optind < argc && strchr (argv[optind], '='))
-    if (putenv (argv[optind++]))
-      {
-        char *name = argv[optind - 1];
-        *(strchr (name, '=')) = '\0';
-        error (EXIT_CANCELED, errno, _("cannot set %s"), quote (name));
-      }
+  char *eq;
+  while (optind < argc && (eq = strchr (argv[optind], '=')))
+    {
+      if (putenv (argv[optind]))
+        {
+          *eq = '\0';
+          error (EXIT_CANCELED, errno, _("cannot set %s"),
+                 quote (argv[optind]));
+        }
+      optind++;
+    }
 
   /* If no program is specified, print the environment and exit. */
   if (argc <= optind)

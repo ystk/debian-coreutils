@@ -1,5 +1,5 @@
 /* tsort - topological sort.
-   Copyright (C) 1998-2005, 2007-2010 Free Software Foundation, Inc.
+   Copyright (C) 1998-2005, 2007-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@
 #include "system.h"
 #include "long-options.h"
 #include "error.h"
+#include "fadvise.h"
 #include "quote.h"
 #include "readtokens.h"
 #include "stdio--.h"
@@ -136,7 +137,7 @@ search_item (struct item *root, const char *str)
   t = root;
   s = p = root->right;
 
-  for (;;)
+  while (true)
     {
       /* A2. Compare.  */
       a = strcmp (str, p->str);
@@ -444,6 +445,8 @@ tsort (const char *file)
   if (!is_stdin && ! freopen (file, "r", stdin))
     error (EXIT_FAILURE, errno, "%s", file);
 
+  fadvise (stdin, FADVISE_SEQUENTIAL);
+
   init_tokenbuffer (&tokenbuffer);
 
   while (1)
@@ -484,6 +487,11 @@ tsort (const char *file)
 
           /* T5. Output front of queue.  */
           puts (head->str);
+#ifdef lint
+          /* suppress valgrind "definitely lost" warnings.  */
+          void *head_str = (void *) head->str;
+          free (head_str);
+#endif
           head->str = NULL;	/* Avoid printing the same string twice.  */
           n_strings--;
 

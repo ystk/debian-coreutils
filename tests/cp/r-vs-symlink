@@ -1,7 +1,7 @@
 #!/bin/sh
 # cp -r should not create symlinks.  Fixed in fileutils-4.1.5.
 
-# Copyright (C) 2001-2002, 2004, 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2001-2002, 2004, 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,16 +20,12 @@
 # though now such usage evokes a warning:
 # cp: `slink': WARNING: using -r to copy symbolic links is not portable
 
-if test "$VERBOSE" = yes; then
-  set -x
-  cp --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ cp
 
-. $srcdir/test-lib.sh
-
-echo abc > foo || framework_failure
-ln -s foo slink || framework_failure
-ln -s no-such-file no-file || framework_failure
+echo abc > foo || framework_failure_
+ln -s foo slink || framework_failure_
+ln -s no-such-file no-file || framework_failure_
 
 
 # This would fail in 4.1.5, not in 4.1.6.

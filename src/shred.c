@@ -1,6 +1,6 @@
 /* shred.c - overwrite files and devices to make it harder to recover data
 
-   Copyright (C) 1999-2010 Free Software Foundation, Inc.
+   Copyright (C) 1999-2011 Free Software Foundation, Inc.
    Copyright (C) 1997, 1998, 1999 Colin Plumb.
 
    This program is free software: you can redistribute it and/or modify
@@ -100,6 +100,7 @@
 #include "quotearg.h"		/* For quotearg_colon */
 #include "randint.h"
 #include "randread.h"
+#include "stat-size.h"
 
 /* Default number of times to overwrite.  */
 enum { DEFAULT_PASSES = 3 };
@@ -365,7 +366,7 @@ dopass (int fd, char const *qname, off_t *sizep, int type,
 {
   off_t size = *sizep;
   off_t offset;			/* Current file posiiton */
-  time_t thresh IF_LINT (= 0);	/* Time to maybe print next status update */
+  time_t thresh IF_LINT ( = 0);	/* Time to maybe print next status update */
   time_t now = 0;		/* Current time */
   size_t lim;			/* Amount of data to try writing */
   size_t soff;			/* Offset into buffer for next write */
@@ -388,7 +389,7 @@ dopass (int fd, char const *qname, off_t *sizep, int type,
 
   /* Printable previous offset into the file */
   char previous_offset_buf[LONGEST_HUMAN_READABLE + 1];
-  char const *previous_human_offset IF_LINT (= 0);
+  char const *previous_human_offset IF_LINT ( = 0);
 
   if (lseek (fd, 0, SEEK_SET) == -1)
     {
@@ -417,7 +418,7 @@ dopass (int fd, char const *qname, off_t *sizep, int type,
     }
 
   offset = 0;
-  for (;;)
+  while (true)
     {
       /* How much to write this time? */
       lim = sizeof r;
@@ -664,7 +665,7 @@ genpattern (int *dest, size_t num, struct randint_source *s)
   d = dest;			/* Destination for generated pass list */
   n = num;			/* Passes remaining to fill */
 
-  for (;;)
+  while (true)
     {
       k = *p++;			/* Block descriptor word */
       if (!k)
@@ -781,7 +782,7 @@ do_wipefd (int fd, char const *qname, struct randint_source *s,
     }
 
   /* If we know that we can't possibly shred the file, give up now.
-     Otherwise, we may go into a infinite loop writing data before we
+     Otherwise, we may go into an infinite loop writing data before we
      find that we can't rewind the device.  */
   if ((S_ISCHR (st.st_mode) && isatty (fd))
       || S_ISFIFO (st.st_mode)
@@ -907,9 +908,9 @@ static char const nameset[] =
 "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_.";
 
 /* Increment NAME (with LEN bytes).  NAME must be a big-endian base N
-   number with the digits taken from nameset.  Return true if
-   successful if not (because NAME already has the greatest possible
-   value.  */
+   number with the digits taken from nameset.  Return true if successful.
+   Otherwise, (because NAME already has the greatest possible value)
+   return false.  */
 
 static bool
 incname (char *name, size_t len)
@@ -917,6 +918,10 @@ incname (char *name, size_t len)
   while (len--)
     {
       char const *p = strchr (nameset, name[len]);
+
+      /* Given that NAME is composed of bytes from NAMESET,
+         P will never be NULL here.  */
+      assert (p);
 
       /* If this character has a successor, use it.  */
       if (p[1])
@@ -1098,7 +1103,7 @@ int
 main (int argc, char **argv)
 {
   bool ok = true;
-  DECLARE_ZEROED_AGGREGATE (struct Options, flags);
+  struct Options flags = { 0, };
   char **file;
   int n_files;
   int c;

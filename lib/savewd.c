@@ -1,6 +1,6 @@
 /* Save and restore the working directory, possibly using a child process.
 
-   Copyright (C) 2006-2007, 2009-2010 Free Software Foundation, Inc.
+   Copyright (C) 2006-2007, 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "dirname.h"
+#include "dosname.h"
 #include "fcntl-safer.h"
 
 /* Save the working directory into *WD, if it hasn't been saved
@@ -45,7 +45,7 @@ savewd_save (struct savewd *wd)
     case INITIAL_STATE:
       /* Save the working directory, or prepare to fall back if possible.  */
       {
-        int fd = open_safer (".", O_RDONLY);
+        int fd = open_safer (".", O_SEARCH);
         if (0 <= fd)
           {
             wd->state = FD_STATE;
@@ -105,7 +105,7 @@ savewd_chdir (struct savewd *wd, char const *dir, int options,
       || (options & (HAVE_WORKING_O_NOFOLLOW ? SAVEWD_CHDIR_NOFOLLOW : 0)))
     {
       fd = open (dir,
-                 (O_RDONLY | O_DIRECTORY | O_NOCTTY | O_NONBLOCK
+                 (O_SEARCH | O_DIRECTORY | O_NOCTTY | O_NONBLOCK
                   | (options & SAVEWD_CHDIR_NOFOLLOW ? O_NOFOLLOW : 0)));
 
       if (open_result)

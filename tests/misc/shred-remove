@@ -1,7 +1,7 @@
 #!/bin/sh
 # Exercise a bug that was fixed in shred-4.0l
 
-# Copyright (C) 1999-2000, 2003, 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 1999-2000, 2003, 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,20 +16,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  shred --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ shred
 skip_if_root_
 
 # The length of the basename is what matters.
 # In this case, shred would try to rename the file 256^10 times
 # before terminating.
 file=0123456789
-touch $file || framework_failure
-chmod u-w $file || framework_failure
+touch $file || framework_failure_
+chmod u-w $file || framework_failure_
 
 
 # This would take so long that it appears to infloop

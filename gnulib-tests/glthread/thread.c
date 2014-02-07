@@ -1,7 +1,7 @@
 /* -*- buffer-read-only: t -*- vi: set ro: */
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Creating and controlling threads.
-   Copyright (C) 2005-2010 Free Software Foundation, Inc.
+   Copyright (C) 2005-2011 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -28,6 +28,20 @@
 
 #include <stdlib.h>
 #include "glthread/lock.h"
+
+/* ========================================================================= */
+
+#if USE_POSIX_THREADS
+
+#include <pthread.h>
+
+#ifdef PTW32_VERSION
+
+const gl_thread_t gl_null_thread /* = { .p = NULL } */;
+
+#endif
+
+#endif
 
 /* ========================================================================= */
 

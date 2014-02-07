@@ -1,6 +1,6 @@
 /* rmdir -- remove directories
 
-   Copyright (C) 1990-1991, 1995-2002, 2004-2010 Free Software Foundation, Inc.
+   Copyright (C) 1990-1991, 1995-2002, 2004-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -171,7 +171,8 @@ Remove the DIRECTORY(ies), if they are empty.\n\
                     is non-empty\n\
 "), stdout);
       fputs (_("\
-  -p, --parents   remove DIRECTORY and its ancestors; e.g., `rmdir -p a/b/c' is\n\
+  -p, --parents   remove DIRECTORY and its ancestors; e.g., `rmdir -p a/b/c' is\
+\n\
                     similar to `rmdir a/b/c a/b a'\n\
   -v, --verbose   output a diagnostic for every directory processed\n\
 "), stdout);

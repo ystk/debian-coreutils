@@ -1,5 +1,5 @@
 /* yes - output a string repeatedly until killed
-   Copyright (C) 1991-1997, 1999-2004, 2007-2010 Free Software Foundation, Inc.
+   Copyright (C) 1991-1997, 1999-2004, 2007-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -78,15 +78,12 @@ main (int argc, char **argv)
       argv[argc++] = bad_cast ("y");
     }
 
-  for (;;)
+  while (true)
     {
       int i;
       for (i = optind; i < argc; i++)
         if (fputs (argv[i], stdout) == EOF
             || putchar (i == argc - 1 ? '\n' : ' ') == EOF)
-          {
-            error (0, errno, _("standard output"));
-            exit (EXIT_FAILURE);
-          }
+          error (EXIT_FAILURE, errno, _("standard output"));
     }
 }

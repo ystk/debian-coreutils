@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test for assertion failure in "test".
 
-# Copyright (C) 1999-2000, 2004, 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 1999-2000, 2004, 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,13 +23,10 @@
 #   Aborted
 # due to a race condition in which a dev/inode pair is reused.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  tail --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ tail
 
 # Not "expensive" per se, but sleeping for so long is annoying.
-. $srcdir/test-lib.sh
 very_expensive_
 
 ok='ok ok ok'

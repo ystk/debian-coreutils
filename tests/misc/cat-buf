@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure that cat outputs processed data immediately.
 
-# Copyright (C) 2009-2010 Free Software Foundation, Inc.
+# Copyright (C) 2009-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,30 +16,29 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  cat --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ cat
 
 # Use a fifo rather than a pipe in the tests below
 # so that the producer (cat) will wait until the
 # consumer (dd) opens the fifo therefore increasing
 # the chance that dd will read the data from each
 # write separately.
-mkfifo fifo || framework_failure
+mkfifo_or_skip_ fifo
 
 
 echo 1 > exp
 
-dd count=1 if=fifo > out &
-(echo 1; sleep .5; echo 2) | cat -v > fifo
-wait # for dd to complete
+cat_buf_1()
+{
+  local delay="$1"
 
-# Though unlikely, this test may fail because dd was starved
-# between opening the fifo and reading from it until after the
-# second echo.  So ask to double check rather than failing.
-compare out exp || skip_test_ "possible test failure. Please verify."
+  dd count=1 if=fifo > out &
+  (echo 1; sleep $delay; echo 2) | cat -v > fifo
+  wait # for dd to complete
+  compare out exp
+}
+
+retry_delay_ cat_buf_1 .1 6 || fail=1
 
 Exit $fail

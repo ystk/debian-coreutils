@@ -1,7 +1,7 @@
 /* -*- buffer-read-only: t -*- vi: set ro: */
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Test of POSIX compatible fflush() function.
-   Copyright (C) 2007, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2007, 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -52,7 +52,8 @@ main (void)
   if (!f || 0 > fd || fread (buffer, 1, 5, f) != 5)
     {
       fputs ("Failed initial read of sample file.\n", stderr);
-      fclose (f);
+      if (f)
+        fclose (f);
       unlink ("test-fflush.txt");
       return 1;
     }

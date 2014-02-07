@@ -1,5 +1,5 @@
 /* du -- summarize disk usage
-   Copyright (C) 1988-1991, 1995-2010 Free Software Foundation, Inc.
+   Copyright (C) 1988-1991, 1995-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -30,14 +30,14 @@
 #include "system.h"
 #include "argmatch.h"
 #include "argv-iter.h"
+#include "di-set.h"
 #include "error.h"
 #include "exclude.h"
 #include "fprintftime.h"
-#include "hash.h"
 #include "human.h"
 #include "quote.h"
 #include "quotearg.h"
-#include "same.h"
+#include "stat-size.h"
 #include "stat-time.h"
 #include "stdio--.h"
 #include "xfts.h"
@@ -56,28 +56,18 @@ extern bool fts_debug;
 
 #if DU_DEBUG
 # define FTS_CROSS_CHECK(Fts) fts_cross_check (Fts)
-# define DEBUG_OPT "d"
 #else
 # define FTS_CROSS_CHECK(Fts)
-# define DEBUG_OPT
 #endif
 
-/* Initial size of the hash table.  */
-#define INITIAL_TABLE_SIZE 103
-
-/* Hash structure for inode and device numbers.  The separate entry
-   structure makes it easier to rehash "in place".  */
-struct entry
-{
-  ino_t st_ino;
-  dev_t st_dev;
-};
-
 /* A set of dev/ino pairs.  */
-static Hash_table *htab;
+static struct di_set *di_set;
+
+/* Keep track of the preceding "level" (depth in hierarchy)
+   from one call of process_file to the next.  */
+static size_t prev_level;
 
 /* Define a class for collecting directory information. */
-
 struct duinfo
 {
   /* Size of files in directory.  */
@@ -133,6 +123,9 @@ static bool apparent_size = false;
 
 /* If true, count each hard link of files with multiple links.  */
 static bool opt_count_all = false;
+
+/* If true, hash all files to look for hard links.  */
+static bool hash_all;
 
 /* If true, output the NUL byte instead of a newline at the end of each line. */
 static bool opt_nul_terminate_output = false;
@@ -192,7 +185,7 @@ enum
   EXCLUDE_OPTION,
   FILES0_FROM_OPTION,
   HUMAN_SI_OPTION,
-  MAX_DEPTH_OPTION,
+  FTS_DEBUG,
   TIME_OPTION,
   TIME_STYLE_OPTION
 };
@@ -204,6 +197,7 @@ static struct option const long_options[] =
   {"block-size", required_argument, NULL, 'B'},
   {"bytes", no_argument, NULL, 'b'},
   {"count-links", no_argument, NULL, 'l'},
+  /* {"-debug", no_argument, NULL, FTS_DEBUG}, */
   {"dereference", no_argument, NULL, 'L'},
   {"dereference-args", no_argument, NULL, 'D'},
   {"exclude", required_argument, NULL, EXCLUDE_OPTION},
@@ -211,7 +205,7 @@ static struct option const long_options[] =
   {"files0-from", required_argument, NULL, FILES0_FROM_OPTION},
   {"human-readable", no_argument, NULL, 'h'},
   {"si", no_argument, NULL, HUMAN_SI_OPTION},
-  {"max-depth", required_argument, NULL, MAX_DEPTH_OPTION},
+  {"max-depth", required_argument, NULL, 'd'},
   {"null", no_argument, NULL, '0'},
   {"no-dereference", no_argument, NULL, 'P'},
   {"one-file-system", no_argument, NULL, 'x'},
@@ -276,13 +270,16 @@ Mandatory arguments to long options are mandatory for short options too.\n\
 "), stdout);
       fputs (_("\
   -a, --all             write counts for all files, not just directories\n\
-      --apparent-size   print apparent sizes, rather than disk usage; although\n\
+      --apparent-size   print apparent sizes, rather than disk usage; although\
+\n\
                           the apparent size is usually smaller, it may be\n\
                           larger due to holes in (`sparse') files, internal\n\
                           fragmentation, indirect blocks, and the like\n\
 "), stdout);
       fputs (_("\
-  -B, --block-size=SIZE  use SIZE-byte blocks\n\
+  -B, --block-size=SIZE  scale sizes by SIZE before printing them.  E.g.,\n\
+                           `-BM' prints sizes in units of 1,048,576 bytes.\n\
+                           See SIZE format below.\n\
   -b, --bytes           equivalent to `--apparent-size --block-size=1'\n\
   -c, --total           produce a grand total\n\
   -D, --dereference-args  dereference only symlinks that are listed on the\n\
@@ -293,7 +290,8 @@ Mandatory arguments to long options are mandatory for short options too.\n\
                           names specified in file F;\n\
                           If F is - then read names from standard input\n\
   -H                    equivalent to --dereference-args (-D)\n\
-  -h, --human-readable  print sizes in human readable format (e.g., 1K 234M 2G)\n\
+  -h, --human-readable  print sizes in human readable format (e.g., 1K 234M 2G)\
+\n\
       --si              like -h, but use powers of 1000 not 1024\n\
 "), stdout);
       fputs (_("\
@@ -312,7 +310,7 @@ Mandatory arguments to long options are mandatory for short options too.\n\
   -x, --one-file-system    skip directories on different file systems\n\
   -X, --exclude-from=FILE  exclude files that match any pattern in FILE\n\
       --exclude=PATTERN    exclude files that match PATTERN\n\
-      --max-depth=N     print the total for a directory (or file, with --all)\n\
+  -d, --max-depth=N     print the total for a directory (or file, with --all)\n\
                           only if it is N or fewer levels below the command\n\
                           line argument;  --max-depth=0 is the same as\n\
                           --summarize\n\
@@ -335,66 +333,16 @@ Mandatory arguments to long options are mandatory for short options too.\n\
   exit (status);
 }
 
-static size_t
-entry_hash (void const *x, size_t table_size)
-{
-  struct entry const *p = x;
-
-  /* Ignoring the device number here should be fine.  */
-  /* The cast to uintmax_t prevents negative remainders
-     if st_ino is negative.  */
-  return (uintmax_t) p->st_ino % table_size;
-}
-
-/* Compare two dev/ino pairs.  Return true if they are the same.  */
-static bool
-entry_compare (void const *x, void const *y)
-{
-  struct entry const *a = x;
-  struct entry const *b = y;
-  return SAME_INODE (*a, *b) ? true : false;
-}
-
 /* Try to insert the INO/DEV pair into the global table, HTAB.
    Return true if the pair is successfully inserted,
    false if the pair is already in the table.  */
 static bool
 hash_ins (ino_t ino, dev_t dev)
 {
-  struct entry *ent;
-  struct entry *ent_from_table;
-
-  ent = xmalloc (sizeof *ent);
-  ent->st_ino = ino;
-  ent->st_dev = dev;
-
-  ent_from_table = hash_insert (htab, ent);
-  if (ent_from_table == NULL)
-    {
-      /* Insertion failed due to lack of memory.  */
-      xalloc_die ();
-    }
-
-  if (ent_from_table == ent)
-    {
-      /* Insertion succeeded.  */
-      return true;
-    }
-
-  /* That pair is already in the table, so ENT was not inserted.  Free it.  */
-  free (ent);
-
-  return false;
-}
-
-/* Initialize the hash table.  */
-static void
-hash_init (void)
-{
-  htab = hash_initialize (INITIAL_TABLE_SIZE, NULL,
-                          entry_hash, entry_compare, free);
-  if (htab == NULL)
+  int inserted = di_set_insert (di_set, dev, ino);
+  if (inserted < 0)
     xalloc_die ();
+  return inserted;
 }
 
 /* FIXME: this code is nearly identical to code in date.c  */
@@ -408,8 +356,9 @@ show_date (const char *format, struct timespec when)
   if (! tm)
     {
       char buf[INT_BUFSIZE_BOUND (intmax_t)];
-      error (0, 0, _("time %s is out of range"), timetostr (when.tv_sec, buf));
-      fputs (buf, stdout);
+      char *when_str = timetostr (when.tv_sec, buf);
+      error (0, 0, _("time %s is out of range"), when_str);
+      fputs (when_str, stdout);
       return;
     }
 
@@ -449,11 +398,10 @@ print_size (const struct duinfo *pdui, const char *string)
 static bool
 process_file (FTS *fts, FTSENT *ent)
 {
-  bool ok;
+  bool ok = true;
   struct duinfo dui;
   struct duinfo dui_to_print;
   size_t level;
-  static size_t prev_level;
   static size_t n_alloc;
   /* First element of the structure contains:
      The sum of the st_size values of all entries in the single directory
@@ -464,79 +412,85 @@ process_file (FTS *fts, FTSENT *ent)
      The sum of the sizes of all entries in the hierarchy at or below the
      directory at the specified level.  */
   static struct dulevel *dulvl;
-  bool print = true;
 
   const char *file = ent->fts_path;
   const struct stat *sb = ent->fts_statp;
-  bool skip;
+  int info = ent->fts_info;
 
-  /* If necessary, set FTS_SKIP before returning.  */
-  skip = excluded_file_name (exclude, file);
-  if (skip)
-    fts_set (fts, ent, FTS_SKIP);
-
-  switch (ent->fts_info)
+  if (info == FTS_DNR)
     {
-    case FTS_NS:
-      error (0, ent->fts_errno, _("cannot access %s"), quote (file));
-      return false;
-
-    case FTS_ERR:
-      /* if (S_ISDIR (ent->fts_statp->st_mode) && FIXME */
-      error (0, ent->fts_errno, _("%s"), quote (file));
-      return false;
-
-    case FTS_DNR:
-      /* Don't return just yet, since although the directory is not readable,
-         we were able to stat it, so we do have a size.  */
+      /* An error occurred, but the size is known, so count it.  */
       error (0, ent->fts_errno, _("cannot read directory %s"), quote (file));
       ok = false;
-      break;
-
-    case FTS_DC:		/* directory that causes cycles */
-      if (cycle_warning_required (fts, ent))
+    }
+  else if (info != FTS_DP)
+    {
+      bool excluded = excluded_file_name (exclude, file);
+      if (! excluded)
         {
-          emit_cycle_warning (file);
-          return false;
+          /* Make the stat buffer *SB valid, or fail noisily.  */
+
+          if (info == FTS_NSOK)
+            {
+              fts_set (fts, ent, FTS_AGAIN);
+              FTSENT const *e = fts_read (fts);
+              assert (e == ent);
+              info = ent->fts_info;
+            }
+
+          if (info == FTS_NS || info == FTS_SLNONE)
+            {
+              error (0, ent->fts_errno, _("cannot access %s"), quote (file));
+              return false;
+            }
         }
-      ok = true;
-      break;
 
-    default:
-      ok = true;
-      break;
+      if (excluded
+          || (! opt_count_all
+              && (hash_all || (! S_ISDIR (sb->st_mode) && 1 < sb->st_nlink))
+              && ! hash_ins (sb->st_ino, sb->st_dev)))
+        {
+          /* If ignoring a directory in preorder, skip its children.
+             Ignore the next fts_read output too, as it's a postorder
+             visit to the same directory.  */
+          if (info == FTS_D)
+            {
+              fts_set (fts, ent, FTS_SKIP);
+              FTSENT const *e = fts_read (fts);
+              assert (e == ent);
+            }
+
+          return true;
+        }
+
+      switch (info)
+        {
+        case FTS_D:
+          return true;
+
+        case FTS_ERR:
+          /* An error occurred, but the size is known, so count it.  */
+          error (0, ent->fts_errno, "%s", quote (file));
+          ok = false;
+          break;
+
+        case FTS_DC:
+          if (cycle_warning_required (fts, ent))
+            {
+              emit_cycle_warning (file);
+              return false;
+            }
+          return true;
+        }
     }
 
-  /* If this is the first (pre-order) encounter with a directory,
-     or if it's the second encounter for a skipped directory, then
-     return right away.  */
-  if (ent->fts_info == FTS_D || skip)
-    return ok;
-
-  /* If the file is being excluded or if it has already been counted
-     via a hard link, then don't let it contribute to the sums.  */
-  if (skip
-      || (!opt_count_all
-          && ! S_ISDIR (sb->st_mode)
-          && 1 < sb->st_nlink
-          && ! hash_ins (sb->st_ino, sb->st_dev)))
-    {
-      /* Note that we must not simply return here.
-         We still have to update prev_level and maybe propagate
-         some sums up the hierarchy.  */
-      duinfo_init (&dui);
-      print = false;
-    }
-  else
-    {
-      duinfo_set (&dui,
-                  (apparent_size
-                   ? sb->st_size
-                   : (uintmax_t) ST_NBLOCKS (*sb) * ST_NBLOCKSIZE),
-                  (time_type == time_mtime ? get_stat_mtime (sb)
-                   : time_type == time_atime ? get_stat_atime (sb)
-                   : get_stat_ctime (sb)));
-    }
+  duinfo_set (&dui,
+              (apparent_size
+               ? sb->st_size
+               : (uintmax_t) ST_NBLOCKS (*sb) * ST_NBLOCKSIZE),
+              (time_type == time_mtime ? get_stat_mtime (sb)
+               : time_type == time_atime ? get_stat_atime (sb)
+               : get_stat_ctime (sb)));
 
   level = ent->fts_level;
   dui_to_print = dui;
@@ -593,20 +547,14 @@ process_file (FTS *fts, FTSENT *ent)
 
   /* Let the size of a directory entry contribute to the total for the
      containing directory, unless --separate-dirs (-S) is specified.  */
-  if ( ! (opt_separate_dirs && IS_DIR_TYPE (ent->fts_info)))
+  if (! (opt_separate_dirs && IS_DIR_TYPE (info)))
     duinfo_add (&dulvl[level].ent, &dui);
 
   /* Even if this directory is unreadable or we can't chdir into it,
      do let its size contribute to the total. */
   duinfo_add (&tot_dui, &dui);
 
-  /* If we're not counting an entry, e.g., because it's a hard link
-     to a file we've already counted (and --count-links), then don't
-     print a line for it.  */
-  if (!print)
-    return ok;
-
-  if ((IS_DIR_TYPE (ent->fts_info) && level <= max_depth)
+  if ((IS_DIR_TYPE (info) && level <= max_depth)
       || ((opt_all && level <= max_depth) || level == 0))
     print_size (&dui_to_print, file);
 
@@ -636,10 +584,15 @@ du_files (char **files, int bit_flags)
             {
               if (errno != 0)
                 {
-                  /* FIXME: try to give a better message  */
-                  error (0, errno, _("fts_read failed"));
+                  error (0, errno, _("fts_read failed: %s"),
+                         quotearg_colon (fts->fts_path));
                   ok = false;
                 }
+
+              /* When exiting this loop early, be careful to reset the
+                 global, prev_level, used in process_file.  Otherwise, its
+                 (level == prev_level - 1) assertion could fail.  */
+              prev_level = 0;
               break;
             }
           FTS_CROSS_CHECK (fts);
@@ -666,7 +619,7 @@ main (int argc, char **argv)
   char *files_from = NULL;
 
   /* Bit flags that control how fts works.  */
-  int bit_flags = FTS_TIGHT_CYCLE_CHECK | FTS_DEFER_STAT;
+  int bit_flags = FTS_NOSTAT;
 
   /* Select one of the three FTS_ options that control if/when
      to follow a symlink.  */
@@ -691,10 +644,10 @@ main (int argc, char **argv)
   human_options (getenv ("DU_BLOCK_SIZE"),
                  &human_output_opts, &output_block_size);
 
-  for (;;)
+  while (true)
     {
       int oi = -1;
-      int c = getopt_long (argc, argv, DEBUG_OPT "0abchHklmsxB:DLPSX:",
+      int c = getopt_long (argc, argv, "0abd:chHklmsxB:DLPSX:",
                            long_options, &oi);
       if (c == -1)
         break;
@@ -702,7 +655,7 @@ main (int argc, char **argv)
       switch (c)
         {
 #if DU_DEBUG
-        case 'd':
+        case FTS_DEBUG:
           fts_debug = true;
           break;
 #endif
@@ -744,7 +697,7 @@ main (int argc, char **argv)
           output_block_size = 1024;
           break;
 
-        case MAX_DEPTH_OPTION:		/* --max-depth=N */
+        case 'd':		/* --max-depth=N */
           {
             unsigned long int tmp_ulong;
             if (xstrtoul (optarg, NULL, 0, &tmp_ulong, NULL) == LONGINT_OK
@@ -936,18 +889,34 @@ main (int argc, char **argv)
                quote (files_from));
 
       ai = argv_iter_init_stream (stdin);
+
+      /* It's not easy here to count the arguments, so assume the
+         worst.  */
+      hash_all = true;
     }
   else
     {
       char **files = (optind < argc ? argv + optind : cwd_only);
       ai = argv_iter_init_argv (files);
+
+      /* Hash all dev,ino pairs if there are multiple arguments, or if
+         following non-command-line symlinks, because in either case a
+         file with just one hard link might be seen more than once.  */
+      hash_all = (optind + 1 < argc || symlink_deref_bits == FTS_LOGICAL);
     }
 
   if (!ai)
     xalloc_die ();
 
-  /* Initialize the hash structure for inode numbers.  */
-  hash_init ();
+  /* Initialize the set of dev,inode pairs.  */
+  di_set = di_set_alloc ();
+  if (!di_set)
+    xalloc_die ();
+
+  /* If not hashing everything, process_file won't find cycles on its
+     own, so ask fts_read to check for them accurately.  */
+  if (opt_count_all || ! hash_all)
+    bit_flags |= FTS_TIGHT_CYCLE_CHECK;
 
   bit_flags |= symlink_deref_bits;
   static char *temp_argv[] = { NULL, NULL };
@@ -957,19 +926,19 @@ main (int argc, char **argv)
       bool skip_file = false;
       enum argv_iter_err ai_err;
       char *file_name = argv_iter (ai, &ai_err);
-      if (ai_err == AI_ERR_EOF)
-        break;
       if (!file_name)
         {
           switch (ai_err)
             {
+            case AI_ERR_EOF:
+              goto argv_iter_done;
             case AI_ERR_READ:
-              error (0, errno, _("%s: read error"), quote (files_from));
-              continue;
-
+              error (0, errno, _("%s: read error"),
+                     quotearg_colon (files_from));
+              ok = false;
+              goto argv_iter_done;
             case AI_ERR_MEM:
               xalloc_die ();
-
             default:
               assert (!"unexpected error code from argv_iter");
             }
@@ -1016,16 +985,16 @@ main (int argc, char **argv)
           ok &= du_files (temp_argv, bit_flags);
         }
     }
+ argv_iter_done:
 
   argv_iter_free (ai);
+  di_set_free (di_set);
 
-  if (files_from && (ferror (stdin) || fclose (stdin) != 0))
+  if (files_from && (ferror (stdin) || fclose (stdin) != 0) && ok)
     error (EXIT_FAILURE, 0, _("error reading %s"), quote (files_from));
 
   if (print_grand_total)
     print_size (&tot_dui, _("total"));
-
-  hash_free (htab);
 
   exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
 }

@@ -1,5 +1,5 @@
 # Include this file at the end of each tests/*/Makefile.am.
-# Copyright (C) 2007-2010 Free Software Foundation, Inc.
+# Copyright (C) 2007-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,8 +20,8 @@
 _v = TESTS
 _w = root_tests
 vc_exe_in_TESTS: Makefile
-	@rm -f t1 t2
-	@if test -d $(top_srcdir)/.git && test $(srcdir) = .; then	\
+	$(AM_V_GEN)rm -f t1 t2;						\
+	if test -d $(top_srcdir)/.git && test $(srcdir) = .; then	\
 	  { sed -n '/^$(_v) =[	 ]*\\$$/,/[^\]$$/p'			\
 		$(srcdir)/Makefile.am					\
 	    | sed 's/^  *//;/^\$$.*/d;/^$(_v) =/d';			\
@@ -40,8 +40,23 @@ vc_exe_in_TESTS: Makefile
 check: vc_exe_in_TESTS
 .PHONY: vc_exe_in_TESTS
 
-built_programs = \
-  (cd $(top_builddir)/src && MAKEFLAGS= $(MAKE) -s built_programs.list)
+CLEANFILES =
+CLEANFILES += .built-programs
+check-am: .built-programs
+.built-programs:
+	$(AM_V_GEN)(cd $(top_builddir)/src				\
+            && MAKEFLAGS= $(MAKE) -s built_programs.list)		\
+          > $@-t && mv $@-t $@
+
+## `$f' is set by the Automake-generated test harness to the path of the
+## current test script stripped of VPATH components, and is used by the
+## shell-or-perl script to determine the name of the temporary files to be
+## used.  Note that $f is a shell variable, not a make macro, so the use of
+## `$$f' below is correct, and not a typo.
+LOG_COMPILER = \
+  $(SHELL) $(srcdir)/shell-or-perl \
+  --test-name "$$f" --srcdir '$(srcdir)' \
+  --shell '$(SHELL)' --perl '$(PERL)' --
 
 # Note that the first lines are statements.  They ensure that environment
 # variables that can perturb tests are unset or set to expected values.
@@ -49,25 +64,10 @@ built_programs = \
 # variables to test scripts.
 TESTS_ENVIRONMENT =				\
   . $(srcdir)/lang-default;			\
-  tmp__=$$TMPDIR; test -d "$$tmp__" || tmp__=.;	\
+  tmp__=$${TMPDIR-/tmp};			\
+  test -d "$$tmp__" && test -w "$$tmp__" || tmp__=.;	\
   . $(srcdir)/envvar-check;			\
   TMPDIR=$$tmp__; export TMPDIR;		\
-  exec 9>&2;					\
-  shell_or_perl_() {				\
-    if grep '^\#!/usr/bin/perl' "$$1" > /dev/null; then			\
-      if $(PERL) -e 'use warnings' > /dev/null 2>&1; then		\
-	grep '^\#!/usr/bin/perl -T' "$$1" > /dev/null && T_=T || T_=;	\
-        $(PERL) -w$$T_ -I$(srcdir) -MCoreutils				\
-	      -M"CuTmpdir qw($$f)" -- "$$1";	\
-      else					\
-	echo 1>&2 "$$tst: configure did not find a usable version of Perl," \
-	  "so skipping this test";		\
-	(exit 77);				\
-      fi;					\
-    else					\
-      $(SHELL) "$$1";				\
-    fi;						\
-  };						\
   export					\
   VERSION='$(VERSION)'				\
   LOCALE_FR='$(LOCALE_FR)'			\
@@ -75,7 +75,7 @@ TESTS_ENVIRONMENT =				\
   abs_top_builddir='$(abs_top_builddir)'	\
   abs_top_srcdir='$(abs_top_srcdir)'		\
   abs_srcdir='$(abs_srcdir)'			\
-  built_programs="`$(built_programs)`"		\
+  built_programs="`cat .built-programs`"	\
   host_os=$(host_os)				\
   host_triplet='$(host_triplet)'		\
   srcdir='$(srcdir)'				\
@@ -94,6 +94,6 @@ TESTS_ENVIRONMENT =				\
   REPLACE_GETCWD=$(REPLACE_GETCWD)		\
   ; test -d /usr/xpg4/bin && PATH='/usr/xpg4/bin$(PATH_SEPARATOR)'"$$PATH"; \
   PATH='$(abs_top_builddir)/src$(PATH_SEPARATOR)'"$$PATH" \
-  ; shell_or_perl_
+  ; 9>&2
 
 VERBOSE = yes

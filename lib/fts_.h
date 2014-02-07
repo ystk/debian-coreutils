@@ -1,6 +1,6 @@
 /* Traverse a file hierarchy.
 
-   Copyright (C) 2004-2010 Free Software Foundation, Inc.
+   Copyright (C) 2004-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -55,13 +55,19 @@
 #  undef __THROW
 #  define __THROW
 #  undef __BEGIN_DECLS
-#  define __BEGIN_DECLS
 #  undef __END_DECLS
-#  define __END_DECLS
+#  ifdef __cplusplus
+#   define __BEGIN_DECLS extern "C" {
+#   define __END_DECLS }
+#  else
+#   define __BEGIN_DECLS
+#   define __END_DECLS
+#  endif
 # endif
 
 # include <stddef.h>
 # include <sys/types.h>
+# include <dirent.h>
 # include <sys/stat.h>
 # include "i-ring.h"
 
@@ -137,7 +143,9 @@ typedef struct {
      dirent.d_type data.  */
 # define FTS_DEFER_STAT         0x0400
 
-# define FTS_OPTIONMASK 0x07ff          /* valid user option mask */
+# define FTS_NOATIME    0x0800          /* use O_NOATIME during traversal */
+
+# define FTS_OPTIONMASK 0x0fff          /* valid user option mask */
 
 # define FTS_NAMEONLY   0x1000          /* (private) child names only */
 # define FTS_STOP       0x2000          /* (private) unrecoverable error */
@@ -184,6 +192,9 @@ typedef struct _ftsent {
         struct _ftsent *fts_cycle;      /* cycle node */
         struct _ftsent *fts_parent;     /* parent directory */
         struct _ftsent *fts_link;       /* next file in directory */
+        DIR *fts_dirp;                  /* Dir pointer for any directory
+                                           containing more entries than we
+                                           read at one time.  */
         long fts_number;                /* local numeric value */
         void *fts_pointer;              /* local address value */
         char *fts_accpath;              /* access file name */

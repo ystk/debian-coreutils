@@ -1,5 +1,5 @@
 /* chcon -- change security context of files
-   Copyright (C) 2005-2010 Free Software Foundation, Inc.
+   Copyright (C) 2005-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -226,7 +226,7 @@ process_file (FTS *fts, FTSENT *ent)
               /* Tell fts not to traverse into this hierarchy.  */
               fts_set (fts, ent, FTS_SKIP);
               /* Ensure that we do not process "/" on the second visit.  */
-              ignore_ptr (fts_read (fts));
+              ignore_value (fts_read (fts));
               return false;
             }
           return true;
@@ -257,7 +257,7 @@ process_file (FTS *fts, FTSENT *ent)
       break;
 
     case FTS_ERR:
-      error (0, ent->fts_errno, _("%s"), quote (file_full_name));
+      error (0, ent->fts_errno, "%s", quote (file_full_name));
       ok = false;
       break;
 

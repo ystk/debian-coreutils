@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test cp --reflink copies permissions
 
-# Copyright (C) 2009-2010 Free Software Foundation, Inc.
+# Copyright (C) 2009-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,21 +16,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  cp --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ cp
 
 
 : > time_check
 : > file
 ts='2009-08-28 19:00'
-touch -d "$ts" file || framework_failure
-test time_check -nt file || skip_test_ "The system clock is wrong"
+touch -d "$ts" file || framework_failure_
+test time_check -nt file || skip_ "The system clock is wrong"
 
-chmod a=rwx file || framework_failure
+chmod a=rwx file || framework_failure_
 umask 077
 cp --reflink=auto --preserve file copy || fail=1
 
@@ -38,5 +34,12 @@ mode=$(stat --printf "%A" copy)
 test "$mode" = "-rwxrwxrwx" || fail=1
 
 test copy -nt file && fail=1
+
+# Ensure that --attributes-only overrides --reflink completely
+echo > file2 # file with data
+cp --reflink=auto --preserve --attributes-only file2 empty_copy || fail=1
+test -s empty_copy && fail=1
+cp --reflink=always --preserve --attributes-only file2 empty_copy || fail=1
+test -s empty_copy && fail=1
 
 Exit $fail

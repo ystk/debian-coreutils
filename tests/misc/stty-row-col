@@ -1,7 +1,7 @@
 #! /bin/sh
 # Test "stty" with rows and columns.
 
-# Copyright (C) 1998-2001, 2003-2010 Free Software Foundation, Inc.
+# Copyright (C) 1998-2001, 2003-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,14 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-# This script takes no arguments.
-
-if test "$VERBOSE" = yes; then
-  set -x
-  stty --version
-fi
-
 # Setting this envvar to a very small value used to cause e.g., `stty size'
 # to generate slightly different output on certain systems.
 COLUMNS=80
@@ -36,7 +28,9 @@ export COLUMNS
 LC_ALL=C
 export LC_ALL
 
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ stty
+
 require_controlling_input_terminal_
 trap '' TTOU # Ignore SIGTTOU
 
@@ -58,7 +52,7 @@ NA LAST NA
 set $tests
 
 saved_size=`stty size` && test -n "$saved_size" \
-  || skip_test_ "can't get window size"
+  || skip_ "can't get window size"
 
 # Linux virtual consoles issue an error if you
 # try to increase their size.  So skip in that case.
@@ -66,7 +60,7 @@ if test "x$saved_size" != "x0 0"; then
   srow=$(echo $saved_size | cut -d ' ' -f1)
   scol=$(echo $saved_size | cut -d ' ' -f2)
   stty rows $(expr $srow + 1) cols $(expr $scol + 1) ||
-    skip_test_ "can't increase window size"
+    skip_ "can't increase window size"
 fi
 
 while :; do

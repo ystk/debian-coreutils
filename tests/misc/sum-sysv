@@ -1,7 +1,7 @@
 #!/bin/sh
 # make sure `sum -s' works for input whose sum of bytes is larger than 2^32
 
-# Copyright (C) 2001-2004, 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2001-2004, 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,22 +16,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  sum --version
-fi
-
-: ${srcdir=.}
-. $srcdir/require-perl
-
 # Avoid a problem when run in a UTF-8 locale.
 # Otherwise, Perl would try to (and fail to) interpret
 # each string below as a sequence of multi-byte characters.
 LC_ALL=C
 export LC_ALL
 
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ sum
 
+require_perl_
 
 # FYI, 16843009 is floor (2^32 / 255).
 

@@ -1,5 +1,5 @@
 /* Create a hard link relative to open directories.
-   Copyright (C) 2009-2010 Free Software Foundation, Inc.
+   Copyright (C) 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -166,6 +166,36 @@ link_follow (char const *file1, char const *file2)
 }
 # endif /* 0 < LINK_FOLLOWS_SYMLINKS */
 
+/* On Solaris, link() doesn't follow symlinks by default, but does so as soon
+   as a library or executable takes part in the program that has been compiled
+   with "c99" or "cc -xc99=all" or "cc ... /usr/lib/values-xpg4.o ...".  */
+# if LINK_FOLLOWS_SYMLINKS == -1
+
+/* Reduce the penalty of link_immediate and link_follow by incorporating the
+   knowledge that link()'s behaviour depends on the __xpg4 variable.  */
+extern int __xpg4;
+
+static int
+solaris_optimized_link_immediate (char const *file1, char const *file2)
+{
+  if (__xpg4 == 0)
+    return link (file1, file2);
+  return link_immediate (file1, file2);
+}
+
+static int
+solaris_optimized_link_follow (char const *file1, char const *file2)
+{
+  if (__xpg4 != 0)
+    return link (file1, file2);
+  return link_follow (file1, file2);
+}
+
+#  define link_immediate solaris_optimized_link_immediate
+#  define link_follow solaris_optimized_link_follow
+
+# endif
+
 /* Create a link to FILE1, in the directory open on descriptor FD1, to FILE2,
    in the directory open on descriptor FD2.  If FILE1 is a symlink, FLAG
    controls whether to dereference FILE1 first.  If possible, do it without
@@ -262,13 +292,37 @@ linkat_follow (int fd1, char const *file1, int fd2, char const *file2)
 int
 rpl_linkat (int fd1, char const *file1, int fd2, char const *file2, int flag)
 {
-  if (!flag)
-    return linkat (fd1, file1, fd2, file2, flag);
   if (flag & ~AT_SYMLINK_FOLLOW)
     {
       errno = EINVAL;
       return -1;
     }
+
+# if LINKAT_TRAILING_SLASH_BUG
+  /* Reject trailing slashes on non-directories.  */
+  {
+    size_t len1 = strlen (file1);
+    size_t len2 = strlen (file2);
+    if ((len1 && file1[len1 - 1] == '/')
+        || (len2 && file2[len2 - 1] == '/'))
+      {
+        /* Let linkat() decide whether hard-linking directories is legal.
+           If fstatat() fails, then linkat() should fail for the same reason;
+           if fstatat() succeeds, require a directory.  */
+        struct stat st;
+        if (fstatat (fd1, file1, &st, flag ? 0 : AT_SYMLINK_NOFOLLOW))
+          return -1;
+        if (!S_ISDIR (st.st_mode))
+          {
+            errno = ENOTDIR;
+            return -1;
+          }
+      }
+  }
+# endif
+
+  if (!flag)
+    return linkat (fd1, file1, fd2, file2, flag);
 
   /* Cache the information on whether the system call really works.  */
   {

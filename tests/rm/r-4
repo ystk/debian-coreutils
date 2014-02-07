@@ -1,7 +1,7 @@
 #!/bin/sh
 # Try to remove '.' and '..' recursively.
 
-# Copyright (C) 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,15 +16,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  rm --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ rm
 
-. $srcdir/test-lib.sh
-
-mkdir d || framework_failure
-touch d/a || framework_failure
+mkdir d || framework_failure_
+touch d/a || framework_failure_
 
 rm -fr d/. 2>/dev/null && fail=1
 rm -fr d/./ 2>/dev/null && fail=1

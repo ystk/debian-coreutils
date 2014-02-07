@@ -1,5 +1,5 @@
 /* pr -- convert text files for printing.
-   Copyright (C) 1988, 1991, 1995-2010 Free Software Foundation, Inc.
+   Copyright (C) 1988, 1991, 1995-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -314,6 +314,7 @@
 #include <sys/types.h>
 #include "system.h"
 #include "error.h"
+#include "fadvise.h"
 #include "hard-locale.h"
 #include "mbswidth.h"
 #include "quote.h"
@@ -772,7 +773,7 @@ static struct option const long_options[] =
 /* Return the number of columns that have either an open file or
    stored lines. */
 
-static int
+static int _GL_ATTRIBUTE_PURE
 cols_ready_to_print (void)
 {
   COLUMN *q;
@@ -876,7 +877,7 @@ main (int argc, char **argv)
                 ? xmalloc ((argc - 1) * sizeof (char *))
                 : NULL);
 
-  for (;;)
+  while (true)
     {
       int oi = -1;
       int c = getopt_long (argc, argv, short_options, long_options, &oi);
@@ -1164,7 +1165,7 @@ main (int argc, char **argv)
         print_files (n_files, file_names);
       else
         {
-          int i;
+          unsigned int i;
           for (i = 0; i < n_files; i++)
             print_files (1, &file_names[i]);
         }
@@ -1507,6 +1508,7 @@ open_file (char *name, COLUMN *p)
         error (0, errno, "%s", name);
       return false;
     }
+  fadvise (p->fp, FADVISE_SEQUENTIAL);
   p->status = OPEN;
   p->full_page_printed = false;
   ++total_files;
@@ -1885,7 +1887,7 @@ print_page (void)
       print_a_FF = false;
     }
 
-  if (last_page_number < page_number)
+  if (last_page_number < ++page_number)
     return false;		/* Stop printing with LAST_PAGE */
 
   reset_status ();		/* Change ON_HOLD to OPEN. */
@@ -2397,7 +2399,7 @@ print_header (void)
   /* The translator must ensure that formatting the translation of
      "Page %"PRIuMAX does not generate more than (sizeof page_text - 1)
      bytes.  */
-  sprintf (page_text, _("Page %"PRIuMAX), page_number++);
+  sprintf (page_text, _("Page %"PRIuMAX), page_number);
   available_width = header_width_available - mbswidth (page_text, 0);
   available_width = MAX (0, available_width);
   lhs_spaces = available_width >> 1;
@@ -2437,7 +2439,7 @@ static bool
 read_line (COLUMN *p)
 {
   int c;
-  int chars IF_LINT (= 0);
+  int chars IF_LINT ( = 0);
   int last_input_position;
   int j, k;
   COLUMN *q;
@@ -2526,7 +2528,7 @@ read_line (COLUMN *p)
 
   print_clump (p, chars, clump_buff);
 
-  for (;;)
+  while (true)
     {
       c = getc (p->fp);
 
@@ -2693,7 +2695,7 @@ char_to_clump (char c)
               width = 2;
               chars = 2;
               *s++ = '^';
-              *s++ = c ^ 0100;
+              *s = c ^ 0100;
             }
           else
             {

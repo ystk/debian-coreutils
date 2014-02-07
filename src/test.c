@@ -2,7 +2,7 @@
 
 /* Modified to run with the GNU shell by bfox. */
 
-/* Copyright (C) 1987-2005, 2007-2010 Free Software Foundation, Inc.
+/* Copyright (C) 1987-2005, 2007-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -173,7 +173,8 @@ get_mtime (char const *filename, struct timespec *mtime)
 static bool
 binop (char const *s)
 {
-  return ((STREQ (s,   "=")) || (STREQ (s,  "!=")) || (STREQ (s, "-nt")) ||
+  return ((STREQ (s,   "=")) || (STREQ (s,  "!=")) || (STREQ (s, "==")) ||
+          (STREQ (s,   "-nt")) ||
           (STREQ (s, "-ot")) || (STREQ (s, "-ef")) || (STREQ (s, "-eq")) ||
           (STREQ (s, "-ne")) || (STREQ (s, "-lt")) || (STREQ (s, "-le")) ||
           (STREQ (s, "-gt")) || (STREQ (s, "-ge")));
@@ -360,7 +361,8 @@ binary_operator (bool l_is_l)
       test_syntax_error (_("unknown binary operator"), argv[op]);
     }
 
-  if (argv[op][0] == '=' && !argv[op][1])
+  if (argv[op][0] == '=' && (!argv[op][1] ||
+       ((argv[op][1] == '=') && !argv[op][2])))
     {
       bool value = STREQ (argv[pos], argv[pos + 2]);
       pos += 3;
@@ -511,7 +513,7 @@ and (void)
 {
   bool value = true;
 
-  for (;;)
+  while (true)
     {
       value &= term ();
       if (! (pos < argc && STREQ (argv[pos], "-a")))
@@ -530,7 +532,7 @@ or (void)
 {
   bool value = false;
 
-  for (;;)
+  while (true)
     {
       value |= and ();
       if (! (pos < argc && STREQ (argv[pos], "-o")))

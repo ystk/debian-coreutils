@@ -1,5 +1,5 @@
 /* cp.c  -- file copying (main routines)
-   Copyright (C) 1989-1991, 1995-2010 Free Software Foundation, Inc.
+   Copyright (C) 1989-1991, 1995-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -72,7 +72,8 @@ struct dir_attr
    non-character as a pseudo short option, starting with CHAR_MAX + 1.  */
 enum
 {
-  COPY_CONTENTS_OPTION = CHAR_MAX + 1,
+  ATTRIBUTES_ONLY_OPTION = CHAR_MAX + 1,
+  COPY_CONTENTS_OPTION,
   NO_PRESERVE_ATTRIBUTES_OPTION,
   PARENTS_OPTION,
   PRESERVE_ATTRIBUTES_OPTION,
@@ -115,6 +116,7 @@ ARGMATCH_VERIFY (reflink_type_string, reflink_type);
 static struct option const long_opts[] =
 {
   {"archive", no_argument, NULL, 'a'},
+  {"attributes-only", no_argument, NULL, ATTRIBUTES_ONLY_OPTION},
   {"backup", optional_argument, NULL, 'b'},
   {"copy-contents", no_argument, NULL, COPY_CONTENTS_OPTION},
   {"dereference", no_argument, NULL, 'L'},
@@ -167,21 +169,25 @@ Mandatory arguments to long options are mandatory for short options too.\n\
 "), stdout);
       fputs (_("\
   -a, --archive                same as -dR --preserve=all\n\
-      --backup[=CONTROL]       make a backup of each existing destination file\n\
+      --attributes-only        don't copy the file data, just the attributes\n\
+      --backup[=CONTROL]       make a backup of each existing destination file\
+\n\
   -b                           like --backup but does not accept an argument\n\
       --copy-contents          copy contents of special files when recursive\n\
   -d                           same as --no-dereference --preserve=links\n\
 "), stdout);
       fputs (_("\
   -f, --force                  if an existing destination file cannot be\n\
-                                 opened, remove it and try again (redundant if\n\
+                                 opened, remove it and try again (redundant if\
+\n\
                                  the -n option is used)\n\
-  -i, --interactive            prompt before overwrite (overrides a previous -n\n\
+  -i, --interactive            prompt before overwrite (overrides a previous -n\
+\n\
                                   option)\n\
   -H                           follow command-line symbolic links in SOURCE\n\
 "), stdout);
       fputs (_("\
-  -l, --link                   link files instead of copying\n\
+  -l, --link                   hard link files instead of copying\n\
   -L, --dereference            always follow symbolic links in SOURCE\n\
 "), stdout);
       fputs (_("\
@@ -193,7 +199,8 @@ Mandatory arguments to long options are mandatory for short options too.\n\
   -p                           same as --preserve=mode,ownership,timestamps\n\
       --preserve[=ATTR_LIST]   preserve the specified attributes (default:\n\
                                  mode,ownership,timestamps), if possible\n\
-                                 additional attributes: context, links, xattr,\n\
+                                 additional attributes: context, links, xattr,\
+\n\
                                  all\n\
 "), stdout);
       fputs (_("\
@@ -204,8 +211,8 @@ Mandatory arguments to long options are mandatory for short options too.\n\
   -R, -r, --recursive          copy directories recursively\n\
       --reflink[=WHEN]         control clone/CoW copies. See below\n\
       --remove-destination     remove each existing destination file before\n\
-                                 attempting to open it (contrast with --force)\n\
-"), stdout);
+                                 attempting to open it (contrast with --force)\
+\n"), stdout);
       fputs (_("\
       --sparse=WHEN            control creation of sparse files. See below\n\
       --strip-trailing-slashes  remove any trailing slashes from each SOURCE\n\
@@ -405,7 +412,7 @@ make_dir_parents_private (char const *const_dir, size_t src_offset,
         slash++;
       while ((slash = strchr (slash, '/')))
         {
-          struct dir_attr *new IF_LINT (= NULL);
+          struct dir_attr *new IF_LINT ( = NULL);
           bool missing_dir;
 
           *slash = '\0';
@@ -601,6 +608,8 @@ do_copy (int n_files, char **file, const char *target_directory,
           error (0, 0, _("extra operand %s"), quote (file[2]));
           usage (EXIT_FAILURE);
         }
+      /* Update NEW_DST and SB, which may be checked below.  */
+      ignore_value (target_directory_operand (file[n_files -1], &sb, &new_dst));
     }
   else if (!target_directory)
     {
@@ -781,6 +790,7 @@ cp_option_init (struct cp_options *x)
   x->reduce_diagnostics = false;
   x->require_preserve_xattr = false;
 
+  x->data_copy_required = true;
   x->require_preserve = false;
   x->recursive = false;
   x->sparse_mode = SPARSE_AUTO;
@@ -942,7 +952,8 @@ main (int argc, char **argv)
                                        reflink_type_string, reflink_type);
           break;
 
-        case 'a':		/* Like -dR --preserve=all with reduced failure diagnostics. */
+        case 'a':
+          /* Like -dR --preserve=all with reduced failure diagnostics.  */
           x.dereference = DEREF_NEVER;
           x.preserve_links = true;
           x.preserve_ownership = true;
@@ -960,6 +971,10 @@ main (int argc, char **argv)
           make_backups = true;
           if (optarg)
             version_control_string = optarg;
+          break;
+
+        case ATTRIBUTES_ONLY_OPTION:
+          x.data_copy_required = false;
           break;
 
         case COPY_CONTENTS_OPTION:

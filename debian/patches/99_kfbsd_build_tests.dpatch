@@ -21,17 +21,17 @@ diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' 
          delay = (st1.st_mtime & 1) ? 1000000 : 2000000;
      }
    usleep (delay);
-diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' coreutils-8.4~/tests/test-lib.sh coreutils-8.4/tests/test-lib.sh
---- coreutils-8.4~/tests/test-lib.sh	2010-01-03 12:06:20.000000000 -0500
-+++ coreutils-8.4/tests/test-lib.sh	2010-03-05 20:58:55.279913357 -0500
-@@ -330,6 +330,10 @@
+--- coreutils-8.13/tests/init.cfg.org   2011-09-11 20:55:08.767279905 -0400
++++ coreutils-8.13/tests/init.cfg       2011-09-11 20:55:57.931763798 -0400
+@@ -393,6 +393,10 @@
  # the setgid bit set.
  skip_if_setgid_()
  {
-+  if [ `uname -s` = 'GNU/kFreeBSD' ]; then 
-+	skip_test_ 'GNU/kFreeBSD uses sgid directory behavior'
++  if [ `uname -s` = 'GNU/kFreeBSD' ]; then
++      skip_ 'GNU/kFreeBSD uses sgid directory behavior'
 +  fi
-+
++ 
    setgid_tmpdir=setgid-$$
    (umask 77; mkdir $setgid_tmpdir)
    perms=$(stat --printf %A $setgid_tmpdir)
+

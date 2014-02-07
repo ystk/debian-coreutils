@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Test "date".
 
-# Copyright (C) 2005-2010 Free Software Foundation, Inc.
+# Copyright (C) 2005-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -73,6 +73,6 @@ my $fail = run_tests ($ME, $prog, \@Tests, $save_temps, $verbose);
 # Skip the test if the starting and stopping day numbers differ.
 my @d_post = localtime (time);
 $d_post[7] == $d[7]
-  or (warn "$ME: test straddled a day boundary; skipped"), exit 77;
+  or CuSkip::skip "$ME: test straddled a day boundary; skipped";
 
 exit $fail;
