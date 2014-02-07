@@ -1,5 +1,5 @@
 /* Create a temporary file or directory, safely.
-   Copyright (C) 2007-2010 Free Software Foundation, Inc.
+   Copyright (C) 2007-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -71,6 +71,9 @@ usage (int status)
 Create a temporary file or directory, safely, and print its name.\n\
 TEMPLATE must contain at least 3 consecutive `X's in last component.\n\
 If TEMPLATE is not specified, use tmp.XXXXXXXXXX, and --tmpdir is implied.\n\
+"), stdout);
+      fputs (_("\
+Files are created u+rw, and directories u+rwx, minus umask restrictions.\n\
 "), stdout);
       fputs ("\n", stdout);
       fputs (_("\
@@ -341,7 +344,7 @@ main (int argc, char **argv)
       puts (dest_name);
       /* If we created a file, but then failed to output the file
          name, we should clean up the mess before failing.  */
-      if (!dry_run && (stdout_closed = true) && close_stream (stdout) != 0)
+      if (!dry_run && ((stdout_closed = true), close_stream (stdout) != 0))
         {
           int saved_errno = errno;
           remove (dest_name);

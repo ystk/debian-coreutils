@@ -1,7 +1,7 @@
 #!/bin/sh
 # make sure ls -L always follows symlinks
 
-# Copyright (C) 2000, 2002, 2004, 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2000, 2002, 2004, 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,23 +16,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  ls --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ ls
 
 # Isolate output files from directory being listed
-mkdir dir dir/sub dir1 || framework_failure
-cd dir || framework_failure
-ln -s link link || framework_failure
-ln -s ../../dir1 sub/link-to-dir || framework_failure
+mkdir dir dir/sub dir1 || framework_failure_
+cd dir || framework_failure_
+ln -s link link || framework_failure_
+ln -s ../../dir1 sub/link-to-dir || framework_failure_
 
 # Make sure the symlink was created.
 # `ln -s link link' succeeds, but creates no file on
 # systems running some DJGPP-2.03 libc.
-ls -F link > /dev/null || framework_failure
+ls -F link > /dev/null || framework_failure_
 
 
 # When explicitly listing a broken link, the command must fail.

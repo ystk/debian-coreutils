@@ -1,7 +1,7 @@
 /* -*- buffer-read-only: t -*- vi: set ro: */
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Test of xvasprintf() and xasprintf() functions.
-   Copyright (C) 2007-2010 Free Software Foundation, Inc.
+   Copyright (C) 2007-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -57,7 +57,7 @@ test_xvasprintf (void)
 
   {
     /* Silence gcc warning about zero-length format string.  */
-    char *empty = "";
+    const char *empty = "";
     result = my_xasprintf (empty);
     ASSERT (result != NULL);
     ASSERT (strcmp (result, "") == 0);
@@ -81,7 +81,7 @@ test_xvasprintf (void)
 }
 
 static void
-test_xasprintf ()
+test_xasprintf (void)
 {
   int repeat;
   char *result;
@@ -96,7 +96,7 @@ test_xasprintf ()
 
   {
     /* Silence gcc warning about zero-length format string.  */
-    char *empty = "";
+    const char *empty = "";
     result = xasprintf (empty);
     ASSERT (result != NULL);
     ASSERT (strcmp (result, "") == 0);

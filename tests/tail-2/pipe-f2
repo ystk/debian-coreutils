@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure that "tail -f fifo" tails indefinitely.
 
-# Copyright (C) 2009-2010 Free Software Foundation, Inc.
+# Copyright (C) 2009-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,19 +16,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  tail --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ tail
 
 mkfifo_or_skip_ fifo
 
 echo 1 > fifo &
-echo 1 > exp || framework_failure
+echo 1 > exp || framework_failure_
 
-timeout 1 tail -f fifo > out
+timeout 10 tail -f fifo > out
 test $? = 124 || fail=1
 
 compare out exp || fail=1

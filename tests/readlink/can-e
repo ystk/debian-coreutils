@@ -1,7 +1,7 @@
 #!/bin/sh
 # tests for canonicalize-existing mode (readlink -e).
 
-# Copyright (C) 2004, 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2004, 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,29 +16,25 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  readlink --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ readlink
 
 pwd=`pwd`
 my_pwd=$("$abs_top_builddir/src/pwd")
 tmp=d
 
-mkdir $tmp || framework_failure
-cd $tmp || framework_failure
+mkdir $tmp || framework_failure_
+cd $tmp || framework_failure_
 
-mkdir subdir removed || framework_failure
-touch regfile || framework_failure
+mkdir subdir removed || framework_failure_
+touch regfile || framework_failure_
 
-ln -s regfile link1 || framework_failure
-ln -s subdir link2 || framework_failure
-ln -s missing link3 || framework_failure
-ln -s subdir/missing link4 || framework_failure
+ln -s regfile link1 || framework_failure_
+ln -s subdir link2 || framework_failure_
+ln -s missing link3 || framework_failure_
+ln -s subdir/missing link4 || framework_failure_
 
-cd "$pwd/$tmp/removed" || framework_failure
+cd "$pwd/$tmp/removed" || framework_failure_
 
 # Skip this test if the system doesn't let you remove the working directory.
 if rmdir ../removed 2>/dev/null; then

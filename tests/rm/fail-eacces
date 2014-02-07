@@ -4,7 +4,7 @@
 # With the symlink, rm from coreutils-6.9 would fail with a misleading
 # ELOOP diagnostic.
 
-# Copyright (C) 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,12 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  rm --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ rm
 skip_if_root_
 
 ok=0
@@ -33,13 +29,13 @@ mkdir d           &&
   ln -s f d/slink &&
   chmod a-w d     &&
   ok=1
-test $ok = 1 || framework_failure
+test $ok = 1 || framework_failure_
 
 mkdir e           &&
   ln -s f e/slink &&
   chmod a-w e     &&
   ok=1
-test $ok = 1 || framework_failure
+test $ok = 1 || framework_failure_
 
 
 rm -rf d/f 2> out && fail=1

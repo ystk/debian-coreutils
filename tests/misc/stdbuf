@@ -1,7 +1,7 @@
 #!/bin/sh
 # Exercise stdbuf functionality
 
-# Copyright (C) 2009-2010 Free Software Foundation, Inc.
+# Copyright (C) 2009-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,21 +16,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ stdbuf mv
+
 getlimits_
 require_built_ stdbuf
 
-if test "$VERBOSE" = yes; then
-  set -x
-  stdbuf --version
-fi
-
-# stdbuf fails when the absolute top build dir name contains e.g., space, TAB, NL
+# stdbuf fails when the absolute top build dir name contains e.g.,
+# space, TAB, NL
 lf='
 '
 case $abs_top_builddir in
   *[\\\"\#\$\&\'\`$lf\ \	]*)
-    skip_test_ "unsafe absolute build directory name: $abs_top_builddir";;
+    skip_ "unsafe absolute build directory name: $abs_top_builddir";;
 esac
 
 # Use a fifo rather than a pipe in the tests below
@@ -38,7 +36,7 @@ esac
 # consumer (dd) opens the fifo therefore increasing
 # the chance that dd will read the data from each
 # write separately.
-mkfifo fifo || framework_failure
+mkfifo_or_skip_ fifo
 
 
 # Verify input parameter checking
@@ -59,18 +57,32 @@ stdbuf -o1 no_such # no such command
 test $? = 127 || fail=1
 
 # Ensure line buffering stdout takes effect
-printf '1\n' > exp
-dd count=1 if=fifo > out 2> err &
-(printf '1\n'; sleep .2; printf '2\n') | stdbuf -oL uniq > fifo
-wait # for dd to complete
-compare out exp || fail=1
+stdbuf_linebuffer()
+{
+  local delay="$1"
 
-# Ensure un buffering stdout takes effect
-printf '1\n' > exp
-dd count=1 if=fifo > out 2> err &
-(printf '1\n'; sleep .2; printf '2\n') | stdbuf -o0 uniq > fifo
-wait # for dd to complete
-compare out exp || fail=1
+  printf '1\n' > exp
+  dd count=1 if=fifo > out 2> err &
+  (printf '1\n'; sleep $delay; printf '2\n') | stdbuf -oL uniq > fifo
+  wait # for dd to complete
+  compare out exp
+}
+
+retry_delay_ stdbuf_linebuffer .1 6 || fail=1
+
+stdbuf_unbuffer()
+{
+  local delay="$1"
+
+  # Ensure un buffering stdout takes effect
+  printf '1\n' > exp
+  dd count=1 if=fifo > out 2> err &
+  (printf '1\n'; sleep $delay; printf '2\n') | stdbuf -o0 uniq > fifo
+  wait # for dd to complete
+  compare out exp
+}
+
+retry_delay_ stdbuf_unbuffer .1 6 || fail=1
 
 # Ensure un buffering stdin takes effect
 #  The following works for me, but is racy. I.E. we're depending
@@ -92,11 +104,18 @@ compare out exp || fail=1
 
 # Ensure block buffering stdout takes effect
 # We don't currently test block buffering failures as
-# this doesn't work on on GLIBC-2.7 or GLIBC-2.9 at least.
-   # printf '1\n2\n' > exp
-   # dd count=1 if=fifo > out 2> err &
-   # (printf '1\n'; sleep .2; printf '2\n') | stdbuf -o4 uniq > fifo
-   # wait # for dd to complete
-   # compare out exp || fail=1
+# this doesn't work on GLIBC-2.7 or GLIBC-2.9 at least.
+   # stdbuf_blockbuffer()
+   # {
+   #   local delay="$1"
+   #
+   #   printf '1\n2\n' > exp
+   #   dd count=1 if=fifo > out 2> err &
+   #   (printf '1\n'; sleep $delay; printf '2\n') | stdbuf -o4 uniq > fifo
+   #   wait # for dd to complete
+   #   compare out exp
+   # }
+   #
+   # retry_delay_ stdbuf_blockbuffer .1 6 || fail=1
 
 Exit $fail

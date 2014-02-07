@@ -1,11 +1,11 @@
-# serial 31
+# serial 34
 
 dnl From Jim Meyering.
 dnl Check for the nanosleep function.
 dnl If not found, use the supplied replacement.
 dnl
 
-# Copyright (C) 1999-2001, 2003-2010 Free Software Foundation, Inc.
+# Copyright (C) 1999-2001, 2003-2011 Free Software Foundation, Inc.
 
 # This file is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
@@ -58,7 +58,7 @@ AC_DEFUN([gl_FUNC_NANOSLEEP],
           #define TYPE_MAXIMUM(t) \
             ((t) (! TYPE_SIGNED (t) \
                   ? (t) -1 \
-                  : ~ (~ (t) 0 << (sizeof (t) * CHAR_BIT - 1))))
+                  : ((((t) 1 << (sizeof (t) * CHAR_BIT - 2)) - 1) * 2 + 1)))
 
           static void
           check_for_SIGALRM (int sig)
@@ -74,7 +74,7 @@ AC_DEFUN([gl_FUNC_NANOSLEEP],
             static struct timespec ts_remaining;
             static struct sigaction act;
             if (! nanosleep)
-              return 1;
+              return 2;
             act.sa_handler = check_for_SIGALRM;
             sigemptyset (&act.sa_mask);
             sigaction (SIGALRM, &act, NULL);
@@ -82,18 +82,21 @@ AC_DEFUN([gl_FUNC_NANOSLEEP],
             ts_sleep.tv_nsec = 1;
             alarm (1);
             if (nanosleep (&ts_sleep, NULL) != 0)
-              return 1;
+              return 3;
             ts_sleep.tv_sec = TYPE_MAXIMUM (time_t);
             ts_sleep.tv_nsec = 999999999;
             alarm (1);
-            if (nanosleep (&ts_sleep, &ts_remaining) == -1 && errno == EINTR
-                && TYPE_MAXIMUM (time_t) - 10 < ts_remaining.tv_sec)
-              return 0;
-            return 119;
+            if (nanosleep (&ts_sleep, &ts_remaining) != -1)
+              return 4;
+            if (errno != EINTR)
+              return 5;
+            if (ts_remaining.tv_sec <= TYPE_MAXIMUM (time_t) - 10)
+              return 6;
+            return 0;
           }]])],
        [gl_cv_func_nanosleep=yes],
        [case $? in dnl (
-        119) gl_cv_func_nanosleep='no (mishandles large arguments)';; dnl (
+        4|5|6) gl_cv_func_nanosleep='no (mishandles large arguments)';; dnl (
         *)   gl_cv_func_nanosleep=no;;
         esac],
        [gl_cv_func_nanosleep=cross-compiling])
@@ -118,10 +121,6 @@ AC_DEFUN([gl_FUNC_NANOSLEEP],
    HAVE_NANOSLEEP=0
  fi
  LIBS=$nanosleep_save_libs
- if test $HAVE_NANOSLEEP = 0 || test $REPLACE_NANOSLEEP = 1; then
-   AC_LIBOBJ([nanosleep])
-   gl_PREREQ_NANOSLEEP
- fi
 ])
 
 # Prerequisites of lib/nanosleep.c.

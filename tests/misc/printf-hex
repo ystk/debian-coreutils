@@ -1,7 +1,7 @@
 #!/bin/sh
 # make sure that only two hex. digits are consumed in a \xHHH sequence
 
-# Copyright (C) 2002, 2004, 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2002, 2004, 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,18 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-prog="$abs_top_builddir/src/printf"
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ printf
 
-if test "$VERBOSE" = yes; then
-  set -x
-  "$prog" --version
-fi
-
-. $srcdir/test-lib.sh
-
-
-
-"$prog" '\x7e3\n' > out || fail=1
+env printf '\x7e3\n' > out || fail=1
 cat <<\EOF > exp
 ~3
 EOF

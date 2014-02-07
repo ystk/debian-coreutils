@@ -1,7 +1,7 @@
 /* -*- buffer-read-only: t -*- vi: set ro: */
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Test the priv-set module.
-   Copyright (C) 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 
 #include "priv-set.h"
 
-#if HAVE_GETPPRIV
+#if HAVE_GETPPRIV && HAVE_PRIV_H
 # include <priv.h>
 #endif
 #include <unistd.h>
@@ -34,7 +34,7 @@
 int
 main (void)
 {
-#if HAVE_GETPPRIV
+#if HAVE_GETPPRIV && HAVE_PRIV_H
     priv_set_t *set;
 
     ASSERT (set = priv_allocset ());

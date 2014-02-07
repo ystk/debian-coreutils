@@ -1,7 +1,7 @@
 #!/bin/sh
 # Confirm that copying a directory into itself gets a proper diagnostic.
 
-# Copyright (C) 2001-2002, 2004, 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2001-2002, 2004, 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,14 +21,10 @@
 # Now it gives this:
 #   cp: can't copy a directory `dir' into itself `dir/dir'
 
-if test "$VERBOSE" = yes; then
-  set -x
-  cp --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ cp
 
-. $srcdir/test-lib.sh
-
-mkdir a dir || framework_failure
+mkdir a dir || framework_failure_
 
 
 # This command should exit nonzero.

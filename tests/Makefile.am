@@ -7,14 +7,19 @@ ASSORT = LC_ALL=C sort
 
 EXTRA_DIST =		\
   Coreutils.pm		\
+  CuSkip.pm		\
   CuTmpdir.pm		\
   check.mk		\
+  d_type-check		\
   envvar-check		\
+  filefrag-extent-compare \
+  fiemap-capable	\
+  init.cfg		\
+  init.sh		\
   lang-default		\
   other-fs-tmpdir	\
-  require-perl		\
   sample-test		\
-  test-lib.sh		\
+  shell-or-perl		\
   $(pr_data)
 
 root_tests =					\
@@ -24,6 +29,7 @@ root_tests =					\
   cp/special-bits				\
   cp/cp-mv-enotsup-xattr			\
   cp/capability					\
+  cp/sparse-fiemap				\
   dd/skip-seek-past-dev				\
   install/install-C-root			\
   ls/capability					\
@@ -82,6 +88,7 @@ TESTS =						\
   cp/link-heap					\
   tail-2/inotify-hash-abuse			\
   tail-2/inotify-hash-abuse2			\
+  tail-2/F-vs-missing				\
   tail-2/F-vs-rename				\
   tail-2/inotify-rotate				\
   chmod/no-x					\
@@ -127,6 +134,7 @@ TESTS =						\
   rm/unread3					\
   rm/unreadable					\
   rm/v-slash					\
+  rm/many-dir-entries-vs-OOM			\
   chgrp/default-no-deref			\
   chgrp/deref					\
   chgrp/no-x					\
@@ -147,6 +155,7 @@ TESTS =						\
   misc/xstrtol					\
   tail-2/pid					\
   misc/od					\
+  misc/od-float					\
   misc/mktemp					\
   misc/arch					\
   misc/pr					\
@@ -154,7 +163,6 @@ TESTS =						\
   pr/pr-tests					\
   misc/df-P					\
   misc/pwd-option				\
-  misc/pwd-unreadable-parent			\
   misc/chcon-fail				\
   misc/cut					\
   misc/wc					\
@@ -169,6 +177,8 @@ TESTS =						\
   misc/chroot-fail				\
   misc/comm					\
   misc/csplit					\
+  misc/csplit-1000				\
+  misc/csplit-heap				\
   misc/date-sec					\
   misc/dircolors				\
   misc/df					\
@@ -221,19 +231,36 @@ TESTS =						\
   misc/shred-remove				\
   misc/shuf					\
   misc/sort					\
+  misc/sort-benchmark-random			\
   misc/sort-compress				\
+  misc/sort-compress-hang			\
+  misc/sort-compress-proc			\
   misc/sort-continue				\
+  misc/sort-debug-keys				\
+  misc/sort-debug-warn				\
   misc/sort-files0-from				\
+  misc/sort-float				\
   misc/sort-merge				\
   misc/sort-merge-fdlimit			\
   misc/sort-month				\
   misc/sort-rand				\
+  misc/sort-spinlock-abuse			\
+  misc/sort-stale-thread-mem			\
+  misc/sort-unique				\
+  misc/sort-unique-segv				\
   misc/sort-version				\
-  misc/split-a					\
-  misc/split-fail				\
-  misc/split-l					\
+  split/filter					\
+  split/suffix-length				\
+  split/b-chunk					\
+  split/fail					\
+  split/lines					\
+  split/l-chunk					\
+  split/r-chunk					\
+  misc/stat-birthtime				\
   misc/stat-fmt					\
   misc/stat-hyphen				\
+  misc/stat-mount				\
+  misc/stat-nanoseconds				\
   misc/stat-printf				\
   misc/stat-slash				\
   misc/stdbuf					\
@@ -250,8 +277,10 @@ TESTS =						\
   misc/tee-dash					\
   misc/test-diag				\
   misc/timeout					\
+  misc/timeout-group				\
   misc/timeout-parameters			\
   misc/tr					\
+  misc/tr-case-class				\
   misc/truncate-dangling-symlink		\
   misc/truncate-dir-fail			\
   misc/truncate-fail-diag			\
@@ -264,6 +293,7 @@ TESTS =						\
   misc/tty-eof					\
   misc/unexpand					\
   misc/uniq					\
+  misc/uniq-perf				\
   misc/xattr					\
   tail-2/wait					\
   chmod/c-option				\
@@ -293,13 +323,18 @@ TESTS =						\
   cp/dir-rm-dest				\
   cp/dir-slash					\
   cp/dir-vs-file				\
+  cp/existing-perm-dir				\
   cp/existing-perm-race				\
   cp/fail-perm					\
+  cp/fiemap-empty                               \
+  cp/fiemap-perf                                \
+  cp/fiemap-2                                   \
   cp/file-perm-race				\
   cp/into-self					\
   cp/link					\
   cp/link-no-deref				\
   cp/link-preserve				\
+  cp/link-symlink				\
   cp/no-deref-link1				\
   cp/no-deref-link2				\
   cp/no-deref-link3				\
@@ -307,6 +342,7 @@ TESTS =						\
   cp/parent-perm-race				\
   cp/perm					\
   cp/preserve-2					\
+  cp/preserve-link				\
   cp/preserve-slink-time			\
   cp/proc-short-read				\
   cp/proc-zero-len				\
@@ -316,6 +352,7 @@ TESTS =						\
   cp/same-file					\
   cp/slink-2-slink				\
   cp/sparse					\
+  cp/sparse-to-pipe				\
   cp/special-f					\
   cp/src-base-dot				\
   cp/symlink-slash				\
@@ -323,6 +360,7 @@ TESTS =						\
   df/unreadable					\
   dd/direct					\
   dd/misc					\
+  dd/nocache					\
   dd/not-rewound				\
   dd/reblock					\
   dd/skip-seek					\
@@ -335,17 +373,21 @@ TESTS =						\
   du/2g						\
   du/8gb					\
   du/basic					\
+  du/bigtime					\
   du/deref					\
   du/deref-args					\
   du/exclude					\
   du/fd-leak					\
   du/files0-from				\
+  du/files0-from-dir				\
   du/hard-link					\
   du/inacc-dest					\
   du/inacc-dir					\
   du/inaccessible-cwd				\
   du/long-from-unreadable			\
   du/long-sloop					\
+  du/max-depth					\
+  du/move-dir-while-traversing			\
   du/no-deref					\
   du/no-x					\
   du/one-file-system				\
@@ -389,6 +431,7 @@ TESTS =						\
   ls/rt-1					\
   ls/stat-dtype					\
   ls/stat-failed				\
+  ls/stat-free-color				\
   ls/stat-free-symlinks				\
   ls/stat-vs-dirent				\
   ls/symlink-slash				\
@@ -453,6 +496,7 @@ TESTS =						\
   tail-2/assert-2				\
   tail-2/big-4gb				\
   tail-2/flush-initial				\
+  tail-2/follow-name				\
   tail-2/follow-stdin				\
   tail-2/pipe-f					\
   tail-2/pipe-f2				\

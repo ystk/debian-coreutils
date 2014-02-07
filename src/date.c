@@ -1,5 +1,5 @@
 /* date - print or set the system date and time
-   Copyright (C) 1989-2010 Free Software Foundation, Inc.
+   Copyright (C) 1989-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 #include "system.h"
 #include "argmatch.h"
 #include "error.h"
-#include "getdate.h"
+#include "parse-datetime.h"
 #include "posixtm.h"
 #include "quote.h"
 #include "stat-time.h"
@@ -163,7 +163,7 @@ FORMAT controls the output.  Interpreted sequences are:\n\
 "), stdout);
       fputs (_("\
   %C   century; like %Y, except omit last two digits (e.g., 20)\n\
-  %d   day of month (e.g, 01)\n\
+  %d   day of month (e.g., 01)\n\
   %D   date; same as %m/%d/%y\n\
   %e   day of month, space padded; same as %_d\n\
 "), stdout);
@@ -179,8 +179,8 @@ FORMAT controls the output.  Interpreted sequences are:\n\
   %j   day of year (001..366)\n\
 "), stdout);
       fputs (_("\
-  %k   hour ( 0..23)\n\
-  %l   hour ( 1..12)\n\
+  %k   hour, space padded ( 0..23); same as %_H\n\
+  %l   hour, space padded ( 1..12); same as %_I\n\
   %m   month (01..12)\n\
   %M   minute (00..59)\n\
 "), stdout);
@@ -212,8 +212,8 @@ FORMAT controls the output.  Interpreted sequences are:\n\
   %Y   year\n\
 "), stdout);
       fputs (_("\
-  %z   +hhmm numeric timezone (e.g., -0400)\n\
-  %:z  +hh:mm numeric timezone (e.g., -04:00)\n\
+  %z   +hhmm numeric time zone (e.g., -0400)\n\
+  %:z  +hh:mm numeric time zone (e.g., -04:00)\n\
   %::z  +hh:mm:ss numeric time zone (e.g., -04:00:00)\n\
   %:::z  numeric time zone with : to necessary precision (e.g., -04, +05:30)\n\
   %Z   alphabetic time zone abbreviation (e.g., EDT)\n\
@@ -235,6 +235,18 @@ After any flags comes an optional field width, as a decimal number;\n\
 then an optional modifier, which is either\n\
 E to use the locale's alternate representations if available, or\n\
 O to use the locale's alternate numeric symbols if available.\n\
+"), stdout);
+      fputs (_("\
+\n\
+Examples:\n\
+Convert seconds since the epoch (1970-01-01 UTC) to a date\n\
+  $ date --date='@2147483647'\n\
+\n\
+Show the time on the west coast of the US (use tzselect(1) to find TZ)\n\
+  $ TZ='America/Los_Angeles' date\n\
+\n\
+Show the local time for 9AM next Friday on the west coast of the US\n\
+  $ date --date='TZ=\"America/Los_Angeles\" 09:00 next Fri'\n\
 "), stdout);
       emit_ancillary_info ();
     }
@@ -281,7 +293,7 @@ batch_convert (const char *input_filename, const char *format)
           break;
         }
 
-      if (! get_date (&when, line, NULL))
+      if (! parse_datetime (&when, line, NULL))
         {
           if (line[line_length - 1] == '\n')
             line[line_length - 1] = '\0';
@@ -450,7 +462,7 @@ main (int argc, char **argv)
       if (! *format)
         {
           /* Do not wrap the following literal format string with _(...).
-             For example, suppose LC_ALL is unset, LC_TIME="POSIX",
+             For example, suppose LC_ALL is unset, LC_TIME=POSIX,
              and LANG="ko_KR".  In that case, POSIX says that LC_TIME
              determines the format and contents of date and time strings
              written by date, which means "date" must generate output
@@ -500,7 +512,7 @@ main (int argc, char **argv)
             {
               if (set_datestr)
                 datestr = set_datestr;
-              valid_date = get_date (&when, datestr, NULL);
+              valid_date = parse_datetime (&when, datestr, NULL);
             }
         }
 

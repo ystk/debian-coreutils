@@ -1,5 +1,5 @@
 /* cksum -- calculate and print POSIX checksums and sizes of files
-   Copyright (C) 1992, 1995-2006, 2008-2010 Free Software Foundation, Inc.
+   Copyright (C) 1992, 1995-2006, 2008-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include "system.h"
+#include "fadvise.h"
 #include "xfreopen.h"
 
 #ifdef CRCTAB
@@ -204,6 +205,8 @@ cksum (const char *file, bool print_name)
           return false;
         }
     }
+
+  fadvise (fp, FADVISE_SEQUENTIAL);
 
   while ((bytes_read = fread (buf, 1, BUFLEN, fp)) > 0)
     {

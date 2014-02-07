@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure that "rm -rf DIR-with-many-entries" is not O(N^2)
 
-# Copyright (C) 2008-2010 Free Software Foundation, Inc.
+# Copyright (C) 2008-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,12 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  rm --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ rm
 
 very_expensive_
 
@@ -45,13 +41,13 @@ n=400000
 # FIXME-maybe: try to find a suitable file system or allow
 # the user to specify it via an envvar.
 df -T -t ext3 -t ext4dev -t ext4 . \
-  || skip_test_ 'this test runs only on an ext3 or ext4 file system'
+  || skip_ 'this test runs only on an ext3 or ext4 file system'
 
 # Skip if there are too few inodes free.  Require some slack.
-free_inodes=$(stat -f --format=%d .) || framework_failure
+free_inodes=$(stat -f --format=%d .) || framework_failure_
 min_free_inodes=$(expr 12 \* $n / 10)
 test $min_free_inodes -lt $free_inodes \
-  || skip_test_ "too few free inodes on '.': $free_inodes;" \
+  || skip_ "too few free inodes on '.': $free_inodes;" \
       "this test requires at least $min_free_inodes"
 
 ok=0
@@ -63,7 +59,7 @@ mkdir d &&
     test -f $n &&
   cd .. &&
   ok=1
-test $ok = 1 || framework_failure
+test $ok = 1 || framework_failure_
 setup_duration=$(expr $(date +%s) - $start)
 echo creating a $n-entry directory took $setup_duration seconds
 

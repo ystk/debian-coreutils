@@ -2,7 +2,7 @@
 # For unwritable directory `d', `rmdir -p d d/e/f' would emit
 # diagnostics but would not fail.  Fixed in 5.1.2.
 
-# Copyright (C) 2004, 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2004, 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,15 +17,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  rmdir --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ rmdir
 
-. $srcdir/test-lib.sh
-
-mkdir d d/e d/e/f || framework_failure
-chmod a-w d || framework_failure
+mkdir d d/e d/e/f || framework_failure_
+chmod a-w d || framework_failure_
 
 
 # This rmdir command outputs two diagnostics.

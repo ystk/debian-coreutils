@@ -1,5 +1,5 @@
 /* GNU's who.
-   Copyright (C) 1992-2010 Free Software Foundation, Inc.
+   Copyright (C) 1992-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -48,10 +48,6 @@
   proper_name ("Joseph Arceneaux"), \
   proper_name ("David MacKenzie"), \
   proper_name ("Michael Stone")
-
-#ifndef MAXHOSTNAMELEN
-# define MAXHOSTNAMELEN 64
-#endif
 
 #ifdef RUN_LVL
 # define UT_TYPE_RUN_LVL(U) UT_TYPE_EQ (U, RUN_LVL)
@@ -410,7 +406,8 @@ print_user (const STRUCT_UTMP *utmp_ent, time_t boottime)
           if (hostlen < strlen (host) + strlen (display) + 4)
             {
               hostlen = strlen (host) + strlen (display) + 4;
-              hoststr = xrealloc (hoststr, hostlen);
+              free (hoststr);
+              hoststr = xmalloc (hostlen);
             }
           sprintf (hoststr, "(%s:%s)", host, display);
         }
@@ -419,7 +416,8 @@ print_user (const STRUCT_UTMP *utmp_ent, time_t boottime)
           if (hostlen < strlen (host) + 3)
             {
               hostlen = strlen (host) + 3;
-              hoststr = xrealloc (hoststr, hostlen);
+              free (hoststr);
+              hoststr = xmalloc (hostlen);
             }
           sprintf (hoststr, "(%s)", host);
         }
@@ -432,7 +430,8 @@ print_user (const STRUCT_UTMP *utmp_ent, time_t boottime)
       if (hostlen < 1)
         {
           hostlen = 1;
-          hoststr = xrealloc (hoststr, hostlen);
+          free (hoststr);
+          hoststr = xmalloc (hostlen);
         }
       *hoststr = '\0';
     }
@@ -585,7 +584,7 @@ scan_entries (size_t n, const STRUCT_UTMP *utmp_buf)
       ttyname_b = ttyname (STDIN_FILENO);
       if (!ttyname_b)
         return;
-      if (strncmp (ttyname_b, DEV_DIR_WITH_TRAILING_SLASH, DEV_DIR_LEN) == 0)
+      if (STRNCMP_LIT (ttyname_b, DEV_DIR_WITH_TRAILING_SLASH) == 0)
         ttyname_b += DEV_DIR_LEN;	/* Discard /dev/ prefix.  */
     }
 
@@ -789,9 +788,9 @@ main (int argc, char **argv)
           do_lookup = true;
           break;
 
-          case_GETOPT_HELP_CHAR;
+        case_GETOPT_HELP_CHAR;
 
-          case_GETOPT_VERSION_CHAR (PROGRAM_NAME, AUTHORS);
+        case_GETOPT_VERSION_CHAR (PROGRAM_NAME, AUTHORS);
 
         default:
           usage (EXIT_FAILURE);

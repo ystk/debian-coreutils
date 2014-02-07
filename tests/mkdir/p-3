@@ -3,7 +3,7 @@
 # causes immediate failure.  Also, ensure that we don't create
 # subsequent, relative command-line arguments in the wrong place.
 
-# Copyright (C) 2005-2010 Free Software Foundation, Inc.
+# Copyright (C) 2005-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,17 +18,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  mkdir --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ mkdir
 skip_if_root_
 
-mkdir no-access || framework_failure
-mkdir no-acce2s || framework_failure
-mkdir -p no-acce3s/d || framework_failure
+mkdir no-access || framework_failure_
+mkdir no-acce2s || framework_failure_
+mkdir -p no-acce3s/d || framework_failure_
 
 p=`pwd`
 (cd no-access && chmod 0 . && mkdir -p "$p/a/b" u/v) 2> /dev/null && fail=1
@@ -42,7 +38,7 @@ test -d "$p/b/b" && test -d "$p/z" || fail=1
 # whose parent is inaccessible.  coreutils 5.97 fails this test.
 # Perform this test only if "." is on a local file system.
 # Otherwise, it would fail e.g., on an NFS-mounted file system.
-if df --local . >/dev/null 2>&1; then
+if is_local_dir_ .; then
   (cd no-acce3s/d && chmod a-r . && chmod a-rx .. &&
       mkdir -p a/b "$p/b/c" d/e && test -d a/b && test -d d/e) || fail=1
   test -d "$p/b/c" || fail=1

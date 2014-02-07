@@ -1,5 +1,5 @@
 /* paste - merge lines of files
-   Copyright (C) 1997-2005, 2008-2010 Free Software Foundation, Inc.
+   Copyright (C) 1997-2005, 2008-2011 Free Software Foundation, Inc.
    Copyright (C) 1984 David M. Ihnat
 
    This program is free software: you can redistribute it and/or modify
@@ -42,6 +42,7 @@
 #include <sys/types.h>
 #include "system.h"
 #include "error.h"
+#include "fadvise.h"
 #include "quotearg.h"
 
 /* The official name of this program (e.g., no `g' prefix).  */
@@ -144,7 +145,7 @@ collapse_escapes (char const *strptr)
         }
     }
 
- done:;
+ done:
 
   delim_end = strout;
   return backslash_at_end ? 1 : 0;
@@ -211,6 +212,7 @@ paste_parallel (size_t nfiles, char **fnamptr)
             error (EXIT_FAILURE, errno, "%s", fnamptr[files_open]);
           else if (fileno (fileptr[files_open]) == STDIN_FILENO)
             opened_stdin = true;
+          fadvise (fileptr[files_open], FADVISE_SEQUENTIAL);
         }
     }
 
@@ -231,8 +233,8 @@ paste_parallel (size_t nfiles, char **fnamptr)
 
       for (i = 0; i < nfiles && files_open; i++)
         {
-          int chr IF_LINT (= 0);	/* Input character. */
-          int err IF_LINT (= 0);	/* Input errno value.  */
+          int chr IF_LINT ( = 0);	/* Input character. */
+          int err IF_LINT ( = 0);	/* Input errno value.  */
           size_t line_length = 0;	/* Number of chars in line. */
 
           if (fileptr[i])
@@ -367,6 +369,7 @@ paste_serial (size_t nfiles, char **fnamptr)
               ok = false;
               continue;
             }
+          fadvise (fileptr, FADVISE_SEQUENTIAL);
         }
 
       delimptr = delims;	/* Set up for delimiter string. */

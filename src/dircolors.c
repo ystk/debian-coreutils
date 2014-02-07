@@ -1,5 +1,5 @@
 /* dircolors - output commands to set the LS_COLOR environment variable
-   Copyright (C) 1996-2010 Free Software Foundation, Inc.
+   Copyright (C) 1996-2011 Free Software Foundation, Inc.
    Copyright (C) 1994, 1995, 1997, 1998, 1999, 2000 H. Peter Anvin
 
    This program is free software: you can redistribute it and/or modify
@@ -456,7 +456,7 @@ to select a shell syntax are mutually exclusive"));
   if (print_database)
     {
       char const *p = G_line;
-      while (p < G_line + sizeof G_line)
+      while (p - G_line < sizeof G_line)
         {
           puts (p);
           p += strlen (p) + 1;

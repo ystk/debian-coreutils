@@ -2,7 +2,7 @@
 # Ensure that cat -E produces same output as cat, module `$'s,
 # even when applied to a file in /proc.
 
-# Copyright (C) 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,17 +17,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  cat --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ cat
 
 
 f=/proc/cpuinfo
 test -f $f \
-  || skip_test_ "no $f"
+  || skip_ "no $f"
 
 
 # Yes, parts of /proc/cpuinfo might change between cat runs.

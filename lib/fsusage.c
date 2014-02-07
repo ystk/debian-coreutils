@@ -1,6 +1,6 @@
 /* fsusage.c -- return space usage of mounted file systems
 
-   Copyright (C) 1991-1992, 1996, 1998-1999, 2002-2006, 2009-2010 Free Software
+   Copyright (C) 1991-1992, 1996, 1998-1999, 2002-2006, 2009-2011 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@
 #include <limits.h>
 #include <sys/types.h>
 
-#if STAT_STATVFS                /* POSIX 1003.1-2001 (and later) with XSI */
+#if STAT_STATVFS || STAT_STATVFS64 /* POSIX 1003.1-2001 (and later) with XSI */
 # include <sys/statvfs.h>
 #else
 /* Don't include backward-compatibility files unless they're needed.
@@ -94,11 +94,23 @@
 int
 get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp)
 {
-#if defined STAT_STATVFS                /* POSIX */
+#if defined STAT_STATVFS                /* POSIX, except glibc/Linux */
 
   struct statvfs fsd;
 
   if (statvfs (file, &fsd) < 0)
+    return -1;
+
+  /* f_frsize isn't guaranteed to be supported.  */
+  fsp->fsu_blocksize = (fsd.f_frsize
+                        ? PROPAGATE_ALL_ONES (fsd.f_frsize)
+                        : PROPAGATE_ALL_ONES (fsd.f_bsize));
+
+#elif defined STAT_STATVFS64            /* AIX */
+
+  struct statvfs64 fsd;
+
+  if (statvfs64 (file, &fsd) < 0)
     return -1;
 
   /* f_frsize isn't guaranteed to be supported.  */
@@ -156,7 +168,7 @@ get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp)
                     : (fsd.s_isize - 2) * INOPB * (fsd.s_type == Fs2b ? 2 : 1));
   fsp->fsu_ffree = PROPAGATE_ALL_ONES (fsd.s_tinode);
 
-#elif defined STAT_STATFS3_OSF1
+#elif defined STAT_STATFS3_OSF1         /* OSF/1 */
 
   struct statfs fsd;
 
@@ -165,7 +177,9 @@ get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp)
 
   fsp->fsu_blocksize = PROPAGATE_ALL_ONES (fsd.f_fsize);
 
-#elif defined STAT_STATFS2_BSIZE        /* 4.3BSD, SunOS 4, HP-UX, AIX */
+#elif defined STAT_STATFS2_BSIZE        /* glibc/Linux, 4.3BSD, SunOS 4, \
+                                           MacOS X < 10.4, FreeBSD < 5.0, \
+                                           NetBSD < 3.0, OpenBSD < 4.4 */
 
   struct statfs fsd;
 
@@ -189,7 +203,7 @@ get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp)
     }
 # endif /* STATFS_TRUNCATES_BLOCK_COUNTS */
 
-#elif defined STAT_STATFS2_FSIZE        /* 4.4BSD */
+#elif defined STAT_STATFS2_FSIZE        /* 4.4BSD and older NetBSD */
 
   struct statfs fsd;
 
@@ -198,7 +212,8 @@ get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp)
 
   fsp->fsu_blocksize = PROPAGATE_ALL_ONES (fsd.f_fsize);
 
-#elif defined STAT_STATFS4              /* SVR3, Dynix, Irix, AIX */
+#elif defined STAT_STATFS4              /* SVR3, Dynix, old Irix, old AIX, \
+                                           Dolphin */
 
 # if !_AIX && !defined _SEQUENT_ && !defined DOLPHIN
 #  define f_bavail f_bfree
@@ -220,7 +235,7 @@ get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp)
 
 #endif
 
-#if (defined STAT_STATVFS \
+#if (defined STAT_STATVFS || defined STAT_STATVFS64 \
      || (!defined STAT_STATFS2_FS_DATA && !defined STAT_READ_FILSYS))
 
   fsp->fsu_blocks = PROPAGATE_ALL_ONES (fsd.f_blocks);

@@ -1,5 +1,5 @@
 /* core functions for copying files and directories
-   Copyright (C) 1989-1991, 1995-2010 Free Software Foundation, Inc.
+   Copyright (C) 1989-1991, 1995-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -170,6 +170,10 @@ struct cp_options
      will be hard links to the same file (a copy of F).  */
   bool preserve_links;
 
+  /* Optionally don't copy the data, either with CoW reflink files or
+     explicitly with the --attributes-only option.  */
+  bool data_copy_required;
+
   /* If true and any of the above (for preserve) file attributes cannot
      be applied to a destination file, treat it as a failure and return
      nonzero immediately.  E.g. for cp -p this must be true, for mv it
@@ -278,7 +282,7 @@ void dest_info_init (struct cp_options *);
 void src_info_init (struct cp_options *);
 
 void cp_options_default (struct cp_options *);
-bool chown_failure_ok (struct cp_options const *);
+bool chown_failure_ok (struct cp_options const *) _GL_ATTRIBUTE_PURE;
 mode_t cached_umask (void);
 
 #endif

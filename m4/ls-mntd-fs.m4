@@ -1,7 +1,7 @@
-# serial 28
+# serial 29
 # How to list mounted file systems.
 
-# Copyright (C) 1998-2004, 2006, 2009-2010 Free Software Foundation, Inc.
+# Copyright (C) 1998-2004, 2006, 2009-2011 Free Software Foundation, Inc.
 #
 # This file is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
@@ -247,7 +247,11 @@ if test -z "$ac_list_mounted_fs"; then
 #if HAVE_SYS_STATVFS_H
 # include <sys/statvfs.h>
 #endif
-extern int getmntinfo (struct statfs **, int);
+extern
+#ifdef __cplusplus
+"C"
+#endif
+int getmntinfo (struct statfs **, int);
             ]], [])],
           [fu_cv_sys_mounted_getmntinfo2=no],
           [fu_cv_sys_mounted_getmntinfo2=yes])
@@ -323,6 +327,23 @@ if test -z "$ac_list_mounted_fs"; then
                mounted file systems.  fread will be used to read /etc/mnttab.
                (SVR2) ])
   fi
+fi
+
+if test -z "$ac_list_mounted_fs"; then
+  # Interix / BSD alike statvfs
+  # the code is really interix specific, so make sure, we're on it.
+  case "$host" in
+  *-interix*)
+    AC_CHECK_FUNCS([statvfs])
+    if test $ac_cv_func_statvfs = yes; then
+      ac_list_mounted_fs=found
+      AC_DEFINE([MOUNTED_INTERIX_STATVFS], [1],
+                [Define if we are on interix, and ought to use statvfs plus
+                 some special knowledge on where mounted filesystems can be
+                 found. (Interix)])
+    fi
+    ;;
+  esac
 fi
 
 if test -z "$ac_list_mounted_fs"; then

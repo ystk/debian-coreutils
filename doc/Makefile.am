@@ -1,6 +1,6 @@
 # Make coreutils documentation.				-*-Makefile-*-
 
-# Copyright (C) 1995-1998, 2001-2010 Free Software Foundation, Inc.
+# Copyright (C) 1995-1998, 2001-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 
 info_TEXINFOS = coreutils.texi
 
-EXTRA_DIST = perm.texi getdate.texi constants.texi fdl.texi
+EXTRA_DIST = perm.texi parse-datetime.texi constants.texi fdl.texi
 
 # The following is necessary if the package name is 8 characters or longer.
 # If the info documentation would be split into 10 or more separate files,
@@ -33,7 +33,8 @@ constants.texi: $(top_srcdir)/src/tail.c $(top_srcdir)/src/shred.c
 	$(AM_V_GEN)LC_ALL=C; export LC_ALL; \
 	{ sed -n -e 's/^#define \(DEFAULT_MAX[_A-Z]*\) \(.*\)/@set \1 \2/p' \
 	    $(top_srcdir)/src/tail.c && \
-	  sed -n -e 's/.*\(DEFAULT_PASSES\)[ =]* \([0-9]*\).*/@set SHRED_\1 \2/p'\
+	  sed -n -e \
+	      's/.*\(DEFAULT_PASSES\)[ =]* \([0-9]*\).*/@set SHRED_\1 \2/p'\
 	    $(top_srcdir)/src/shred.c; } > t-$@ \
 	  && mv t-$@ $@
 
@@ -60,6 +61,7 @@ syntax_checks =		\
 .PHONY: $(syntax_checks) check-texinfo
 
 # List words/regexps here that should not appear in the texinfo documentation.
+BAD_POSIX_PERL = /\bPOSIX\b/ && !/\@acronym{POSIX}/ && !/^\* / || /{posix}/
 check-texinfo: $(syntax_checks)
 	$(AM_V_GEN)fail=0;						\
 	grep '@url{' $(srcdir)/*.texi && fail=1;			\
@@ -69,7 +71,7 @@ check-texinfo: $(syntax_checks)
 	    | $(EGREP) -v 'setfilename|[{]filename[}]'			\
 	  && fail=1;							\
 	$(PERL) -e 1 2> /dev/null && { $(PERL) -ne			\
-	  '/\bPOSIX\b/ && !/\@acronym{POSIX}/ && !/^\* / || /{posix}/ and print,exit 1' \
+	  '$(BAD_POSIX_PERL) and print,exit 1'				\
 	  $(srcdir)/*.texi 2> /dev/null || fail=1; };			\
 	exit $$fail
 
@@ -108,7 +110,8 @@ sc-avoid-non-zero:
 
 # Use `zeros', not `zeroes' (nothing wrong with `zeroes'. just be consistent).
 sc-avoid-zeroes:
-	$(AM_V_GEN)$(EGREP) -i '$(_W)zeroes$(W_)' $(srcdir)/*.texi && exit 1 || :
+	$(AM_V_GEN)$(EGREP) -i '$(_W)zeroes$(W_)' $(srcdir)/*.texi \
+	  && exit 1 || :
 
 # ME = $(subdir)/$(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST))
 ME = doc/Makefile
@@ -125,7 +128,7 @@ find_upper_case_var =		\
      }				\
    END {$$m and (warn "$(ME): do not use upper case in \@var{...}\n"), exit 1}'
 sc-lower-case-var:
-	$(AM_V_GEN)$(PERL) -e 1 \
-	  && $(PERL) -lne $(find_upper_case_var) $(srcdir)/*.texi
+	$(AM_V_GEN)$(PERL) -e 1 || { echo $@: skipping test; exit 0; }; \
+	  $(PERL) -lne $(find_upper_case_var) $(srcdir)/*.texi
 
 check: check-texinfo

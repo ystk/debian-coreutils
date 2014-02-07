@@ -1,7 +1,7 @@
 /* -*- buffer-read-only: t -*- vi: set ro: */
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Tests of lchown.
-   Copyright (C) 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ test_lchown (int (*func) (char const *, uid_t, gid_t), bool print)
   int result;
 
   /* Solaris 8 is interesting - if the current process belongs to
-     multiple groups, the current directory is owned by a a group that
+     multiple groups, the current directory is owned by a group that
      the current process belongs to but different than getegid(), and
      the current directory does not have the S_ISGID bit, then regular
      files created in the directory belong to the directory's group,

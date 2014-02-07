@@ -1,5 +1,5 @@
 /* csplit - split a file into sections determined by context lines
-   Copyright (C) 1991, 1995-2010 Free Software Foundation, Inc.
+   Copyright (C) 1991, 1995-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -225,6 +225,7 @@ static void
 interrupt_handler (int sig)
 {
   delete_all_files (true);
+  signal (sig, SIG_DFL);
   /* The signal has been reset to SIG_DFL, but blocked during this
      handler.  Force the default action of this signal once the
      handler returns and the block is removed.  */
@@ -342,7 +343,7 @@ record_line_starts (struct buffer_record *b)
   line_start = b->buffer;
   bytes_left = b->bytes_used;
 
-  for (;;)
+  while (true)
     {
       line_end = memchr (line_start, '\n', bytes_left);
       if (line_end == NULL)
@@ -418,6 +419,13 @@ get_new_buffer (size_t min_size)
 static void
 free_buffer (struct buffer_record *buf)
 {
+  struct line *l;
+  for (l = buf->line_start; l;)
+    {
+      struct line *n = l->next;
+      free (l);
+      l = n;
+    }
   free (buf->buffer);
   buf->buffer = NULL;
 }
@@ -542,6 +550,7 @@ remove_line (void)
   if (prev_buf)
     {
       free_buffer (prev_buf);
+      free (prev_buf);
       prev_buf = NULL;
     }
 
@@ -773,7 +782,7 @@ process_regexp (struct control *p, uintmax_t repetition)
 
   if (p->offset >= 0)
     {
-      for (;;)
+      while (true)
         {
           line = find_line (++current_line);
           if (line == NULL)
@@ -813,7 +822,7 @@ process_regexp (struct control *p, uintmax_t repetition)
   else
     {
       /* Buffer the lines. */
-      for (;;)
+      while (true)
         {
           line = find_line (++current_line);
           if (line == NULL)
@@ -909,19 +918,27 @@ make_filename (unsigned int num)
 static void
 create_output_file (void)
 {
-  sigset_t oldset;
   bool fopen_ok;
   int fopen_errno;
 
   output_filename = make_filename (files_created);
 
-  /* Create the output file in a critical section, to avoid races.  */
-  sigprocmask (SIG_BLOCK, &caught_signals, &oldset);
-  output_stream = fopen (output_filename, "w");
-  fopen_ok = (output_stream != NULL);
-  fopen_errno = errno;
-  files_created += fopen_ok;
-  sigprocmask (SIG_SETMASK, &oldset, NULL);
+  if (files_created == UINT_MAX)
+    {
+      fopen_ok = false;
+      fopen_errno = EOVERFLOW;
+    }
+  else
+    {
+      /* Create the output file in a critical section, to avoid races.  */
+      sigset_t oldset;
+      sigprocmask (SIG_BLOCK, &caught_signals, &oldset);
+      output_stream = fopen (output_filename, "w");
+      fopen_ok = (output_stream != NULL);
+      fopen_errno = errno;
+      files_created += fopen_ok;
+      sigprocmask (SIG_SETMASK, &oldset, NULL);
+    }
 
   if (! fopen_ok)
     {
@@ -1173,81 +1190,64 @@ parse_patterns (int argc, int start, char **argv)
     }
 }
 
-static unsigned int
-get_format_flags (char **format_ptr)
-{
-  unsigned int count = 0;
 
-  for (; **format_ptr; (*format_ptr)++)
+
+/* Names for the printf format flags ' and #.  These can be ORed together.  */
+enum { FLAG_THOUSANDS = 1, FLAG_ALTERNATIVE = 2 };
+
+/* Scan the printf format flags in FORMAT, storing info about the
+   flags into *FLAGS_PTR.  Return the number of flags found.  */
+static size_t
+get_format_flags (char const *format, int *flags_ptr)
+{
+  int flags = 0;
+
+  for (size_t count = 0; ; count++)
     {
-      switch (**format_ptr)
+      switch (format[count])
         {
         case '-':
+        case '0':
           break;
 
-        case '+':
-        case ' ':
-          count |= 1;
+        case '\'':
+          flags |= FLAG_THOUSANDS;
           break;
 
         case '#':
-          count |= 2;	/* Allow for 0x prefix preceding an `x' conversion.  */
+          flags |= FLAG_ALTERNATIVE;
           break;
 
         default:
+          *flags_ptr = flags;
           return count;
         }
     }
-  return count;
 }
 
-static size_t
-get_format_width (char **format_ptr)
-{
-  unsigned long int val = 0;
-
-  if (ISDIGIT (**format_ptr)
-      && (xstrtoul (*format_ptr, format_ptr, 10, &val, NULL) != LONGINT_OK
-          || SIZE_MAX < val))
-    error (EXIT_FAILURE, 0, _("invalid format width"));
-
-  /* Allow for enough octal digits to represent the value of UINT_MAX,
-     even if the field width is less than that.  */
-  return MAX (val, (sizeof (unsigned int) * CHAR_BIT + 2) / 3);
-}
-
-static size_t
-get_format_prec (char **format_ptr)
-{
-  if (**format_ptr != '.')
-    return 0;
-  (*format_ptr)++;
-
-  if (! ISDIGIT (**format_ptr))
-    return 0;
-  else
-    {
-      unsigned long int val;
-      if (xstrtoul (*format_ptr, format_ptr, 10, &val, NULL) != LONGINT_OK
-          || SIZE_MAX < val)
-        error (EXIT_FAILURE, 0, _("invalid format precision"));
-      return val;
-    }
-}
-
+/* Check that the printf format conversion specifier *FORMAT is valid
+   and compatible with FLAGS.  Change it to 'u' if it is 'd' or 'i',
+   since the format will be used with an unsigned value.  */
 static void
-get_format_conv_type (char **format_ptr)
+check_format_conv_type (char *format, int flags)
 {
-  unsigned char ch = *(*format_ptr)++;
+  unsigned char ch = *format;
+  int compatible_flags = FLAG_THOUSANDS;
 
   switch (ch)
     {
     case 'd':
     case 'i':
-    case 'o':
+      *format = 'u';
+      break;
+
     case 'u':
+      break;
+
+    case 'o':
     case 'x':
     case 'X':
+      compatible_flags = FLAG_ALTERNATIVE;
       break;
 
     case 0:
@@ -1262,45 +1262,46 @@ get_format_conv_type (char **format_ptr)
         error (EXIT_FAILURE, 0,
                _("invalid conversion specifier in suffix: \\%.3o"), ch);
     }
+
+  if (flags & ~ compatible_flags)
+    error (EXIT_FAILURE, 0,
+           _("invalid flags in conversion specification: %%%c%c"),
+           (flags & ~ compatible_flags & FLAG_ALTERNATIVE ? '#' : '\''), ch);
 }
 
+/* Return the maximum number of bytes that can be generated by
+   applying FORMAT to an unsigned int value.  If the format is
+   invalid, diagnose the problem and exit.  */
 static size_t
 max_out (char *format)
 {
-  size_t out_count = 0;
   bool percent = false;
 
-  while (*format)
-    {
-      if (*format++ != '%')
-        out_count++;
-      else if (*format == '%')
-        {
-          format++;
-          out_count++;
-        }
-      else
-        {
-          if (percent)
-            error (EXIT_FAILURE, 0,
-                   _("too many %% conversion specifications in suffix"));
-          percent = true;
-          out_count += get_format_flags (&format);
-          {
-            size_t width = get_format_width (&format);
-            size_t prec = get_format_prec (&format);
-
-            out_count += MAX (width, prec);
-          }
-          get_format_conv_type (&format);
-        }
-    }
+  for (char *f = format; *f; f++)
+    if (*f == '%' && *++f != '%')
+      {
+        if (percent)
+          error (EXIT_FAILURE, 0,
+                 _("too many %% conversion specifications in suffix"));
+        percent = true;
+        int flags;
+        f += get_format_flags (f, &flags);
+        while (ISDIGIT (*f))
+          f++;
+        if (*f == '.')
+          while (ISDIGIT (*++f))
+            continue;
+        check_format_conv_type (f, flags);
+      }
 
   if (! percent)
     error (EXIT_FAILURE, 0,
            _("missing %% conversion specification in suffix"));
 
-  return out_count;
+  int maxlen = snprintf (NULL, 0, format, UINT_MAX);
+  if (! (0 <= maxlen && maxlen <= SIZE_MAX))
+    xalloc_die ();
+  return maxlen;
 }
 
 int
@@ -1341,7 +1342,7 @@ main (int argc, char **argv)
 
       case 'n':
         if (xstrtoul (optarg, NULL, 10, &val, "") != LONGINT_OK
-            || val > INT_MAX)
+            || MIN (INT_MAX, SIZE_MAX) < val)
           error (EXIT_FAILURE, 0, _("%s: invalid number"), optarg);
         digits = val;
         break;
@@ -1372,10 +1373,14 @@ main (int argc, char **argv)
       usage (EXIT_FAILURE);
     }
 
-  if (suffix)
-    filename_space = xmalloc (strlen (prefix) + max_out (suffix) + 2);
-  else
-    filename_space = xmalloc (strlen (prefix) + digits + 2);
+  size_t prefix_len = strlen (prefix);
+  size_t max_digit_string_len
+    = (suffix
+       ? max_out (suffix)
+       : MAX (INT_STRLEN_BOUND (unsigned int), digits));
+  if (SIZE_MAX - 1 - prefix_len < max_digit_string_len)
+    xalloc_die ();
+  filename_space = xmalloc (prefix_len + max_digit_string_len + 1);
 
   set_input_file (argv[optind++]);
 
@@ -1417,7 +1422,7 @@ main (int argc, char **argv)
 
     act.sa_handler = interrupt_handler;
     act.sa_mask = caught_signals;
-    act.sa_flags = SA_NODEFER | SA_RESETHAND;
+    act.sa_flags = 0;
 
     for (i = 0; i < nsigs; i++)
       if (sigismember (&caught_signals, sig[i]))

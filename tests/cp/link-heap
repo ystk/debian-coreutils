@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure that cp --preserve=link --link doesn't waste heap
 
-# Copyright (C) 2008-2010 Free Software Foundation, Inc.
+# Copyright (C) 2008-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,12 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  cp --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ cp
 expensive_
 require_ulimit_
 
@@ -30,10 +26,10 @@ b=$(printf %031d 1)
 (mkdir $a \
    && cd $a \
    && seq --format=%031g 10000 |xargs touch \
-   && seq --format=d%030g 10000 |xargs mkdir ) || framework_failure
-cp -al $a $b || framework_failure
-mkdir e || framework_failure
-mv $a $b e || framework_failure
+   && seq --format=d%030g 10000 |xargs mkdir ) || framework_failure_
+cp -al $a $b || framework_failure_
+mkdir e || framework_failure_
+mv $a $b e || framework_failure_
 
 (ulimit -v 20000; cp -al e f) || fail=1
 

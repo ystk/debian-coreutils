@@ -1,5 +1,5 @@
 /* system-dependent definitions for coreutils
-   Copyright (C) 1989, 1991-2010 Free Software Foundation, Inc.
+   Copyright (C) 1989, 1991-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -14,11 +14,15 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
+/* Include this file _after_ system headers if possible.  */
+
 #include <alloca.h>
 
-/* Include sys/types.h before this file.  */
+/* Include <sys/types.h> before this file.
+   Note this doesn't warn if we're included
+   before all system headers.  */
 
-#if 2 <= __GLIBC__ && 2 <= __GLIBC_MINOR__
+#if 2 < __GLIBC__ || ( 2 == ___GLIBC__ && 2 <= __GLIBC_MINOR__ )
 # if ! defined _SYS_TYPES_H
 you must include <sys/types.h> before including this file
 # endif
@@ -36,11 +40,10 @@ you must include <sys/types.h> before including this file
 
 #include <unistd.h>
 
-/* limits.h must come before pathmax.h because limits.h on some systems
-   undefs PATH_MAX, whereas pathmax.h sets PATH_MAX.  */
 #include <limits.h>
-
-#include "pathmax.h"
+#ifndef PATH_MAX
+# define PATH_MAX 8192
+#endif
 
 #include "configmake.h"
 
@@ -129,77 +132,6 @@ enum
 /* include here for SIZE_MAX.  */
 #include <inttypes.h>
 
-/* Get or fake the disk device blocksize.
-   Usually defined by sys/param.h (if at all).  */
-#if !defined DEV_BSIZE && defined BSIZE
-# define DEV_BSIZE BSIZE
-#endif
-#if !defined DEV_BSIZE && defined BBSIZE /* SGI */
-# define DEV_BSIZE BBSIZE
-#endif
-#ifndef DEV_BSIZE
-# define DEV_BSIZE 4096
-#endif
-
-/* Extract or fake data from a `struct stat'.
-   ST_BLKSIZE: Preferred I/O blocksize for the file, in bytes.
-   ST_NBLOCKS: Number of blocks in the file, including indirect blocks.
-   ST_NBLOCKSIZE: Size of blocks used when calculating ST_NBLOCKS.  */
-#ifndef HAVE_STRUCT_STAT_ST_BLOCKS
-# define ST_BLKSIZE(statbuf) DEV_BSIZE
-# if defined _POSIX_SOURCE || !defined BSIZE /* fileblocks.c uses BSIZE.  */
-#  define ST_NBLOCKS(statbuf) \
-  ((statbuf).st_size / ST_NBLOCKSIZE + ((statbuf).st_size % ST_NBLOCKSIZE != 0))
-# else /* !_POSIX_SOURCE && BSIZE */
-#  define ST_NBLOCKS(statbuf) \
-  (S_ISREG ((statbuf).st_mode) \
-   || S_ISDIR ((statbuf).st_mode) \
-   ? st_blocks ((statbuf).st_size) : 0)
-# endif /* !_POSIX_SOURCE && BSIZE */
-#else /* HAVE_STRUCT_STAT_ST_BLOCKS */
-/* Some systems, like Sequents, return st_blksize of 0 on pipes.
-   Also, when running `rsh hpux11-system cat any-file', cat would
-   determine that the output stream had an st_blksize of 2147421096.
-   Conversely st_blksize can be 2 GiB (or maybe even larger) with XFS
-   on 64-bit hosts.  Somewhat arbitrarily, limit the `optimal' block
-   size to SIZE_MAX / 8 + 1.  (Dividing SIZE_MAX by only 4 wouldn't
-   suffice, since "cat" sometimes multiplies the result by 4.)  If
-   anyone knows of a system for which this limit is too small, please
-   report it as a bug in this code.  */
-# define ST_BLKSIZE(statbuf) ((0 < (statbuf).st_blksize \
-                               && (statbuf).st_blksize <= SIZE_MAX / 8 + 1) \
-                              ? (statbuf).st_blksize : DEV_BSIZE)
-# if defined hpux || defined __hpux__ || defined __hpux
-/* HP-UX counts st_blocks in 1024-byte units.
-   This loses when mixing HP-UX and BSD file systems with NFS.  */
-#  define ST_NBLOCKSIZE 1024
-# else /* !hpux */
-#  if defined _AIX && defined _I386
-/* AIX PS/2 counts st_blocks in 4K units.  */
-#   define ST_NBLOCKSIZE (4 * 1024)
-#  else /* not AIX PS/2 */
-#   if defined _CRAY
-#    define ST_NBLOCKS(statbuf) \
-  (S_ISREG ((statbuf).st_mode) \
-   || S_ISDIR ((statbuf).st_mode) \
-   ? (statbuf).st_blocks * ST_BLKSIZE (statbuf) / ST_NBLOCKSIZE : 0)
-#   endif /* _CRAY */
-#  endif /* not AIX PS/2 */
-# endif /* !hpux */
-#endif /* HAVE_STRUCT_STAT_ST_BLOCKS */
-
-#ifndef ST_NBLOCKS
-# define ST_NBLOCKS(statbuf) ((statbuf).st_blocks)
-#endif
-
-#ifndef ST_NBLOCKSIZE
-# ifdef S_BLKSIZE
-#  define ST_NBLOCKSIZE S_BLKSIZE
-# else
-#  define ST_NBLOCKSIZE 512
-# endif
-#endif
-
 /* Redirection and wildcarding when done by the utility itself.
    Generally a noop, but used in particular for native VMS. */
 #ifndef initialize_main
@@ -253,6 +185,13 @@ select_plural (uintmax_t n)
 }
 
 #define STREQ(a, b) (strcmp (a, b) == 0)
+#define STREQ_LEN(a, b, n) (strncmp (a, b, n) == 0)
+#define STRPREFIX(a, b) (strncmp(a, b, strlen (b)) == 0)
+
+/* Just like strncmp, but the first argument must be a literal string
+   and you don't specify the length.  */
+#define STRNCMP_LIT(s, literal) \
+  strncmp (s, "" literal "", sizeof (literal) - 1)
 
 #if !HAVE_DECL_GETLOGIN
 char *getlogin ();
@@ -456,19 +395,6 @@ enum
 # define IF_LINT(Code) /* empty */
 #endif
 
-/* With -Dlint, avoid warnings from gcc about code like mbstate_t m = {0,};
-   by wasting space on a static variable of the same type, that is thus
-   guaranteed to be initialized to 0, and use that on the RHS.  */
-#define DZA_CONCAT0(x,y) x ## y
-#define DZA_CONCAT(x,y) DZA_CONCAT0 (x, y)
-#ifdef lint
-# define DECLARE_ZEROED_AGGREGATE(Type, Var) \
-   static Type DZA_CONCAT (s0_, __LINE__); Type Var = DZA_CONCAT (s0_, __LINE__)
-#else
-# define DECLARE_ZEROED_AGGREGATE(Type, Var) \
-  Type Var = { 0, }
-#endif
-
 #ifndef __attribute__
 # if __GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 8)
 #  define __attribute__(x) /* empty */
@@ -481,6 +407,14 @@ enum
 
 #ifndef ATTRIBUTE_UNUSED
 # define ATTRIBUTE_UNUSED __attribute__ ((__unused__))
+#endif
+
+/* The warn_unused_result attribute appeared first in gcc-3.4.0 */
+#undef ATTRIBUTE_WARN_UNUSED_RESULT
+#if __GNUC__ < 3 || (__GNUC__ == 3 && __GNUC_MINOR__ < 4)
+# define ATTRIBUTE_WARN_UNUSED_RESULT /* empty */
+#else
+# define ATTRIBUTE_WARN_UNUSED_RESULT __attribute__ ((__warn_unused_result__))
 #endif
 
 #if defined strdupa
@@ -505,7 +439,7 @@ enum
 /* Compute the greatest common divisor of U and V using Euclid's
    algorithm.  U and V must be nonzero.  */
 
-static inline size_t
+static inline size_t _GL_ATTRIBUTE_CONST
 gcd (size_t u, size_t v)
 {
   do
@@ -523,7 +457,7 @@ gcd (size_t u, size_t v)
    nonzero.  There is no overflow checking, so callers should not
    specify outlandish sizes.  */
 
-static inline size_t
+static inline size_t _GL_ATTRIBUTE_CONST
 lcm (size_t u, size_t v)
 {
   return u * (v / gcd (u, v));
@@ -587,15 +521,13 @@ emit_ancillary_info (void)
 {
   printf (_("\nReport %s bugs to %s\n"), last_component (program_name),
           PACKAGE_BUGREPORT);
-  /* FIXME 2010: use AC_PACKAGE_URL once we require autoconf-2.64 */
-  printf (_("%s home page: <http://www.gnu.org/software/%s/>\n"),
-          PACKAGE_NAME, PACKAGE);
+  printf (_("%s home page: <%s>\n"), PACKAGE_NAME, PACKAGE_URL);
   fputs (_("General help using GNU software: <http://www.gnu.org/gethelp/>\n"),
          stdout);
   /* Don't output this redundant message for English locales.
      Note we still output for 'C' so that it gets included in the man page.  */
   const char *lc_messages = setlocale (LC_MESSAGES, NULL);
-  if (lc_messages && strncmp (lc_messages, "en_", 3))
+  if (lc_messages && STRNCMP_LIT (lc_messages, "en_"))
     {
       /* TRANSLATORS: Replace LANG_CODE in this URL with your language code
          <http://translationproject.org/team/LANG_CODE.html> to form one of
@@ -623,51 +555,6 @@ static inline char *
 bad_cast (char const *s)
 {
   return (char *) s;
-}
-
-/* As of Mar 2009, 32KiB is determined to be the minimium
-   blksize to best minimize system call overhead.
-   This can be tested with this script with the results
-   shown for a 1.7GHz pentium-m with 2GB of 400MHz DDR2 RAM:
-
-   for i in $(seq 0 10); do
-     size=$((8*1024**3)) #ensure this is big enough
-     bs=$((1024*2**$i))
-     printf "%7s=" $bs
-     dd bs=$bs if=/dev/zero of=/dev/null count=$(($size/$bs)) 2>&1 |
-     sed -n 's/.* \([0-9.]* [GM]B\/s\)/\1/p'
-   done
-
-      1024=734 MB/s
-      2048=1.3 GB/s
-      4096=2.4 GB/s
-      8192=3.5 GB/s
-     16384=3.9 GB/s
-     32768=5.2 GB/s
-     65536=5.3 GB/s
-    131072=5.5 GB/s
-    262144=5.7 GB/s
-    524288=5.7 GB/s
-   1048576=5.8 GB/s
-
-   Note that this is to minimize system call overhead.
-   Other values may be appropriate to minimize file system
-   or disk overhead.  For example on my current GNU/Linux system
-   the readahead setting is 128KiB which was read using:
-
-   file="."
-   device=$(df -P --local "$file" | tail -n1 | cut -d' ' -f1)
-   echo $(( $(blockdev --getra $device) * 512 ))
-
-   However there isn't a portable way to get the above.
-   In the future we could use the above method if available
-   and default to io_blksize() if not.
- */
-enum { IO_BUFSIZE = 32*1024 };
-static inline size_t
-io_blksize (struct stat sb)
-{
-  return MAX (IO_BUFSIZE, ST_BLKSIZE (sb));
 }
 
 void usage (int status) ATTRIBUTE_NORETURN;

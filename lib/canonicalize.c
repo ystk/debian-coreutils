@@ -1,5 +1,5 @@
 /* Return the canonical absolute name of a given file.
-   Copyright (C) 1996-2010 Free Software Foundation, Inc.
+   Copyright (C) 1996-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -30,6 +30,12 @@
 #include "pathmax.h"
 #include "xalloc.h"
 #include "xgetcwd.h"
+
+/* In this file, we cannot handle file names longer than PATH_MAX.
+   On systems with no file name length limit, use a fallback.  */
+#ifndef PATH_MAX
+# define PATH_MAX 8192
+#endif
 
 #ifndef DOUBLE_SLASH_IS_DISTINCT_ROOT
 # define DOUBLE_SLASH_IS_DISTINCT_ROOT 0

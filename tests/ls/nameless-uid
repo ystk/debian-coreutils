@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure that ls -l works on files with nameless uid and/or gid
 
-# Copyright (C) 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,25 +16,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  ls --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ ls
 
-: ${srcdir=.}
-. $srcdir/require-perl
-
-. $srcdir/test-lib.sh
 require_root_
+require_perl_
 
-nameless_uid=`$PERL -e 'foreach my $i (1000..16*1024) { getpwuid $i or (print "$i\n"), exit }'`
+nameless_uid=`$PERL -e '
+  foreach my $i (1000..16*1024) { getpwuid $i or (print "$i\n"), exit }
+'`
 
 if test x$nameless_uid = x; then
-  skip_test_ "couldn't find a nameless UID"
+  skip_ "couldn't find a nameless UID"
 fi
 
-touch f || framework_failure
-chown $nameless_uid f || framework_failure
+touch f || framework_failure_
+chown $nameless_uid f || framework_failure_
 
 
 set -- `ls -o f` || fail=1

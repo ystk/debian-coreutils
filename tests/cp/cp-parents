@@ -2,7 +2,7 @@
 # cp -R --parents dir-specified-with-trailing-slash/ other-dir
 # would get a failed assertion.
 
-# Copyright (C) 2000, 2002, 2004-2010 Free Software Foundation, Inc.
+# Copyright (C) 2000, 2002, 2004-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,22 +17,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  mv --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ mv
 
 working_umask_or_skip_
 
 # Run the setgid check from the just-created directory.
 skip_if_setgid_
 
-mkdir foo bar || framework_failure
-mkdir -p a/b/c d e g || framework_failure
-ln -s d/a sym || framework_failure
-touch f || framework_failure
+mkdir foo bar || framework_failure_
+mkdir -p a/b/c d e g || framework_failure_
+ln -s d/a sym || framework_failure_
+touch f || framework_failure_
 
 
 # With 4.0.37 and earlier (back to when?), this would fail

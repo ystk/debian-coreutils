@@ -1,5 +1,5 @@
 /* Iterate over arguments from argv or --files0-from=FILE
-   Copyright (C) 2008-2010 Free Software Foundation, Inc.
+   Copyright (C) 2008-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@
 #include "arg-nonnull.h"
 
 struct argv_iterator;
-enum argv_iter_err;
 
 enum argv_iter_err
 {

@@ -1,5 +1,5 @@
 /* nl -- number lines of files
-   Copyright (C) 1989, 1992, 1995-2010 Free Software Foundation, Inc.
+   Copyright (C) 1989, 1992, 1995-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #include <regex.h>
 
 #include "error.h"
+#include "fadvise.h"
 #include "linebuffer.h"
 #include "quote.h"
 #include "xstrtol.h"
@@ -438,6 +439,8 @@ nl_file (char const *file)
           return false;
         }
     }
+
+  fadvise (stream, FADVISE_SEQUENTIAL);
 
   process_file (stream);
 

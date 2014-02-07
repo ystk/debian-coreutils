@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test use of compression by sort
 
-# Copyright (C) 2007-2010 Free Software Foundation, Inc.
+# Copyright (C) 2007-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,19 +16,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  sort --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ sort
 
-. $srcdir/test-lib.sh
-
-seq -w 2000 > exp || framework_failure
-tac exp > in || framework_failure
-SORT="$abs_top_builddir/src/sort"
-
-# Ensure that $TMPDIR is valid.
-TMPDIR=.; export TMPDIR
+seq -w 2000 > exp || framework_failure_
+tac exp > in || framework_failure_
 
 # This should force the use of temp files
 sort -S 1k in > out || fail=1

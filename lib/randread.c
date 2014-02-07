@@ -1,6 +1,6 @@
 /* Generate buffers of random data.
 
-   Copyright (C) 2006, 2008-2010 Free Software Foundation, Inc.
+   Copyright (C) 2006, 2008-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -24,12 +24,15 @@
 #include <errno.h>
 #include <error.h>
 #include <exitfail.h>
+#include <fcntl.h>
 #include <quotearg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
+#include <unistd.h>
 
 #include "gettext.h"
 #define _(msgid) gettext (msgid)
@@ -58,6 +61,10 @@
 #else
 # define alignof(type) offsetof (struct { char c; type x; }, x)
 # define ALIGNED_POINTER(ptr, type) ((size_t) (ptr) % alignof (type) == 0)
+#endif
+
+#ifndef NAME_OF_NONCE_DEVICE
+# define NAME_OF_NONCE_DEVICE "/dev/urandom"
 #endif
 
 /* The maximum buffer size used for reads of random data.  Using the
@@ -100,7 +107,7 @@ struct randread_source
       /* Up to a buffer's worth of pseudorandom data.  */
       union
       {
-        uint32_t w[ISAAC_WORDS];
+        isaac_word w[ISAAC_WORDS];
         unsigned char b[ISAAC_BYTES];
       } data;
     } isaac;
@@ -132,6 +139,52 @@ simple_new (FILE *source, void const *handler_arg)
   s->handler_arg = handler_arg;
   return s;
 }
+
+/* Put a nonce value into BUFFER, with size BUFSIZE, but do not get
+   more than BYTES_BOUND bytes' worth of random information from any
+   nonce device.  */
+
+static void
+get_nonce (void *buffer, size_t bufsize, size_t bytes_bound)
+{
+  char *buf = buffer;
+  ssize_t seeded = 0;
+
+  /* Get some data from FD if available.  */
+  int fd = open (NAME_OF_NONCE_DEVICE, O_RDONLY | O_BINARY);
+  if (0 <= fd)
+    {
+      seeded = read (fd, buf, MIN (bufsize, bytes_bound));
+      if (seeded < 0)
+        seeded = 0;
+      close (fd);
+    }
+
+  /* If there's no nonce device, use a poor approximation
+     by getting the time of day, etc.  */
+#define ISAAC_SEED(type, initialize_v)                      \
+  if (seeded < bufsize)                                     \
+    {                                                       \
+      type v;                                               \
+      size_t nbytes = MIN (sizeof v, bufsize - seeded);     \
+      initialize_v;                                         \
+      memcpy (buf + seeded, &v, nbytes);                    \
+      seeded += nbytes;                                     \
+    }
+  ISAAC_SEED (struct timeval, gettimeofday (&v, NULL));
+  ISAAC_SEED (pid_t, v = getpid ());
+  ISAAC_SEED (pid_t, v = getppid ());
+  ISAAC_SEED (uid_t, v = getuid ());
+  ISAAC_SEED (uid_t, v = getgid ());
+
+#ifdef lint
+  /* Normally we like having the extra randomness from uninitialized
+     parts of BUFFER.  However, omit this randomness if we want to
+     avoid false-positives from memory-checking debugging tools.  */
+  memset (buf + seeded, 0, bufsize - seeded);
+#endif
+}
+
 
 /* Create and initialize a random data source from NAME, or use a
    reasonable default source if NAME is null.  BYTES_BOUND is an upper
@@ -165,6 +218,8 @@ randread_new (char const *name, size_t bytes_bound)
       else
         {
           s->buf.isaac.buffered = 0;
+          get_nonce (s->buf.isaac.state.m, sizeof s->buf.isaac.state.m,
+                     bytes_bound);
           isaac_seed (&s->buf.isaac.state);
         }
 
@@ -199,7 +254,7 @@ randread_set_handler_arg (struct randread_source *s, void const *handler_arg)
 static void
 readsource (struct randread_source *s, unsigned char *p, size_t size)
 {
-  for (;;)
+  while (true)
     {
       size_t inbytes = fread (p, sizeof *p, size, s->source);
       int fread_errno = errno;
@@ -221,7 +276,7 @@ readisaac (struct isaac *isaac, unsigned char *p, size_t size)
 {
   size_t inbytes = isaac->buffered;
 
-  for (;;)
+  while (true)
     {
       if (size <= inbytes)
         {
@@ -236,9 +291,9 @@ readisaac (struct isaac *isaac, unsigned char *p, size_t size)
 
       /* If P is aligned, write to *P directly to avoid the overhead
          of copying from the buffer.  */
-      if (ALIGNED_POINTER (p, uint32_t))
+      if (ALIGNED_POINTER (p, isaac_word))
         {
-          uint32_t *wp = (uint32_t *) p;
+          isaac_word *wp = (isaac_word *) p;
           while (ISAAC_BYTES <= size)
             {
               isaac_refill (&isaac->state, wp);

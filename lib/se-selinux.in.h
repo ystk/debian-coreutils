@@ -1,5 +1,5 @@
 /* Replacement <selinux/selinux.h> for platforms that lack it.
-   Copyright (C) 2008-2010 Free Software Foundation, Inc.
+   Copyright (C) 2008-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -14,12 +14,13 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#ifndef _GL_SELINUX_SELINUX_H
-# define _GL_SELINUX_SELINUX_H
+#ifndef _@GUARD_PREFIX@_SELINUX_SELINUX_H
+# define _@GUARD_PREFIX@_SELINUX_SELINUX_H
 
 # if __GNUC__ >= 3
 @PRAGMA_SYSTEM_HEADER@
 # endif
+@PRAGMA_COLUMNS@
 
 # if HAVE_SELINUX_SELINUX_H
 
@@ -32,9 +33,11 @@
 
 /* The definition of _GL_UNUSED_PARAMETER is copied here.  */
 
+#  if !GNULIB_defined_security_types
+
 typedef unsigned short security_class_t;
-#  define security_context_t char*
-#  define is_selinux_enabled() 0
+#   define security_context_t char*
+#   define is_selinux_enabled() 0
 
 static inline int getcon (security_context_t *con _GL_UNUSED_PARAMETER)
   { errno = ENOTSUP; return -1; }
@@ -87,5 +90,8 @@ static inline int matchpathcon_init_prefix
      char const *prefix _GL_UNUSED_PARAMETER)
   { errno = ENOTSUP; return -1; }
 
+#   define GNULIB_defined_security_types 1
+#  endif
+
 # endif
-#endif /* _GL_SELINUX_SELINUX_H */
+#endif /* _@GUARD_PREFIX@_SELINUX_SELINUX_H */

@@ -1,5 +1,5 @@
 /* setuidgid - run a command with the UID and GID of a specified user
-   Copyright (C) 2003-2010 Free Software Foundation, Inc.
+   Copyright (C) 2003-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -54,7 +54,8 @@ Usage: %s [SHORT-OPTION]... USER COMMAND [ARGUMENT]...\n\
               program_name, program_name);
 
       fputs (_("\
-Drop any supplemental groups, assume the user-ID and group-ID of the specified\n\
+Drop any supplemental groups, assume the user-ID and group-ID of the specified\
+\n\
 USER (numeric ID or user name), and run COMMAND with any specified ARGUMENTs.\n\
 Exit with status 111 if unable to assume the required user and group ID.\n\
 Otherwise, exit with the exit status of COMMAND.\n\

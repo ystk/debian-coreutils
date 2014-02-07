@@ -1,5 +1,5 @@
 /* head -- output first part of file(s)
-   Copyright (C) 1989-1991, 1995-2006, 2008-2010 Free Software Foundation, Inc.
+   Copyright (C) 1989-1991, 1995-2006, 2008-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -32,7 +32,6 @@
 #include "system.h"
 
 #include "error.h"
-#include "full-write.h"
 #include "full-read.h"
 #include "quote.h"
 #include "safe-read.h"
@@ -226,7 +225,7 @@ elide_tail_bytes_pipe (const char *filename, int fd, uintmax_t n_elide_0)
 
   if (SIZE_MAX < n_elide_0 + READ_BUFSIZE)
     {
-      char umax_buf[INT_BUFSIZE_BOUND (uintmax_t)];
+      char umax_buf[INT_BUFSIZE_BOUND (n_elide_0)];
       error (EXIT_FAILURE, 0, _("%s: number of bytes is too large"),
              umaxtostr (n_elide_0, umax_buf));
     }
@@ -390,7 +389,7 @@ elide_tail_bytes_pipe (const char *filename, int fd, uintmax_t n_elide_0)
             }
         }
 
-    free_mem:;
+    free_mem:
       for (i = 0; i < n_bufs; i++)
         free (b[i]);
       free (b);
@@ -422,8 +421,8 @@ elide_tail_bytes_file (const char *filename, int fd, uintmax_t n_elide)
       off_t diff;
       enum Copy_fd_status err;
 
-      if ((current_pos = lseek (fd, (off_t) 0, SEEK_CUR)) == -1
-          || (end_pos = lseek (fd, (off_t) 0, SEEK_END)) == -1)
+      if ((current_pos = lseek (fd, 0, SEEK_CUR)) == -1
+          || (end_pos = lseek (fd, 0, SEEK_END)) == -1)
         {
           error (0, errno, _("cannot lseek %s"), quote (filename));
           return false;
@@ -438,7 +437,7 @@ elide_tail_bytes_file (const char *filename, int fd, uintmax_t n_elide)
 
       /* Seek back to `current' position, then copy the required
          number of bytes from fd.  */
-      if (lseek (fd, (off_t) 0, current_pos) == -1)
+      if (lseek (fd, 0, current_pos) == -1)
         {
           error (0, errno, _("%s: cannot lseek back to original position"),
                  quote (filename));
@@ -611,7 +610,7 @@ elide_tail_lines_seekable (const char *pretty_filename, int fd,
   pos -= bytes_read;
   if (lseek (fd, pos, SEEK_SET) < 0)
     {
-      char offset_buf[INT_BUFSIZE_BOUND (off_t)];
+      char offset_buf[INT_BUFSIZE_BOUND (pos)];
       error (0, errno, _("%s: cannot seek to offset %s"),
              pretty_filename, offtostr (pos, offset_buf));
       return false;
@@ -682,7 +681,7 @@ elide_tail_lines_seekable (const char *pretty_filename, int fd,
       pos -= BUFSIZ;
       if (lseek (fd, pos, SEEK_SET) < 0)
         {
-          char offset_buf[INT_BUFSIZE_BOUND (off_t)];
+          char offset_buf[INT_BUFSIZE_BOUND (pos)];
           error (0, errno, _("%s: cannot seek to offset %s"),
                  pretty_filename, offtostr (pos, offset_buf));
           return false;
@@ -716,8 +715,8 @@ elide_tail_lines_file (const char *filename, int fd, uintmax_t n_elide)
          If found, write from current position to OFF, inclusive.
          Otherwise, just return true.  */
 
-      off_t start_pos = lseek (fd, (off_t) 0, SEEK_CUR);
-      off_t end_pos = lseek (fd, (off_t) 0, SEEK_END);
+      off_t start_pos = lseek (fd, 0, SEEK_CUR);
+      off_t end_pos = lseek (fd, 0, SEEK_END);
       if (0 <= start_pos && start_pos < end_pos)
         {
           /* If the file is empty, we're done.  */
@@ -1042,7 +1041,7 @@ main (int argc, char **argv)
 
   if ( ! count_lines && elide_from_end && OFF_T_MAX < n_units)
     {
-      char umax_buf[INT_BUFSIZE_BOUND (uintmax_t)];
+      char umax_buf[INT_BUFSIZE_BOUND (n_units)];
       error (EXIT_FAILURE, 0, _("%s: number of bytes is too large"),
              umaxtostr (n_units, umax_buf));
     }

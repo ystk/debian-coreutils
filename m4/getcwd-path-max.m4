@@ -1,12 +1,12 @@
-# serial 14
+# serial 16
 # Check for several getcwd bugs with long file names.
 # If so, arrange to compile the wrapper function.
 
 # This is necessary for at least GNU libc on linux-2.4.19 and 2.4.20.
 # I've heard that this is due to a Linux kernel bug, and that it has
-# been fixed between 2.4.21-pre3 and 2.4.21-pre4.  */
+# been fixed between 2.4.21-pre3 and 2.4.21-pre4.
 
-# Copyright (C) 2003-2007, 2009-2010 Free Software Foundation, Inc.
+# Copyright (C) 2003-2007, 2009-2011 Free Software Foundation, Inc.
 # This file is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
 # with or without modifications, as long as this notice is preserved.
@@ -21,6 +21,7 @@ AC_DEFUN([gl_FUNC_GETCWD_PATH_MAX],
     gl_cv_func_getcwd_path_max,
     [# Arrange for deletion of the temporary directory this test creates.
      ac_clean_files="$ac_clean_files confdir3"
+     dnl Please keep this in sync with tests/test-getcwd.c.
      AC_RUN_IFELSE(
        [AC_LANG_SOURCE(
           [[
@@ -85,7 +86,7 @@ main ()
   size_t n_chdirs = 0;
 
   if (cwd == NULL)
-    exit (1);
+    exit (10);
 
   cwd_len = initial_cwd_len = strlen (cwd);
 
@@ -103,7 +104,7 @@ main ()
       if (mkdir (DIR_NAME, S_IRWXU) < 0 || chdir (DIR_NAME) < 0)
         {
           if (! (errno == ERANGE || is_ENAMETOOLONG (errno)))
-            fail = 2;
+            fail = 20;
           break;
         }
 
@@ -112,12 +113,12 @@ main ()
           c = getcwd (buf, PATH_MAX);
           if (!c && errno == ENOENT)
             {
-              fail = 1;
+              fail = 11;
               break;
             }
           if (c || ! (errno == ERANGE || is_ENAMETOOLONG (errno)))
             {
-              fail = 2;
+              fail = 21;
               break;
             }
         }
@@ -132,12 +133,12 @@ main ()
               if (! (errno == ERANGE || errno == ENOENT
                      || is_ENAMETOOLONG (errno)))
                 {
-                  fail = 2;
+                  fail = 22;
                   break;
                 }
               if (AT_FDCWD || errno == ERANGE || errno == ENOENT)
                 {
-                  fail = 1;
+                  fail = 12;
                   break;
                 }
             }
@@ -145,7 +146,7 @@ main ()
 
       if (c && strlen (c) != cwd_len)
         {
-          fail = 2;
+          fail = 23;
           break;
         }
       ++n_chdirs;
@@ -174,7 +175,7 @@ main ()
           ]])],
     [gl_cv_func_getcwd_path_max=yes],
     [case $? in
-     1) gl_cv_func_getcwd_path_max='no, but it is partly working';;
+     10|11|12) gl_cv_func_getcwd_path_max='no, but it is partly working';;
      *) gl_cv_func_getcwd_path_max=no;;
      esac],
     [gl_cv_func_getcwd_path_max=no])
@@ -183,8 +184,6 @@ main ()
   no,*)
     AC_DEFINE([HAVE_PARTLY_WORKING_GETCWD], [1],
       [Define to 1 if getcwd works, except it sometimes fails when it shouldn't,
-       setting errno to ERANGE, ENAMETOOLONG, or ENOENT.  If __GETCWD_PREFIX
-       is not defined, it doesn't matter whether HAVE_PARTLY_WORKING_GETCWD
-       is defined.]);;
+       setting errno to ERANGE, ENAMETOOLONG, or ENOENT.]);;
   esac
 ])

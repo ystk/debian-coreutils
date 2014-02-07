@@ -1,5 +1,5 @@
 /* remove.c -- core functions for removing files and directories
-   Copyright (C) 1988, 1990-1991, 1994-2010 Free Software Foundation, Inc.
+   Copyright (C) 1988, 1990-1991, 1994-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-/* Extracted from rm.c and librarified, then rewritten twice by Jim Meyering.  */
+/* Extracted from rm.c, librarified, then rewritten twice by Jim Meyering.  */
 
 #include <config.h>
 #include <stdio.h>
@@ -25,6 +25,7 @@
 #include "error.h"
 #include "euidaccess-stat.h"
 #include "file-type.h"
+#include "ignore-value.h"
 #include "quote.h"
 #include "remove.h"
 #include "root-dev-ino.h"
@@ -377,10 +378,18 @@ nonexistent_file_errno (int errnum)
      exist, but be (in)accessible only via too long a symlink chain.
      Likewise for ENAMETOOLONG, since rm -f ./././.../foo may fail
      if the "..." part expands to a long enough sequence of "./"s,
-     even though ./foo does indeed exist.  */
+     even though ./foo does indeed exist.
+
+     Another case to consider is when a particular name is invalid for
+     a given file system.  In 2011, smbfs returns EINVAL, but the next
+     revision of POSIX will require EILSEQ for that situation:
+     http://austingroupbugs.net/view.php?id=293
+  */
 
   switch (errnum)
     {
+    case EILSEQ:
+    case EINVAL:
     case ENOENT:
     case ENOTDIR:
       return true;
@@ -402,7 +411,7 @@ fts_skip_tree (FTS *fts, FTSENT *ent)
 {
   fts_set (fts, ent, FTS_SKIP);
   /* Ensure that we do not process ENT a second time.  */
-  ent = fts_read (fts);
+  ignore_value (fts_read (fts));
 }
 
 /* Upon unlink failure, or when the user declines to remove ENT, mark

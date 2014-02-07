@@ -1,5 +1,5 @@
 /* Align/Truncate a string in a given screen width
-   Copyright (C) 2009-2010 Free Software Foundation, Inc.
+   Copyright (C) 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -19,9 +19,9 @@
 typedef enum { MBS_ALIGN_LEFT, MBS_ALIGN_RIGHT, MBS_ALIGN_CENTER } mbs_align_t;
 
 enum {
-  /* Use unibyte mode for invalid multibyte strings or
+  /* Use unibyte mode for invalid multibyte strings
      or when heap memory is exhausted.  */
-  MBA_UNIBYTE_FALLBACK = 0x0001,
+  MBA_UNIBYTE_FALLBACK = 0x0001
 
 #if 0 /* Other possible options.  */
   /* Skip invalid multibyte chars rather than failing  */

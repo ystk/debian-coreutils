@@ -1,5 +1,5 @@
 /* uniq -- remove duplicate lines from a sorted file
-   Copyright (C) 1986, 1991, 1995-2010 Free Software Foundation, Inc.
+   Copyright (C) 1986, 1991, 1995-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include "argmatch.h"
 #include "linebuffer.h"
 #include "error.h"
+#include "fadvise.h"
 #include "hard-locale.h"
 #include "posixver.h"
 #include "quote.h"
@@ -205,7 +206,7 @@ size_opt (char const *opt, char const *msgid)
 /* Given a linebuffer LINE,
    return a pointer to the beginning of the line's field to be compared. */
 
-static char *
+static char * _GL_ATTRIBUTE_PURE
 find_field (struct linebuffer const *line)
 {
   size_t count;
@@ -213,7 +214,7 @@ find_field (struct linebuffer const *line)
   size_t size = line->length - 1;
   size_t i = 0;
 
-  for (count = 0; count < skip_fields; count++)
+  for (count = 0; count < skip_fields && i < size; count++)
     {
       while (i < size && isblank (to_uchar (lp[i])))
         i++;
@@ -221,8 +222,7 @@ find_field (struct linebuffer const *line)
         i++;
     }
 
-  for (count = 0; count < skip_chars && i < size; count++)
-    i++;
+  i += MIN (skip_chars, size - i);
 
   return line->buffer + i;
 }
@@ -286,6 +286,8 @@ check_file (const char *infile, const char *outfile, char delimiter)
   if (! (STREQ (outfile, "-") || freopen (outfile, "w", stdout)))
     error (EXIT_FAILURE, errno, "%s", outfile);
 
+  fadvise (stdin, FADVISE_SEQUENTIAL);
+
   thisline = &lb1;
   prevline = &lb2;
 
@@ -301,8 +303,8 @@ check_file (const char *infile, const char *outfile, char delimiter)
 
   if (output_unique && output_first_repeated && countmode == count_none)
     {
-      char *prevfield IF_LINT (= NULL);
-      size_t prevlen IF_LINT (= 0);
+      char *prevfield IF_LINT ( = NULL);
+      size_t prevlen IF_LINT ( = 0);
 
       while (!feof (stdin))
         {
@@ -434,7 +436,7 @@ main (int argc, char **argv)
   countmode = count_none;
   delimit_groups = DM_NONE;
 
-  for (;;)
+  while (true)
     {
       /* Parse an operand with leading "+" as a file after "--" was
          seen; or if pedantic and a file was seen; or if not

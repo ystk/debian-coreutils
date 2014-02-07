@@ -1,5 +1,5 @@
 /* expr -- evaluate expressions.
-   Copyright (C) 1986, 1991-1997, 1999-2010 Free Software Foundation, Inc.
+   Copyright (C) 1986, 1991-1997, 1999-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -312,15 +312,17 @@ main (int argc, char **argv)
 
   parse_long_options (argc, argv, PROGRAM_NAME, PACKAGE_NAME, VERSION,
                       usage, AUTHORS, (char const *) NULL);
+
   /* The above handles --help and --version.
      Since there is no other invocation of getopt, handle `--' here.  */
-  if (argc > 1 && STREQ (argv[1], "--"))
+  unsigned int u_argc = argc;
+  if (1 < u_argc && STREQ (argv[1], "--"))
     {
-      --argc;
+      --u_argc;
       ++argv;
     }
 
-  if (argc <= 1)
+  if (u_argc <= 1)
     {
       error (0, 0, _("missing operand"));
       usage (EXPR_INVALID);
@@ -391,7 +393,7 @@ printv (VALUE *v)
 
 /* Return true if V is a null-string or zero-number.  */
 
-static bool
+static bool _GL_ATTRIBUTE_PURE
 null (VALUE *v)
 {
   switch (v->type)
@@ -422,7 +424,7 @@ null (VALUE *v)
 
 /* Return true if CP takes the form of an integer.  */
 
-static bool
+static bool _GL_ATTRIBUTE_PURE
 looks_like_integer (char const *cp)
 {
   cp += (*cp == '-');
@@ -483,7 +485,7 @@ toarith (VALUE *v)
     }
 }
 
-/* Extract a size_t value from a integer value I.
+/* Extract a size_t value from an integer value I.
    If the value is negative, return SIZE_MAX.
    If the value is too large, return SIZE_MAX - 1.  */
 static size_t
@@ -547,7 +549,7 @@ trace (fxn)
 static VALUE *
 docolon (VALUE *sv, VALUE *pv)
 {
-  VALUE *v IF_LINT (= NULL);
+  VALUE *v IF_LINT ( = NULL);
   const char *errmsg;
   struct re_pattern_buffer re_buffer;
   char fastmap[UCHAR_MAX + 1];

@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Test uniq.
 
-# Copyright (C) 2008-2010 Free Software Foundation, Inc.
+# Copyright (C) 2008-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -82,11 +82,8 @@ sub add_z_variants($)
 
 # I've only ever triggered the problem in a non-C locale.
 my $locale = $ENV{LOCALE_FR};
-if (! defined $locale || $locale eq 'none')
-  {
-    warn "$prog: skipping this test -- no appropriate locale\n";
-    exit 77;
-  }
+! defined $locale || $locale eq 'none'
+  and CuSkip::skip "$prog: skipping this test -- no appropriate locale\n";
 
 # See if isblank returns true for nbsp.
 my $x = `env printf '\xa0'| LC_ALL=$locale tr '[:blank:]' x`;
@@ -180,10 +177,13 @@ my @Tests =
   "$prog: printing all duplicated lines and repeat counts is meaningless\n$try"}
   ],
  ['113', '--all-repeated=separate', {IN=>"a\na\n"}, {OUT=>"a\na\n"}],
- ['114', '--all-repeated=separate', {IN=>"a\na\nb\nc\nc\n"}, {OUT=>"a\na\n\nc\nc\n"}],
- ['115', '--all-repeated=separate', {IN=>"a\na\nb\nb\nc\n"}, {OUT=>"a\na\n\nb\nb\n"}],
+ ['114', '--all-repeated=separate',
+  {IN=>"a\na\nb\nc\nc\n"}, {OUT=>"a\na\n\nc\nc\n"}],
+ ['115', '--all-repeated=separate',
+  {IN=>"a\na\nb\nb\nc\n"}, {OUT=>"a\na\n\nb\nb\n"}],
  ['116', '--all-repeated=prepend', {IN=>"a\na\n"}, {OUT=>"\na\na\n"}],
- ['117', '--all-repeated=prepend', {IN=>"a\na\nb\nc\nc\n"}, {OUT=>"\na\na\n\nc\nc\n"}],
+ ['117', '--all-repeated=prepend',
+  {IN=>"a\na\nb\nc\nc\n"}, {OUT=>"\na\na\n\nc\nc\n"}],
  ['118', '--all-repeated=prepend', {IN=>"a\nb\n"}, {OUT=>""}],
  ['119', '--all-repeated=badoption', {IN=>"a\n"}, {OUT=>""}, {EXIT=>1},
   {ERR=>"$prog: invalid argument \`badoption' for \`--all-repeated'\n"
@@ -194,8 +194,8 @@ my @Tests =
         . $try}],
  # Check that -d and -u suppress all output, as POSIX requires.
  ['120', qw(-d -u), {IN=>"a\na\n\b"}, {OUT=>""}],
- ['121', "-d -u -w$limits->{'UINTMAX_OFLOW'}", {IN=>"a\na\n\b"}, {OUT=>""}],
- ['122', "-d -u -w$limits->{'SIZE_OFLOW'}", {IN=>"a\na\n\b"}, {OUT=>""}],
+ ['121', "-d -u -w$limits->{UINTMAX_OFLOW}", {IN=>"a\na\n\b"}, {OUT=>""}],
+ ['122', "-d -u -w$limits->{SIZE_OFLOW}", {IN=>"a\na\n\b"}, {OUT=>""}],
  # Check that --zero-terminated is synonymous with -z.
  ['123', '--zero-terminated', {IN=>"a\na\nb"}, {OUT=>"a\na\nb\0"}],
  ['124', '--zero-terminated', {IN=>"a\0a\0b"}, {OUT=>"a\0b\0"}],

@@ -1,6 +1,6 @@
 /* uname -- print system information
 
-   Copyright (C) 1989, 1992-1993, 1996-1997, 1999-2005, 2007-2010 Free Software
+   Copyright (C) 1989, 1992-1993, 1996-1997, 1999-2005, 2007-2011 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -333,7 +333,7 @@ main (int argc, char **argv)
 
               /* Hack "safely" around the ppc vs. powerpc return value. */
               if (cputype == CPU_TYPE_POWERPC
-                  && strncmp (element, "ppc", 3) == 0)
+                  && STRNCMP_LIT (element, "ppc") == 0)
                 element = "powerpc";
             }
 # endif

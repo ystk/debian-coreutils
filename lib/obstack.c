@@ -1,8 +1,6 @@
 /* obstack.c - subroutines used implicitly by object stack macros
 
-   Copyright (C) 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1996, 1997, 1998,
-   1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2009, 2010 Free Software
-   Foundation, Inc.
+   Copyright (C) 1988-1994, 1996-2006, 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -403,15 +401,7 @@ _obstack_memory_used (struct obstack *h)
 #  include <libio/iolibio.h>
 # endif
 
-# ifndef __attribute__
-/* This feature is available in gcc versions 2.5 and later.  */
-#  if __GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 5)
-#   define __attribute__(Spec) /* empty */
-#  endif
-# endif
-
-static void
-__attribute__ ((noreturn))
+static _Noreturn void
 print_and_abort (void)
 {
   /* Don't change any of these strings.  Yes, it would be possible to add

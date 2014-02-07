@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 1998, 2000-2010 Free Software Foundation, Inc.
+# Copyright (C) 1998, 2000-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 
 use strict;
 
-(my $program_name = $0) =~ s|.*/||;
+(my $ME = $0) =~ s|.*/||;
 my $prog = 'ls';
 
 # Turn off localization of executable's output.
@@ -27,7 +27,7 @@ my $saved_ls_colors;
 
 sub push_ls_colors($)
 {
-  $saved_ls_colors = $ENV{LS_COLORS};
+  $saved_ls_colors = $ENV{LS_COLORS} || '';
   $ENV{LS_COLORS} = $_[0];
 }
 
@@ -61,8 +61,8 @@ sub setuid_setup()
            mkdir sticky && chmod +t sticky  && $test -k sticky &&
            mkdir owt    && chmod +t,o+w owt && $test -k owt &&
            mkdir owr    && chmod o+w owr)) == 0
-             or (warn "$program_name: cannot create setuid/setgid/sticky files,"
-                 . "so can't run this test\n"), exit 77;
+             or CuSkip::skip "$ME: cannot create setuid/setgid/sticky files,"
+                 . "so can't run this test\n";
 }
 
 sub mk_file(@)
@@ -186,8 +186,8 @@ my @Tests =
      ],
 
      # Test for a bug fixed after coreutils-8.2.
-     ['sl-dangle2', '-o --color=always l',
-      {OUT_SUBST => 's/.*[0-9][0-9]:[0-9][0-9] //'},
+     ['sl-dangle2', '-o --time-style=+:TIME: --color=always l',
+      {OUT_SUBST => 's/.*:TIME: //'},
       {OUT => "l -> nowhere\n"},
       {PRE => sub {symlink 'nowhere', 'l' or die "l: $!\n";
                    push_ls_colors('ln=target')
@@ -195,8 +195,8 @@ my @Tests =
       {POST => sub {unlink 'l' or die "l: $!\n";
                     restore_ls_colors; }},
      ],
-     ['sl-dangle3', '-o --color=always l',
-      {OUT_SUBST => 's/.*[0-9][0-9]:[0-9][0-9] //'},
+     ['sl-dangle3', '-o --time-style=+:TIME: --color=always l',
+      {OUT_SUBST => 's/.*:TIME: //'},
       {OUT => "$e\e[40ml$e -> \e[34mnowhere$e\n"},
       {PRE => sub {symlink 'nowhere', 'l' or die "l: $!\n";
                    push_ls_colors('ln=target:or=40:mi=34:')
@@ -204,8 +204,8 @@ my @Tests =
       {POST => sub {unlink 'l' or die "l: $!\n";
                     restore_ls_colors; }},
      ],
-     ['sl-dangle4', '-o --color=always l',
-      {OUT_SUBST => 's/.*[0-9][0-9]:[0-9][0-9] //'},
+     ['sl-dangle4', '-o --time-style=+:TIME: --color=always l',
+      {OUT_SUBST => 's/.*:TIME: //'},
       {OUT => "$e\e[36ml$e -> \e[35mnowhere$e\n"},
       {PRE => sub {symlink 'nowhere', 'l' or die "l: $!\n";
                    push_ls_colors('ln=34:mi=35:or=36:')
@@ -213,8 +213,8 @@ my @Tests =
       {POST => sub {unlink 'l' or die "l: $!\n";
                     restore_ls_colors; }},
      ],
-     ['sl-dangle5', '-o --color=always l',
-      {OUT_SUBST => 's/.*[0-9][0-9]:[0-9][0-9] //'},
+     ['sl-dangle5', '-o --time-style=+:TIME: --color=always l',
+      {OUT_SUBST => 's/.*:TIME: //'},
       {OUT => "$e\e[34ml$e -> \e[35mnowhere$e\n"},
       {PRE => sub {symlink 'nowhere', 'l' or die "l: $!\n";
                    push_ls_colors('ln=34:mi=35:')
@@ -285,7 +285,7 @@ my $save_temps = $ENV{SAVE_TEMPS};
 my $verbose = $ENV{VERBOSE};
 
 setuid_setup;
-my $fail = run_tests ($program_name, $prog, \@Tests, $save_temps, $verbose);
+my $fail = run_tests ($ME, $prog, \@Tests, $save_temps, $verbose);
 $fail
   and exit 1;
 
@@ -296,5 +296,5 @@ $env =~ s/\';.*//sm;
 $ENV{LS_COLORS} = $env;
 
 setuid_setup;
-$fail = run_tests ($program_name, $prog, \@Tests, $save_temps, $verbose);
+$fail = run_tests ($ME, $prog, \@Tests, $save_temps, $verbose);
 exit $fail;

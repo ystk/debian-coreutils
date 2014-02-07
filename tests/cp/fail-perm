@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2000, 2002-2010 Free Software Foundation, Inc.
+# Copyright (C) 2000, 2002-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,19 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  cp --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ cp
 skip_if_root_
 
-chmod g-s . || framework_failure
-mkdir D D/D || framework_failure
-touch D/a || framework_failure
-chmod 0 D/a || framework_failure
-chmod u=rx,go=,-st D || framework_failure
+chmod g-s . || framework_failure_
+mkdir D D/D || framework_failure_
+touch D/a || framework_failure_
+chmod 0 D/a || framework_failure_
+chmod u=rx,go=,-st D || framework_failure_
 
 
 # This is expected to exit non-zero, because it can't read D/a.

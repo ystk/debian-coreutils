@@ -1,7 +1,7 @@
 /* -*- buffer-read-only: t -*- vi: set ro: */
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Test of fsync() function.
-   Copyright (C) 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2008-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -35,7 +35,12 @@ main (void)
   const char *file = "test-fsync.txt";
 
   if (fsync (0) != 0)
-    ASSERT (errno == EINVAL);
+    {
+      ASSERT (errno == EINVAL /* POSIX */
+              || errno == ENOTSUP /* seen on MacOS X 10.5 */
+              || errno == EBADF /* seen on AIX 7.1 */
+             );
+    }
   fd = open (file, O_WRONLY|O_CREAT|O_TRUNC, 0644);
   ASSERT (0 <= fd);
   ASSERT (write (fd, "hello", 5) == 5);

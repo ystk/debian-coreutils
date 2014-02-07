@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test su failure cases
 
-# Copyright (C) 2009-2010 Free Software Foundation, Inc.
+# Copyright (C) 2009-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,14 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ su
+
 require_built_ su
-
-if test "$VERBOSE" = yes; then
-  set -x
-  su --version
-fi
-
 
 # Very little that we can test without a root password
 su --- / true # unknown option

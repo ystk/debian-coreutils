@@ -1,5 +1,5 @@
 /* kill -- send a signal to a process
-   Copyright (C) 2002-2005, 2008-2010 Free Software Foundation, Inc.
+   Copyright (C) 2002-2005, 2008-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -21,16 +21,6 @@
 #include <getopt.h>
 #include <sys/types.h>
 #include <signal.h>
-
-#if HAVE_SYS_WAIT_H
-# include <sys/wait.h>
-#endif
-#ifndef WIFSIGNALED
-# define WIFSIGNALED(s) (((s) & 0xFFFF) - 1 < (unsigned int) 0xFF)
-#endif
-#ifndef WTERMSIG
-# define WTERMSIG(s) ((s) & 0x7F)
-#endif
 
 #include "system.h"
 #include "error.h"
@@ -302,7 +292,7 @@ main (int argc, char **argv)
       default:
         usage (EXIT_FAILURE);
       }
- no_more_options:;
+ no_more_options:
 
   if (signum < 0)
     signum = SIGTERM;

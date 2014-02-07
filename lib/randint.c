@@ -1,6 +1,6 @@
 /* Generate random integers.
 
-   Copyright (C) 2006, 2009-2010 Free Software Foundation, Inc.
+   Copyright (C) 2006, 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -125,7 +125,7 @@ randint_genmax (struct randint_source *s, randint genmax)
   randint randmax = s->randmax;
   randint choices = genmax + 1;
 
-  for (;;)
+  while (1)
     {
       if (randmax < genmax)
         {

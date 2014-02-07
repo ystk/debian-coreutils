@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test the -I option added to coreutils 6.0
 
-# Copyright (C) 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,19 +18,15 @@
 
 test=interactive-once
 
-if test "$VERBOSE" = yes; then
-  set -x
-  rm --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ rm
 
-. $srcdir/test-lib.sh
-
-mkdir -p dir1-1 dir2-1 dir2-2 || framework_failure
+mkdir -p dir1-1 dir2-1 dir2-2 || framework_failure_
 touch file1-1 file2-1 file2-2 file2-3 file3-1 file3-2 file3-3 file3-4 \
-  || framework_failure
-echo y > $test.Iy || framework_failure
-echo n > $test.In || framework_failure
-rm -f out err || framework_failure
+  || framework_failure_
+echo y > $test.Iy || framework_failure_
+echo n > $test.In || framework_failure_
+rm -f out err || framework_failure_
 
 
 # The prompt has a trailing space, and no newline, so an extra

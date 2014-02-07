@@ -1,5 +1,5 @@
 /* groups -- print the groups a user is in
-   Copyright (C) 1989-2010 Free Software Foundation, Inc.
+   Copyright (C) 1989-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -53,7 +53,8 @@ usage (int status)
     {
       printf (_("Usage: %s [OPTION]... [USERNAME]...\n"), program_name);
       fputs (_("\
-Print group memberships for each USERNAME or, if no USERNAME is specified, for\n\
+Print group memberships for each USERNAME or, if no USERNAME is specified, for\
+\n\
 the current process (which may differ if the groups database has changed).\n"),
              stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);

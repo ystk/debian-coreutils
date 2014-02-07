@@ -2,7 +2,7 @@
 # ensure that `cp -d' preserves hard-links between command line arguments
 # ensure that --preserve=links works with -RH and -RL
 
-# Copyright (C) 2001-2002, 2004, 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2001-2002, 2004, 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,19 +17,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  cp --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ cp
 
-. $srcdir/test-lib.sh
-
-touch a || framework_failure
-ln a b || framework_failure
-mkdir c || framework_failure
-cp -d a b c || framework_failure
-test -f c/a || framework_failure
-test -f c/b || framework_failure
+touch a || framework_failure_
+ln a b || framework_failure_
+mkdir c || framework_failure_
+cp -d a b c || framework_failure_
+test -f c/a || framework_failure_
+test -f c/b || framework_failure_
 
 
 a_inode=`ls -i c/a|sed 's,c/.*,,'`

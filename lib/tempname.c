@@ -2,7 +2,7 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* tempname.c - generate the name of a temporary file.
 
-   Copyright (C) 1991-2003, 2005-2007, 2009-2010 Free Software Foundation, Inc.
+   Copyright (C) 1991-2003, 2005-2007, 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -181,7 +181,7 @@ __path_search (char *tmpl, size_t tmpl_len, const char *dir, const char *pfx,
 }
 #endif /* _LIBC */
 
-static inline bool
+static inline bool _GL_ATTRIBUTE_PURE
 check_x_suffix (char const *s, size_t len)
 {
   return len <= strspn (s, "X");
@@ -247,7 +247,7 @@ gen_tempname_len (char *tmpl, int suffixlen, int flags, int kind,
   XXXXXX = &tmpl[len - x_suffix_len - suffixlen];
 
   /* Get some more or less random data.  */
-  rand_src = randint_all_new (NULL, 8);
+  rand_src = randint_all_new (NULL, x_suffix_len);
   if (! rand_src)
     return -1;
 

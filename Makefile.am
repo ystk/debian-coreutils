@@ -1,6 +1,6 @@
 # Make coreutils.					-*-Makefile-*-
 
-# Copyright (C) 1990, 1993-2010 Free Software Foundation, Inc.
+# Copyright (C) 1990, 1993-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,7 +25,6 @@ changelog_etc =				\
   ChangeLog-2007			\
   ChangeLog-2008			\
   build-aux/ChangeLog-2007		\
-  build-aux/update-copyright		\
   doc/ChangeLog-2007			\
   lib/ChangeLog-2007			\
   m4/ChangeLog-2007			\
@@ -39,35 +38,13 @@ changelog_etc =				\
   old/textutils/NEWS			\
   po/ChangeLog-2007
 
-syntax_check_exceptions =		\
-  .x-sc_GPL_version			\
-  .x-sc_error_message_uppercase		\
-  .x-sc_file_system			\
-  .x-sc_obsolete_symbols		\
-  .x-sc_po_check			\
-  .x-sc_program_name			\
-  .x-sc_prohibit_atoi_atof		\
-  .x-sc_prohibit_empty_lines_at_EOF	\
-  .x-sc_prohibit_fail_0			\
-  .x-sc_prohibit_magic_number_exit	\
-  .x-sc_prohibit_stat_st_blocks		\
-  .x-sc_prohibit_strcmp			\
-  .x-sc_prohibit_tab_based_indentation	\
-  .x-sc_require_config_h		\
-  .x-sc_require_config_h_first		\
-  .x-sc_space_tab			\
-  .x-sc_sun_os_names			\
-  .x-sc_system_h_headers		\
-  .x-sc_trailing_blank			\
-  .x-sc_unmarked_diagnostics		\
-  .x-sc_useless_cpp_parens
-
 EXTRA_DIST =				\
   $(changelog_etc)			\
-  $(syntax_check_exceptions)		\
+  .mailmap				\
   .prev-version				\
   .version				\
   .vg-suppressions			\
+  THANKS.in				\
   THANKS-to-translators			\
   THANKStt.in				\
   bootstrap				\
@@ -75,8 +52,8 @@ EXTRA_DIST =				\
   build-aux/cvsu			\
   cfg.mk				\
   dist-check.mk				\
-  gl/modules/getloadavg.diff		\
-  maint.mk
+  maint.mk				\
+  thanks-gen
 
 ALL_RECURSIVE_TARGETS += install-root
 install-root:
@@ -149,3 +126,25 @@ check-ls-dircolors:
 	  |sed -n '/^  *"/p'|tr , '\n'|sed 's/^  *//'		\
 	  |sed -n 's/^"\(..\)"/\1/p'|sort -u);			\
 	test "$$dc" = "$$ls"
+
+# Sort in traditional ASCII order, regardless of the current locale;
+# otherwise we may get into trouble with distinct strings that the
+# current locale considers to be equal.
+ASSORT = LC_ALL=C sort
+
+# Extract all lines up to the first one starting with "##".
+prologue = perl -ne '/^\#\#/ and exit; print' $(srcdir)/THANKS.in
+
+THANKS: THANKS.in Makefile.am .mailmap thanks-gen .version
+	$(AM_V_GEN)							\
+	{								\
+	  $(prologue); echo;						\
+	  { perl -ne '/^$$/.../^$$/ and print' $(srcdir)/THANKS.in	\
+	      | grep -v '^$$' | perl -pe 's/  +/\0/';			\
+	    git log --pretty=format:'%aN%x00%aE'			\
+	      | $(ASSORT) -u;						\
+	  } | $(srcdir)/thanks-gen					\
+	    | LC_ALL=en_US.UTF-8 sort -f;				\
+	  echo;								\
+	  printf ';; %s\n' 'Local Variables:' 'coding: utf-8' End:;	\
+	} > $@-t && mv $@-t $@

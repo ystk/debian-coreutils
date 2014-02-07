@@ -1,7 +1,7 @@
 #!/bin/sh
 # touch -t would mistakenly reject a time specifying "60" seconds
 
-# Copyright (C) 2009-2010 Free Software Foundation, Inc.
+# Copyright (C) 2009-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,21 +16,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  touch --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ touch
 
-. $srcdir/test-lib.sh
-
-echo 60 > exp || framework_failure
+echo 60.000000000 > exp || framework_failure_
 
 
 # Before coreutils-7.7, this would fail, complaining of
 # an `invalid date format'.  Specifying 60 seconds *is* valid.
 TZ=UTC0 touch -t 197001010000.60 f || fail=1
 
-stat --p='%Y\n' f > out || fail=1
+stat --p='%.9Y\n' f > out || fail=1
 
 compare out exp || fail=1
 

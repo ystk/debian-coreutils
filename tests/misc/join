@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Test join.
 
-# Copyright (C) 2008-2010 Free Software Foundation, Inc.
+# Copyright (C) 2008-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -127,6 +127,26 @@ my @tv = (
 # From David Dyck
 ['9a', '', [" a 1\n b 2\n", " a Y\n b Z\n"], "a 1 Y\nb 2 Z\n", 0],
 
+# -o 'auto'
+['10a', '-a1 -a2 -e . -o auto',
+ ["a 1 2\nb 1\nd 1 2\n", "a 3 4\nb 3 4\nc 3 4\n"],
+ "a 1 2 3 4\nb 1 . 3 4\nc . . 3 4\nd 1 2 . .\n", 0],
+['10b', '-a1 -a2 -j3 -e . -o auto',
+ ["a 1 2\nb 1\nd 1 2\n", "a 3 4\nb 3 4\nc 3 4\n"],
+ "2 a 1 . .\n. b 1 . .\n2 d 1 . .\n4 . . a 3\n4 . . b 3\n4 . . c 3\n"],
+['10c', '-a1 -1 1 -2 4 -e. -o auto',
+ ["a 1 2\nb 1\nd 1 2\n", "a 3 4\nb 3 4\nc 3 4\n"],
+ "a 1 2 . . .\nb 1 . . . .\nd 1 2 . . .\n"],
+['10d', '-a2 -1 1 -2 4 -e. -o auto',
+ ["a 1 2\nb 1\nd 1 2\n", "a 3 4\nb 3 4\nc 3 4\n"],
+ ". . . a 3 4\n. . . b 3 4\n. . . c 3 4\n"],
+['10e', '-o auto',
+ ["a 1 2\nb 1 2 discard\n", "a 3 4\nb 3 4 discard\n"],
+ "a 1 2 3 4\nb 1 2 3 4\n"],
+['10f', '-t, -o auto',
+ ["a,1,,2\nb,1,2\n", "a,3,4\nb,3,4\n"],
+ "a,1,,2,3,4\nb,1,2,,3,4\n"],
+
 # From Tim Smithers: fixed in 1.22l
 ['trailing-sp', '-t: -1 1 -2 1', ["a:x \n", "a:y \n"], "a:x :y \n", 0],
 
@@ -135,7 +155,7 @@ my @tv = (
 
 # From Paul Eggert: fixed in 1.22n (this would fail on Solaris7,
 # with LC_ALL set to en_US).
-# Unfortunately, that Solaris7's en_US local folds case (making
+# Unfortunately, that Solaris7's en_US locale folds case (making
 # the first input file sorted) is not portable, so this test would
 # fail on e.g. Linux systems, because the input to join isn't sorted.
 # ['lc-collate', '', ["a 1a\nB 1B\n", "B 2B\n"], "B 1B 2B\n", 0],
@@ -146,9 +166,9 @@ my @tv = (
  t_subst "a:1:2:\nb:1:2:\n", 0],
 
 # fields > SIZE_MAX are silently interpreted as SIZE_MAX
-['bigfield1', "-1 $limits->{'UINTMAX_OFLOW'} -2 2",
+['bigfield1', "-1 $limits->{UINTMAX_OFLOW} -2 2",
  ["a\n", "b\n"], " a b\n", 0],
-['bigfield2', "-1 $limits->{'SIZE_OFLOW'} -2 2",
+['bigfield2', "-1 $limits->{SIZE_OFLOW} -2 2",
  ["a\n", "b\n"], " a b\n", 0],
 
 # FIXME: change this to ensure the diagnostic makes sense
@@ -176,7 +196,29 @@ my @tv = (
 # With check, both inputs out of order (in fact, in reverse order)
 ['chkodr-5', '--check-order',
  [" b 1\n a 2\n", " b Y\n a Z\n"], "", 1,
- "$prog: file 1 is not in sorted order\n"],
+ "$prog: chkodr-5.1:2: is not sorted:  a 2\n"],
+
+# Similar, but with only file 2 not sorted.
+['chkodr-5b', '--check-order',
+ [" a 2\n b 1\n", " b Y\n a Z\n"], "", 1,
+ "$prog: chkodr-5b.2:2: is not sorted:  a Z\n"],
+
+# Similar, but with the offending line having length 0 (excluding newline).
+['chkodr-5c', '--check-order',
+ [" a 2\n b 1\n", " b Y\n\n"], "", 1,
+ "$prog: chkodr-5c.2:2: is not sorted: \n"],
+
+# Similar, but elicit a warning for each input file (without --check-order).
+['chkodr-5d', '',
+ ["a\nx\n\n", "b\ny\n\n"], "", 1,
+ "$prog: chkodr-5d.1:3: is not sorted: \n" .
+ "$prog: chkodr-5d.2:3: is not sorted: \n"],
+
+# Similar, but make it so each offending line has no newline.
+['chkodr-5e', '',
+ ["a\nx\no", "b\ny\np"], "", 1,
+ "$prog: chkodr-5e.1:3: is not sorted: o\n" .
+ "$prog: chkodr-5e.2:3: is not sorted: p\n"],
 
 # Without order check, both inputs out of order and some lines
 # unpairable.  This is NOT supported by the GNU extension.  All that
@@ -189,7 +231,11 @@ my @tv = (
 
 # Before 6.10.143, this would mistakenly fail with the diagnostic:
 # join: File 1 is not in sorted order
-['chkodr-7', '-12', ["2 a\n1 b\n", ""], "", 0],
+['chkodr-7', '-12', ["2 a\n1 b\n", "2 c\n1 d"], "", 0],
+
+# After 8.9, join doesn't report disorder by default
+# when comparing against an empty input file.
+['chkodr-8', '', ["2 a\n1 b\n", ""], "", 0],
 
 # Test '--header' feature
 ['header-1', '--header',
@@ -205,7 +251,7 @@ my @tv = (
 # actual data out-of-order. This join should fail.
 ['header-3', '--header --check-order',
  ["ID Name\n2 B\n1 A\n", "ID Color\n2 blue\n"], "ID Name Color\n", 1,
- "$prog: file 1 is not in sorted order\n"],
+ "$prog: header-3.1:3: is not sorted: 1 A\n"],
 
 # '--header' with specific output format '-o'.
 # output header line should respect the requested format
@@ -216,7 +262,14 @@ my @tv = (
 # '--header' always outputs headers from the first file
 # even if the headers from the second file don't match
 ['header-5', '--header',
- [ "ID1 Name\n1 A\n2 B\n", "ID2 Color\n1 red\n"], "ID1 Name Color\n1 A red\n", 0],
+ [ "ID1 Name\n1 A\n2 B\n", "ID2 Color\n1 red\n"],
+   "ID1 Name Color\n1 A red\n", 0],
+
+# '--header' doesn't check order of a header
+# even if there is no header in the second file
+['header-6', '--header -a1',
+ [ "ID1 Name\n1 A\n", ""],
+   "ID1 Name\n1 A\n", 0],
 
 );
 

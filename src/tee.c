@@ -1,5 +1,5 @@
 /* tee - read from standard input and write to standard output and files.
-   Copyright (C) 1985, 1990-2006, 2008-2010 Free Software Foundation, Inc.
+   Copyright (C) 1985, 1990-2006, 2008-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 
 #include "system.h"
 #include "error.h"
+#include "fadvise.h"
 #include "stdio--.h"
 #include "xfreopen.h"
 
@@ -157,6 +158,8 @@ tee_files (int nfiles, const char **files)
   if (O_BINARY && ! isatty (STDOUT_FILENO))
     xfreopen (NULL, "wb", stdout);
 
+  fadvise (stdin, FADVISE_SEQUENTIAL);
+
   /* In the array of NFILES + 1 descriptors, make
      the first one correspond to standard output.   */
   descriptors[0] = stdout;
@@ -180,10 +183,8 @@ tee_files (int nfiles, const char **files)
   while (1)
     {
       bytes_read = read (0, buffer, sizeof buffer);
-#ifdef EINTR
       if (bytes_read < 0 && errno == EINTR)
         continue;
-#endif
       if (bytes_read <= 0)
         break;
 

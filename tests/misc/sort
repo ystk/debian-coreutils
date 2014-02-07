@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 2008-2010 Free Software Foundation, Inc.
+# Copyright (C) 2008-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -55,16 +55,19 @@ my @Tests =
 ["n11b", '-s -n -k1,1', {IN=>".010\n.01a\n"}, {OUT=>".010\n.01a\n"}],
 
 # human readable suffixes
-["h1", '-h', {IN=>"Y\nZ\nE\nP\nT\nG\nM\nK\n"},
- {OUT=>"K\nM\nG\nT\nP\nE\nZ\nY\n"}],
+["h1", '-h',
+ {IN=>"1Y\n1Z\n1E\n1P\n1T\n1G\n1M\n1K\n02\n1\nY\n-1k\n-1M\n-1G\n-1T\n"
+      . "-1P\n-1E\n-1Z\n-1Y\n"},
+ {OUT=>"-1Y\n-1Z\n-1E\n-1P\n-1T\n-1G\n-1M\n-1k\nY\n1\n02\n1K\n1M\n1G\n1T\n"
+      . "1P\n1E\n1Z\n1Y\n"}],
 ["h2", '-h', {IN=>"1M\n-2G\n-3K"}, {OUT=>"-2G\n-3K\n1M\n"}],
-["h3", '-h', {IN=>"1Mi\n1M\n"}, {OUT=>""}, {EXIT=>2},
- {ERR=>"$prog: both SI and IEC prefixes present on units\n"}],
-# decimal at end => ignore suffix
-["h4", '-h', {IN=>"1.E\n2.M\n"}, {OUT=>"1.E\n2.M\n"}],
+# check that it works with powers of 1024
+["h3", '-k 2,2h -k 1,1', {IN=>"a 1G\nb 1023M\n"}, {OUT=>"b 1023M\na 1G\n"}],
+# decimal at end => allowed
+["h4", '-h', {IN=>"1.E\n2.M\n"}, {OUT=>"2.M\n1.E\n"}],
 # double decimal => ignore suffix
 ["h5", '-h', {IN=>"1..2E\n2..2M\n"}, {OUT=>"1..2E\n2..2M\n"}],
-# illustrate misordering of ambiguous abbreviations
+# "M" sorts before "G" regardless of the positive number attached.
 ["h6", '-h', {IN=>"1GiB\n1030MiB\n"}, {OUT=>"1030MiB\n1GiB\n"}],
 # check option incompatibility
 ["h7", '-hn', {IN=>""}, {OUT=>""}, {EXIT=>2},
@@ -92,6 +95,10 @@ my @Tests =
  {ERR=>"$prog: -:3: disorder: B\n"}, $normalize_filename],
 ["02p", '-cu', {IN=>"B\nA\nB\n"}, {OUT=>''}, {EXIT=>1},
  {ERR=>"$prog: -:2: disorder: A\n"}, $normalize_filename],
+["02q", '-c -k 1,1fR', {IN=>"ABC\nABc\nAbC\nAbc\naBC\naBc\nabC\nabc\n"}],
+["02r", '-c -k 1,1fV', {IN=>"ABC\nABc\nAbC\nAbc\naBC\naBc\nabC\nabc\n"}],
+["02s", '-c -k 1,1dfR',
+                 {IN=>".ABC\n.ABc.\nA.bC\nA.bc.\naB.C\naB.c.\nabC.\nabc..\n"}],
 #
 ["03a", '-k1', {IN=>"B\nA\n"}, {OUT=>"A\nB\n"}],
 ["03b", '-k1,1', {IN=>"B\nA\n"}, {OUT=>"A\nB\n"}],
@@ -271,8 +278,14 @@ my @Tests =
 # of memcmp in the Next C library.  With optimization, gcc uses its
 # (working) builtin version.  Test case form William Lewis.
 ["20a", '',
- {IN=>"_________U__free\n_________U__malloc\n_________U__abort\n_________U__memcpy\n_________U__memset\n_________U_dyld_stub_binding_helper\n_________U__malloc\n_________U___iob\n_________U__abort\n_________U__fprintf\n"},
- {OUT=>"_________U___iob\n_________U__abort\n_________U__abort\n_________U__fprintf\n_________U__free\n_________U__malloc\n_________U__malloc\n_________U__memcpy\n_________U__memset\n_________U_dyld_stub_binding_helper\n"}],
+ {IN=>"_________U__free\n_________U__malloc\n_________U__abort\n"
+      . "_________U__memcpy\n_________U__memset\n"
+      . "_________U_dyld_stub_binding_helper\n_________U__malloc\n"
+      . "_________U___iob\n_________U__abort\n_________U__fprintf\n"},
+ {OUT=>"_________U___iob\n_________U__abort\n_________U__abort\n"
+       . "_________U__fprintf\n_________U__free\n_________U__malloc\n"
+       . "_________U__malloc\n_________U__memcpy\n_________U__memset\n"
+       . "_________U_dyld_stub_binding_helper\n"}],
 
 # Demonstrate that folding changes the ordering of e.g. A, a, and _
 # because while they normally (in the C locale) collate like A, _, a,
@@ -306,26 +319,13 @@ my @Tests =
 ["nul-nls", '', {IN=>"\0b\n\0a\n"}, {OUT=>"\0a\n\0b\n"}],
 
 # Paul Eggert wrote:
-# I tested the revised `sort' against Solaris `sort', and found a
-# discrepancy that turns out to be a longstanding bug in GNU sort.
-# POSIX.2 specifies that a newline is part of the input line, and should
-# be significant during comparison; but with GNU sort the newline is
-# insignificant.  Here is an example of the bug:
-#
-#        $ od -c t
-#        0000000  \n  \t  \n
-#        0000003
-#        $ sort t | od -c
-#        0000000  \n  \t  \n
-#        0000003
-#
-# The correct output of the latter command should be
-#
-#        0000000  \t  \n  \n
-#        0000003
-#
-# because \t comes before \n in the collating sequence, and the trailing
-# \n's are part of the input line.
+# A previous version of POSIX incorrectly required that the newline
+# at the end of the input line contributed to the sort, which would
+# mean that an empty line should sort after a line starting with a tab
+# (because \t precedes \n in the ASCII collating sequence).
+# GNU 'sort' was altered to do this, but was changed back once it
+# was discovered to be a POSIX bug (and the POSIX bug was fixed).
+# Check that 'sort' conforms to the fixed POSIX, not to the buggy one.
 ["use-nl", '', {IN=>"\n\t\n"}, {OUT=>"\n\t\n"}],
 
 # Specifying two -o options should evoke a failure
@@ -335,8 +335,8 @@ my @Tests =
 # Specifying incompatible options should evoke a failure.
 ["incompat1", '-in', {EXIT=>2},
  {ERR=>"$prog: options `-in' are incompatible\n"}],
-["incompat2", '-fR', {EXIT=>2},
- {ERR=>"$prog: options `-fR' are incompatible\n"}],
+["incompat2", '-nR', {EXIT=>2},
+ {ERR=>"$prog: options `-nR' are incompatible\n"}],
 ["incompat3", '-dfgiMnR', {EXIT=>2},
  {ERR=>"$prog: options `-dfgMnR' are incompatible\n"}],
 ["incompat4", qw(-c -o /dev/null), {EXIT=>2},
@@ -353,9 +353,9 @@ my @Tests =
  {IN=>"a\0z\01\nb\0y\02\n"}, {OUT=>"b\0y\02\na\0z\01\n"}],
 
 # fields > SIZE_MAX are silently interpreted as SIZE_MAX
-["bigfield1", "-k $limits->{'UINTMAX_OFLOW'}",
+["bigfield1", "-k $limits->{UINTMAX_OFLOW}",
  {IN=>"2\n1\n"}, {OUT=>"1\n2\n"}],
-["bigfield2", "-k $limits->{'SIZE_OFLOW'}",
+["bigfield2", "-k $limits->{SIZE_OFLOW}",
  {IN=>"2\n1\n"}, {OUT=>"1\n2\n"}],
 
 # Using an old-style key-specifying option like +1 with an invalid
@@ -367,6 +367,7 @@ my @Tests =
 # Exercise the code that enlarges the line buffer.  See the thread here:
 # http://thread.gmane.org/gmane.comp.gnu.coreutils.bugs/11006
 ['realloc-buf', '-S1', {IN=>'a'x4000 ."\n"}, {OUT=>'a'x4000 ."\n"}],
+['realloc-buf-2', '-S1', {IN=>'a'x5 ."\n"}, {OUT=>'a'x5 ."\n"}],
 
 ["sort-numeric", '--sort=numeric', {IN=>".01\n0\n"}, {OUT=>"0\n.01\n"}],
 ["sort-gennum", '--sort=general-numeric',

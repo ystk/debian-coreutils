@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test "ln --target-dir" with one file.
 
-# Copyright (C) 2002, 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2002, 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,14 +21,10 @@
 # ln: `d/.': cannot overwrite directory
 # Based on a test case from Dmitry V. Levin.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  ln --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ ln
 
-. $srcdir/test-lib.sh
-
-mkdir d || framework_failure
+mkdir d || framework_failure_
 ln -s --target-dir=d ../f || fail=1
 
 Exit $fail

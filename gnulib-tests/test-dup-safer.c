@@ -1,7 +1,7 @@
 /* -*- buffer-read-only: t -*- vi: set ro: */
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Test that dup_safer leaves standard fds alone.
-   Copyright (C) 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -39,9 +39,6 @@
 #if !O_BINARY
 # define setmode(f,m) zero ()
 static int zero (void) { return 0; }
-#endif
-#ifndef O_CLOEXEC
-# define O_CLOEXEC 0
 #endif
 
 /* This test intentionally closes stderr.  So, we arrange to have fd 10

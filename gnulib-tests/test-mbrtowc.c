@@ -1,7 +1,7 @@
 /* -*- buffer-read-only: t -*- vi: set ro: */
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Test of conversion of multibyte character to wide character.
-   Copyright (C) 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2008-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -145,6 +145,11 @@ main (int argc, char *argv[])
           ASSERT (mbsinit (&state));
           input[1] = '\0';
 
+          /* Test support of NULL first argument.  */
+          ret = mbrtowc (NULL, input + 2, 3, &state);
+          ASSERT (ret == 1);
+          ASSERT (mbsinit (&state));
+
           wc = (wchar_t) 0xBADFACE;
           ret = mbrtowc (&wc, input + 2, 3, &state);
           ASSERT (ret == 1);
@@ -193,6 +198,11 @@ main (int argc, char *argv[])
           ASSERT (wctob (wc) == EOF);
           ASSERT (mbsinit (&state));
           input[2] = '\0';
+
+          /* Test support of NULL first argument.  */
+          ret = mbrtowc (NULL, input + 3, 4, &state);
+          ASSERT (ret == 2);
+          ASSERT (mbsinit (&state));
 
           wc = (wchar_t) 0xBADFACE;
           ret = mbrtowc (&wc, input + 3, 4, &state);
@@ -252,6 +262,11 @@ main (int argc, char *argv[])
           ASSERT (mbsinit (&state));
           input[4] = '\0';
 
+          /* Test support of NULL first argument.  */
+          ret = mbrtowc (NULL, input + 5, 3, &state);
+          ASSERT (ret == 2);
+          ASSERT (mbsinit (&state));
+
           wc = (wchar_t) 0xBADFACE;
           ret = mbrtowc (&wc, input + 5, 3, &state);
           ASSERT (ret == 2);
@@ -294,6 +309,11 @@ main (int argc, char *argv[])
           ASSERT (wctob (wc) == EOF);
           ASSERT (mbsinit (&state));
           input[2] = '\0';
+
+          /* Test support of NULL first argument.  */
+          ret = mbrtowc (NULL, input + 3, 6, &state);
+          ASSERT (ret == 4);
+          ASSERT (mbsinit (&state));
 
           wc = (wchar_t) 0xBADFACE;
           ret = mbrtowc (&wc, input + 3, 6, &state);

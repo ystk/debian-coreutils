@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure that mv doesn't first unlink its destination in one particular case
 
-# Copyright (C) 2006-2010 Free Software Foundation, Inc.
+# Copyright (C) 2006-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,24 +16,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  mv --version
-fi
-
-. $srcdir/test-lib.sh
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ mv
 require_strace_ unlink
 
 # Before the fix, mv would unnecessarily unlink the destination symlink:
-#   $ rm -rf s[12]; ln -s / s1; ln -s /tmp s2; strace -qe unlink /bin/mv -T s1 s2
+#   $ rm -rf s[12]; ln -s / s1; ln -s /tmp s2
+#   $ strace -qe unlink /bin/mv -T s1 s2
 #   unlink("s2") = 0
 #
 # With the fix, it doesn't call unlink:
-#   $ rm -rf s[12]; ln -s / s1; ln -s /tmp s2; strace -qe unlink ./mv -T s1 s2
+#   $ rm -rf s[12]; ln -s / s1; ln -s /tmp s2
+#   $ strace -qe unlink ./mv -T s1 s2
 #   $
 
-ln -s t1 s1 || framework_failure
-ln -s t2 s2 || framework_failure
+ln -s t1 s1 || framework_failure_
+ln -s t2 s2 || framework_failure_
 
 
 strace -qe unlink mv -T s1 s2 > out 2>&1 || fail=1

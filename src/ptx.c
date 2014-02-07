@@ -1,5 +1,5 @@
 /* Permuted index for GNU, with keywords in their context.
-   Copyright (C) 1990-1991, 1993, 1998-2010 Free Software Foundation, Inc.
+   Copyright (C) 1990-1991, 1993, 1998-2011 Free Software Foundation, Inc.
    François Pinard <pinard@iro.umontreal.ca>, 1988.
 
    This program is free software: you can redistribute it and/or modify
@@ -22,12 +22,14 @@
 #include <getopt.h>
 #include <sys/types.h>
 #include "system.h"
+#include <regex.h>
 #include "argmatch.h"
 #include "diacrit.h"
 #include "error.h"
+#include "fadvise.h"
 #include "quote.h"
 #include "quotearg.h"
-#include "regex.h"
+#include "read-file.h"
 #include "stdio--.h"
 #include "xstrtol.h"
 
@@ -61,10 +63,6 @@
    options.  Many of the "int" values below should be "size_t" or
    something else like that.  */
 
-/* Reallocation step when swallowing non regular files.  The value is not
-   the actual reallocation step, but its base two logarithm.  */
-#define SWALLOW_REALLOC_LOG 12
-
 /* Program options.  */
 
 enum Format
@@ -88,7 +86,7 @@ static enum Format output_format = UNKNOWN_FORMAT;
                                 /* output format */
 
 static bool ignore_case = false;	/* fold lower to upper for sorting */
-static const char *break_file = NULL;	/* name of the `Break characters' file */
+static const char *break_file = NULL;	/* name of the `Break chars' file */
 static const char *only_file = NULL;	/* name of the `Only words' file */
 static const char *ignore_file = NULL;	/* name of the `Ignore words' file */
 
@@ -253,7 +251,7 @@ static char edited_flag[CHAR_SET_SIZE];
 static int half_line_width;	/* half of line width, reference excluded */
 static int before_max_width;	/* maximum width of before field */
 static int keyafter_max_width;	/* maximum width of keyword-and-after field */
-static int truncation_string_length;/* length of string used to flag truncation */
+static int truncation_string_length;/* length of string that flags truncation */
 
 /* When context is limited by lines, wraparound may happen on final output:
    the `head' pointer gives access to some supplementary left context which
@@ -510,86 +508,21 @@ initialize_regex (void)
 static void
 swallow_file_in_memory (const char *file_name, BLOCK *block)
 {
-  int file_handle;		/* file descriptor number */
-  struct stat stat_block;	/* stat block for file */
-  size_t allocated_length;	/* allocated length of memory buffer */
   size_t used_length;		/* used length in memory buffer */
-  int read_length;		/* number of character gotten on last read */
 
   /* As special cases, a file name which is NULL or "-" indicates standard
      input, which is already opened.  In all other cases, open the file from
      its name.  */
   bool using_stdin = !file_name || !*file_name || STREQ (file_name, "-");
   if (using_stdin)
-    file_handle = STDIN_FILENO;
+    block->start = fread_file (stdin, &used_length);
   else
-    if ((file_handle = open (file_name, O_RDONLY)) < 0)
-      error (EXIT_FAILURE, errno, "%s", file_name);
+    block->start = read_file (file_name, &used_length);
 
-  /* If the file is a plain, regular file, allocate the memory buffer all at
-     once and swallow the file in one blow.  In other cases, read the file
-     repeatedly in smaller chunks until we have it all, reallocating memory
-     once in a while, as we go.  */
+  if (!block->start)
+    error (EXIT_FAILURE, errno, "%s", quote (using_stdin ? "-" : file_name));
 
-  if (fstat (file_handle, &stat_block) < 0)
-    error (EXIT_FAILURE, errno, "%s", file_name);
-
-  if (S_ISREG (stat_block.st_mode))
-    {
-      size_t in_memory_size;
-
-      block->start = xmalloc ((size_t) stat_block.st_size);
-
-      if ((in_memory_size = read (file_handle,
-                                  block->start, (size_t) stat_block.st_size))
-          != stat_block.st_size)
-        {
-#if MSDOS
-          /* On MSDOS, in memory size may be smaller than the file
-             size, because of end of line conversions.  But it can
-             never be smaller than half the file size, because the
-             minimum is when all lines are empty and terminated by
-             CR+LF.  */
-          if (in_memory_size != (size_t)-1
-              && in_memory_size >= stat_block.st_size / 2)
-            block->start = xrealloc (block->start, in_memory_size);
-          else
-#endif /* not MSDOS */
-
-            error (EXIT_FAILURE, errno, "%s", file_name);
-        }
-      block->end = block->start + in_memory_size;
-    }
-  else
-    {
-      block->start = xmalloc ((size_t) 1 << SWALLOW_REALLOC_LOG);
-      used_length = 0;
-      allocated_length = (1 << SWALLOW_REALLOC_LOG);
-
-      while (read_length = read (file_handle,
-                                 block->start + used_length,
-                                 allocated_length - used_length),
-             read_length > 0)
-        {
-          used_length += read_length;
-          if (used_length == allocated_length)
-            {
-              allocated_length += (1 << SWALLOW_REALLOC_LOG);
-              block->start
-                = xrealloc (block->start, allocated_length);
-            }
-        }
-
-      if (read_length < 0)
-        error (EXIT_FAILURE, errno, "%s", file_name);
-
-      block->end = block->start + used_length;
-    }
-
-  /* Close the file, but only if it was not the standard input.  */
-
-  if (! using_stdin && close (file_handle) != 0)
-    error (EXIT_FAILURE, errno, "%s", file_name);
+  block->end = block->start + used_length;
 }
 
 /* Sort and search routines.  */
@@ -662,7 +595,7 @@ compare_occurs (const void *void_first, const void *void_second)
 | Return !0 if WORD appears in TABLE.  Uses a binary search.  |
 `------------------------------------------------------------*/
 
-static int
+static int _GL_ATTRIBUTE_PURE
 search_table (WORD *word, WORD_TABLE *table)
 {
   int lowest;			/* current lowest possible index */
@@ -864,7 +797,7 @@ find_occurs_in_text (void)
 
       context_start = cursor;
 
-      /* If a end of line or end of sentence sequence is defined and
+      /* If an end of line or end of sentence sequence is defined and
          non-empty, `next_context_start' will be recomputed to be the end of
          each line or sentence, before each one is processed.  If no such
          sequence, then `next_context_start' is set at the end of the whole
@@ -1016,8 +949,9 @@ find_occurs_in_text (void)
                   < occurs_alloc[0])
                 xalloc_die ();
               occurs_alloc[0] = occurs_alloc[0] * 2 + 1;
-              occurs_table[0] = xrealloc (occurs_table[0],
-                                          occurs_alloc[0] * sizeof *occurs_table[0]);
+              occurs_table[0] =
+                xrealloc (occurs_table[0],
+                          occurs_alloc[0] * sizeof *occurs_table[0]);
             }
 
           occurs_cursor = occurs_table[0] + number_of_occurs[0];

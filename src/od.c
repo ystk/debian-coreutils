@@ -1,5 +1,5 @@
 /* od -- dump files in octal and other formats
-   Copyright (C) 1992, 1995-2010 Free Software Foundation, Inc.
+   Copyright (C) 1992, 1995-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include "system.h"
 #include "error.h"
+#include "ftoastr.h"
 #include "quote.h"
 #include "xfreopen.h"
 #include "xprintf.h"
@@ -34,20 +35,8 @@
 
 #define AUTHORS proper_name ("Jim Meyering")
 
-#include <float.h>
-
 /* The default number of input bytes per output line.  */
 #define DEFAULT_BYTES_PER_BLOCK 16
-
-/* The number of decimal digits of precision in a float.  */
-#ifndef FLT_DIG
-# define FLT_DIG 7
-#endif
-
-/* The number of decimal digits of precision in a double.  */
-#ifndef DBL_DIG
-# define DBL_DIG 15
-#endif
 
 #if HAVE_UNSIGNED_LONG_LONG_INT
 typedef unsigned long long int unsigned_long_long_int;
@@ -92,17 +81,15 @@ enum output_format
 enum
   {
     FMT_BYTES_ALLOCATED =
-      MAX ((sizeof "%*.99" - 1
+           (sizeof "%*.99" - 1
             + MAX (sizeof "ld",
                    MAX (sizeof PRIdMAX,
                         MAX (sizeof PRIoMAX,
                              MAX (sizeof PRIuMAX,
-                                  sizeof PRIxMAX))))),
-           sizeof "%*.99Le")
+                                  sizeof PRIxMAX)))))
   };
 
 /* Ensure that our choice for FMT_BYTES_ALLOCATED is reasonable.  */
-verify (LDBL_DIG <= 99);
 verify (MAX_INTEGRAL_TYPE_SIZE * CHAR_BIT / 3 <= 99);
 
 /* Each output format specification (from `-t spec' or from
@@ -387,7 +374,8 @@ RADIX is d for decimal, o for octal, x for hexadecimal or n for none.\n\
 BYTES is hexadecimal with 0x or 0X prefix, and may have a multiplier suffix:\n\
 b 512, kB 1000, K 1024, MB 1000*1000, M 1024*1024,\n\
 GB 1000*1000*1000, G 1024*1024*1024, and so on for T, P, E, Z, Y.\n\
-Adding a z suffix to any type displays printable characters at the end of each\n\
+Adding a z suffix to any type displays printable characters at the end of each\
+\n\
 output line.\n\
 "), stdout);
       fputs (_("\
@@ -401,10 +389,10 @@ implies 32.  By default, od uses -A o -t oS -w16.\n\
 
 /* Define the print functions.  */
 
-#define PRINT_TYPE(N, T)                                                \
+#define PRINT_FIELDS(N, T, FMT_STRING, ACTION)                          \
 static void                                                             \
 N (size_t fields, size_t blank, void const *block,                      \
-   char const *fmt_string, int width, int pad)                          \
+   char const *FMT_STRING, int width, int pad)                          \
 {                                                                       \
   T const *p = block;                                                   \
   size_t i;                                                             \
@@ -412,10 +400,21 @@ N (size_t fields, size_t blank, void const *block,                      \
   for (i = fields; blank < i; i--)                                      \
     {                                                                   \
       int next_pad = pad * (i - 1) / fields;                            \
-      xprintf (fmt_string, pad_remaining - next_pad + width, *p++);     \
+      int adjusted_width = pad_remaining - next_pad + width;            \
+      T x = *p++;                                                       \
+      ACTION;                                                           \
       pad_remaining = next_pad;                                         \
     }                                                                   \
 }
+
+#define PRINT_TYPE(N, T)                                                \
+  PRINT_FIELDS (N, T, fmt_string, xprintf (fmt_string, adjusted_width, x))
+
+#define PRINT_FLOATTYPE(N, T, FTOASTR, BUFSIZE)                         \
+  PRINT_FIELDS (N, T, fmt_string ATTRIBUTE_UNUSED,                      \
+                char buf[BUFSIZE];                                      \
+                FTOASTR (buf, sizeof buf, 0, 0, x);                     \
+                xprintf ("%*s", adjusted_width, buf))
 
 PRINT_TYPE (print_s_char, signed char)
 PRINT_TYPE (print_char, unsigned char)
@@ -424,11 +423,13 @@ PRINT_TYPE (print_short, unsigned short int)
 PRINT_TYPE (print_int, unsigned int)
 PRINT_TYPE (print_long, unsigned long int)
 PRINT_TYPE (print_long_long, unsigned_long_long_int)
-PRINT_TYPE (print_float, float)
-PRINT_TYPE (print_double, double)
-PRINT_TYPE (print_long_double, long double)
+
+PRINT_FLOATTYPE (print_float, float, ftoastr, FLT_BUFSIZE_BOUND)
+PRINT_FLOATTYPE (print_double, double, dtoastr, DBL_BUFSIZE_BOUND)
+PRINT_FLOATTYPE (print_long_double, long double, ldtoastr, LDBL_BUFSIZE_BOUND)
 
 #undef PRINT_TYPE
+#undef PRINT_FLOATTYPE
 
 static void
 dump_hexl_mode_trailer (size_t n_bytes, const char *block)
@@ -586,13 +587,11 @@ decode_one_format (const char *s_orig, const char *s, const char **next,
   enum size_spec size_spec;
   unsigned long int size;
   enum output_format fmt;
-  const char *pre_fmt_string;
   void (*print_function) (size_t, size_t, void const *, char const *,
                           int, int);
   const char *p;
   char c;
   int field_width;
-  int precision;
 
   assert (tspec != NULL);
 
@@ -772,34 +771,31 @@ this system doesn't provide a %lu-byte floating point type"),
         }
       size_spec = fp_type_size[size];
 
+      struct lconv const *locale = localeconv ();
+      size_t decimal_point_len =
+        (locale->decimal_point[0] ? strlen (locale->decimal_point) : 1);
+
       switch (size_spec)
         {
         case FLOAT_SINGLE:
           print_function = print_float;
-          /* FIXME - should we use %g instead of %e?  */
-          pre_fmt_string = "%%*.%de";
-          precision = FLT_DIG;
+          field_width = FLT_STRLEN_BOUND_L (decimal_point_len);
           break;
 
         case FLOAT_DOUBLE:
           print_function = print_double;
-          pre_fmt_string = "%%*.%de";
-          precision = DBL_DIG;
+          field_width = DBL_STRLEN_BOUND_L (decimal_point_len);
           break;
 
         case FLOAT_LONG_DOUBLE:
           print_function = print_long_double;
-          pre_fmt_string = "%%*.%dLe";
-          precision = LDBL_DIG;
+          field_width = LDBL_STRLEN_BOUND_L (decimal_point_len);
           break;
 
         default:
           abort ();
         }
 
-      field_width = precision + 8;
-      sprintf (tspec->fmt_string, pre_fmt_string, precision);
-      assert (strlen (tspec->fmt_string) < FMT_BYTES_ALLOCATED);
       break;
 
     case 'a':
@@ -1051,7 +1047,8 @@ skip (uintmax_t n_skip)
 }
 
 static void
-format_address_none (uintmax_t address ATTRIBUTE_UNUSED, char c ATTRIBUTE_UNUSED)
+format_address_none (uintmax_t address ATTRIBUTE_UNUSED,
+                     char c ATTRIBUTE_UNUSED)
 {
 }
 
@@ -1260,7 +1257,7 @@ read_block (size_t n, char *block, size_t *n_bytes_in_buffer)
 /* Return the least common multiple of the sizes associated
    with the format specs.  */
 
-static int
+static int _GL_ATTRIBUTE_PURE
 get_lcm (void)
 {
   size_t i;
@@ -1513,7 +1510,7 @@ main (int argc, char **argv)
   int n_files;
   size_t i;
   int l_c_m;
-  size_t desired_width IF_LINT (= 0);
+  size_t desired_width IF_LINT ( = 0);
   bool modern = false;
   bool width_specified = false;
   bool ok = true;
@@ -1522,7 +1519,7 @@ main (int argc, char **argv)
 
   /* The old-style `pseudo starting address' to be printed in parentheses
      after any true address.  */
-  uintmax_t pseudo_start IF_LINT (= 0);
+  uintmax_t pseudo_start IF_LINT ( = 0);
 
   initialize_main (&argc, &argv);
   set_program_name (argv[0]);
@@ -1564,7 +1561,7 @@ main (int argc, char **argv)
   address_pad_len = 7;
   flag_dump_strings = false;
 
-  for (;;)
+  while (true)
     {
       uintmax_t tmp;
       enum strtol_error s_err;
@@ -1800,7 +1797,7 @@ it must be one character from [doxn]"),
       if (traditional && 1 < n_files)
         {
           error (0, 0, _("extra operand %s"), quote (argv[optind + 1]));
-          error (0, 0, "%s\n",
+          error (0, 0, "%s",
                  _("compatibility mode supports at most one file"));
           usage (EXIT_FAILURE);
         }
@@ -1908,7 +1905,7 @@ it must be one character from [doxn]"),
 
   ok &= (flag_dump_strings ? dump_strings () : dump ());
 
-cleanup:;
+cleanup:
 
   if (have_read_stdin && fclose (stdin) == EOF)
     error (EXIT_FAILURE, errno, _("standard input"));

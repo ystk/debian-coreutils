@@ -2,7 +2,7 @@
 # Ensure dd treats `--' properly.
 # Also test some flag values.
 
-# Copyright (C) 1999, 2004-2010 Free Software Foundation, Inc.
+# Copyright (C) 1999, 2004-2011 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,22 +17,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if test "$VERBOSE" = yes; then
-  set -x
-  dd --version
-fi
+. "${srcdir=.}/init.sh"; path_prepend_ ../src
+print_ver_ dd
 
-. $srcdir/test-lib.sh
-
-tmp_in=dd-in.$$
-tmp_in2=dd-in2.$$
-tmp_sym=dd-sym.$$
-tmp_out=dd-out.$$
+tmp_in=dd-in
+tmp_in2=dd-in2
+tmp_sym=dd-sym
+tmp_out=dd-out
 
 warn=0
-echo data > $tmp_in || framework_failure
-ln $tmp_in $tmp_in2 || framework_failure
-ln -s $tmp_in $tmp_sym || framework_failure
+echo data > $tmp_in || framework_failure_
+ln $tmp_in $tmp_in2 || framework_failure_
+ln -s $tmp_in $tmp_sym || framework_failure_
 
 dd if=$tmp_in of=$tmp_out 2> /dev/null || fail=1
 compare $tmp_in $tmp_out || fail=1
@@ -87,11 +83,13 @@ fi
 outbytes=`echo x | dd bs=3 ibs=10 obs=10 conv=sync 2>/dev/null | wc -c`
 test "$outbytes" -eq 3 || fail=1
 
+# A delay is required to trigger a failure.
+# There might be some missed failures but it's unlikely.
 (echo a; sleep .1; echo b) \
   | env LC_ALL=C dd bs=4 status=noxfer iflag=fullblock >out 2>err || fail=1
-printf 'a\nb\n' > out_ok || framework_failure
+printf 'a\nb\n' > out_ok || framework_failure_
 echo "1+0 records in
-1+0 records out" > err_ok || framework_failure
+1+0 records out" > err_ok || framework_failure_
 compare out_ok out || fail=1
 compare err_ok err || fail=1
 

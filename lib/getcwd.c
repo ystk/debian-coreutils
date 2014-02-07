@@ -1,4 +1,4 @@
-/* Copyright (C) 1991-1999, 2004-2010 Free Software Foundation, Inc.
+/* Copyright (C) 1991-1999, 2004-2011 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    This program is free software: you can redistribute it and/or modify
@@ -57,8 +57,6 @@
 # endif
 #endif
 
-#include <limits.h>
-
 #ifndef MAX
 # define MAX(a, b) ((a) < (b) ? (b) : (a))
 #endif
@@ -66,12 +64,12 @@
 # define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif
 
+#include "pathmax.h"
+
+/* In this file, PATH_MAX only serves as a threshold for choosing among two
+   algorithms.  */
 #ifndef PATH_MAX
-# ifdef MAXPATHLEN
-#  define PATH_MAX MAXPATHLEN
-# else
-#  define PATH_MAX 1024
-# endif
+# define PATH_MAX 8192
 #endif
 
 #if D_INO_IN_DIRENT
@@ -136,13 +134,11 @@ __getcwd (char *buf, size_t size)
   size_t allocated = size;
   size_t used;
 
-#if HAVE_PARTLY_WORKING_GETCWD
-  /* The system getcwd works, except it sometimes fails when it
-     shouldn't, setting errno to ERANGE, ENAMETOOLONG, or ENOENT.  If
-     AT_FDCWD is not defined, the algorithm below is O(N**2) and this
-     is much slower than the system getcwd (at least on GNU/Linux).
-     So trust the system getcwd's results unless they look
-     suspicious.
+#if HAVE_RAW_DECL_GETCWD
+  /* If AT_FDCWD is not defined, the algorithm below is O(N**2) and
+     this is much slower than the system getcwd (at least on
+     GNU/Linux).  So trust the system getcwd's results unless they
+     look suspicious.
 
      Use the system getcwd even if we have openat support, since the
      system getcwd works even when a parent is unreadable, while the
@@ -150,8 +146,27 @@ __getcwd (char *buf, size_t size)
 
 # undef getcwd
   dir = getcwd (buf, size);
-  if (dir || (errno != ERANGE && errno != ENAMETOOLONG && errno != ENOENT))
+  if (dir || (size && errno == ERANGE))
     return dir;
+
+  /* Solaris getcwd (NULL, 0) fails with errno == EINVAL, but it has
+     internal magic that lets it work even if an ancestor directory is
+     inaccessible, which is better in many cases.  So in this case try
+     again with a buffer that's almost always big enough.  */
+  if (errno == EINVAL && buf == NULL && size == 0)
+    {
+      char big_buffer[BIG_FILE_NAME_LENGTH + 1];
+      dir = getcwd (big_buffer, sizeof big_buffer);
+      if (dir)
+        return strdup (dir);
+    }
+
+# if HAVE_PARTLY_WORKING_GETCWD
+  /* The system getcwd works, except it sometimes fails when it
+     shouldn't, setting errno to ERANGE, ENAMETOOLONG, or ENOENT.    */
+  if (errno != ERANGE && errno != ENAMETOOLONG && errno != ENOENT)
+    return NULL;
+# endif
 #endif
 
   if (size == 0)
@@ -230,8 +245,6 @@ __getcwd (char *buf, size_t size)
       dirstream = fdopendir (fd);
       if (dirstream == NULL)
         goto lose;
-      /* Reset fd.  It may have been closed by fdopendir.  */
-      fd = dirfd (dirstream);
       fd_needs_closing = false;
 #else
       dirstream = __opendir (dotlist);

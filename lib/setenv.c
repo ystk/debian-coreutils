@@ -1,4 +1,4 @@
-/* Copyright (C) 1992, 1995-2003, 2005-2010 Free Software Foundation, Inc.
+/* Copyright (C) 1992, 1995-2003, 2005-2011 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    This program is free software: you can redistribute it and/or modify
@@ -15,6 +15,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #if !_LIBC
+# define _GL_USE_STDLIB_ALLOC 1
 # include <config.h>
 #endif
 
@@ -147,6 +148,9 @@ __add_to_environ (const char *name, const char *value, const char *combined,
                    : realloc (last_environ, (size + 2) * sizeof (char *)));
       if (new_environ == NULL)
         {
+          /* It's easier to set errno to ENOMEM than to rely on the
+             'malloc-posix' and 'realloc-posix' gnulib modules.  */
+          __set_errno (ENOMEM);
           UNLOCK;
           return -1;
         }
@@ -346,6 +350,9 @@ weak_alias (__clearenv, clearenv)
 #if HAVE_SETENV
 
 # undef setenv
+# if !HAVE_DECL_SETENV
+extern int setenv (const char *, const char *, int);
+# endif
 # define STREQ(a, b) (strcmp (a, b) == 0)
 
 int
