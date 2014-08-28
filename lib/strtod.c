@@ -1,4 +1,4 @@
-/* Copyright (C) 1991-1992, 1997, 1999, 2003, 2006, 2008-2011 Free Software
+/* Copyright (C) 1991-1992, 1997, 1999, 2003, 2006, 2008-2013 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -149,7 +149,7 @@ parse_number (const char *nptr,
       else
         {
           /* The value of the digit doesn't matter, since we have already
-             gotten as many digits as can be represented in a `double'.
+             gotten as many digits as can be represented in a 'double'.
              This doesn't necessarily mean the result will overflow.
              The exponent may reduce it to within range.
 
@@ -193,7 +193,7 @@ static double underlying_strtod (const char *, char **);
 /* HP cc on HP-UX 10.20 has a bug with the constant expression -0.0.
    ICC 10.0 has a bug when optimizing the expression -zero.
    The expression -DBL_MIN * DBL_MIN does not work when cross-compiling
-   to PowerPC on MacOS X 10.5.  */
+   to PowerPC on Mac OS X 10.5.  */
 #if defined __hpux || defined __sgi || defined __ICC
 static double
 compute_minus_zero (void)

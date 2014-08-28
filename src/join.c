@@ -1,5 +1,5 @@
 /* join - join lines of two files on a common field
-   Copyright (C) 1991, 1995-2006, 2008-2011 Free Software Foundation, Inc.
+   Copyright (C) 1991-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 #include "xstrtol.h"
 #include "argmatch.h"
 
-/* The official name of this program (e.g., no `g' prefix).  */
+/* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "join"
 
 #define AUTHORS proper_name ("Mike Haertel")
@@ -72,8 +72,8 @@ struct field
 struct line
   {
     struct linebuffer buf;	/* The line itself.  */
-    size_t nfields;		/* Number of elements in `fields'.  */
-    size_t nfields_allocated;	/* Number of elements allocated for `fields'. */
+    size_t nfields;		/* Number of elements in 'fields'.  */
+    size_t nfields_allocated;	/* Number of elements allocated for 'fields'. */
     struct field *fields;
   };
 
@@ -81,8 +81,8 @@ struct line
    same join field value.  */
 struct seq
   {
-    size_t count;			/* Elements used in `lines'.  */
-    size_t alloc;			/* Elements allocated in `lines'.  */
+    size_t count;			/* Elements used in 'lines'.  */
+    size_t alloc;			/* Elements allocated in 'lines'.  */
     struct line **lines;
   };
 
@@ -132,7 +132,7 @@ static size_t join_field_2 = SIZE_MAX;
 /* List of fields to print.  */
 static struct outlist outlist_head;
 
-/* Last element in `outlist', where a new element can be added.  */
+/* Last element in 'outlist', where a new element can be added.  */
 static struct outlist *outlist_end = &outlist_head;
 
 /* Tab character separating fields.  If negative, fields are separated
@@ -173,7 +173,7 @@ static struct line uni_blank;
 /* If nonzero, ignore case when comparing join fields.  */
 static bool ignore_case;
 
-/* If nonzero, treat the first line of each file as column headers -
+/* If nonzero, treat the first line of each file as column headers --
    join them without checking for ordering */
 static bool join_header_lines;
 
@@ -181,8 +181,7 @@ void
 usage (int status)
 {
   if (status != EXIT_SUCCESS)
-    fprintf (stderr, _("Try `%s --help' for more information.\n"),
-             program_name);
+    emit_try_help ();
   else
     {
       printf (_("\
@@ -194,13 +193,13 @@ For each pair of input lines with identical join fields, write a line to\n\
 standard output.  The default join field is the first, delimited\n\
 by whitespace.  When FILE1 or FILE2 (not both) is -, read standard input.\n\
 \n\
-  -a FILENUM        print unpairable lines coming from file FILENUM, where\n\
+  -a FILENUM        also print unpairable lines from file FILENUM, where\n\
                       FILENUM is 1 or 2, corresponding to FILE1 or FILE2\n\
   -e EMPTY          replace missing input fields with EMPTY\n\
 "), stdout);
       fputs (_("\
   -i, --ignore-case  ignore differences in case when comparing fields\n\
-  -j FIELD          equivalent to `-1 FIELD -2 FIELD'\n\
+  -j FIELD          equivalent to '-1 FIELD -2 FIELD'\n\
   -o FORMAT         obey FORMAT while constructing output line\n\
   -t CHAR           use CHAR as input and output field separator\n\
 "), stdout);
@@ -221,15 +220,15 @@ by whitespace.  When FILE1 or FILE2 (not both) is -, read standard input.\n\
 Unless -t CHAR is given, leading blanks separate fields and are ignored,\n\
 else fields are separated by CHAR.  Any FIELD is a field number counted\n\
 from 1.  FORMAT is one or more comma or blank separated specifications,\n\
-each being `FILENUM.FIELD' or `0'.  Default FORMAT outputs the join field,\n\
+each being 'FILENUM.FIELD' or '0'.  Default FORMAT outputs the join field,\n\
 the remaining fields from FILE1, the remaining fields from FILE2, all\n\
 separated by CHAR.  If FORMAT is the keyword 'auto', then the first\n\
 line of each file determines the number of fields output for each line.\n\
 \n\
 Important: FILE1 and FILE2 must be sorted on the join fields.\n\
-E.g., use ` sort -k 1b,1 ' if `join' has no options,\n\
-or use ` join -t '' ' if `sort' has no options.\n\
-Note, comparisons honor the rules specified by `LC_COLLATE'.\n\
+E.g., use \"sort -k 1b,1\" if 'join' has no options,\n\
+or use \"join -t ''\" if 'sort' has no options.\n\
+Note, comparisons honor the rules specified by 'LC_COLLATE'.\n\
 If the input is not sorted and some lines cannot be joined, a\n\
 warning message will be given.\n\
 "), stdout);
@@ -252,7 +251,7 @@ extract_field (struct line *line, char *field, size_t len)
   ++(line->nfields);
 }
 
-/* Fill in the `fields' structure in LINE.  */
+/* Fill in the 'fields' structure in LINE.  */
 
 static void
 xfields (struct line *line)
@@ -401,7 +400,7 @@ check_order (const struct line *prev,
 
               error ((check_input_order == CHECK_ORDER_ENABLED
                       ? EXIT_FAILURE : 0),
-                     0, _("%s:%ju: is not sorted: %.*s"),
+                     0, _("%s:%"PRIuMAX": is not sorted: %.*s"),
                      g_names[whatfile - 1], line_no[whatfile - 1],
                      (int) len, current->buf.buffer);
 
@@ -533,7 +532,7 @@ delseq (struct seq *seq)
 
 
 /* Print field N of LINE if it exists and is nonempty, otherwise
-   `empty_filler' if it is nonempty.  */
+   'empty_filler' if it is nonempty.  */
 
 static void
 prfield (size_t n, struct line const *line)
@@ -801,7 +800,7 @@ join (FILE *fp1, FILE *fp2)
   delseq (&seq2);
 }
 
-/* Add a field spec for field FIELD of file FILE to `outlist'.  */
+/* Add a field spec for field FIELD of file FILE to 'outlist'.  */
 
 static void
 add_field (int file, size_t field)
@@ -858,7 +857,7 @@ decode_field_spec (const char *s, int *file_index, size_t *field_index)
     case '0':
       if (s[1])
         {
-          /* `0' must be all alone -- no `.FIELD'.  */
+          /* '0' must be all alone -- no '.FIELD'.  */
           error (EXIT_FAILURE, 0, _("invalid field specifier: %s"), quote (s));
         }
       *file_index = 0;
@@ -886,7 +885,7 @@ decode_field_spec (const char *s, int *file_index, size_t *field_index)
     }
 }
 
-/* Add the comma or blank separated field spec(s) in STR to `outlist'.  */
+/* Add the comma or blank separated field spec(s) in STR to 'outlist'.  */
 
 static void
 add_field_list (char *str)

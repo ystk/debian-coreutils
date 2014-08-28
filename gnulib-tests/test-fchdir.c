@@ -1,7 +1,5 @@
-/* -*- buffer-read-only: t -*- vi: set ro: */
-/* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Test changing to a directory named by a file descriptor.
-   Copyright (C) 2009-2011 Free Software Foundation, Inc.
+   Copyright (C) 2009-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -36,14 +34,30 @@ SIGNATURE_CHECK (fchdir, int, (int));
 int
 main (void)
 {
-  char *cwd = getcwd (NULL, 0);
-  int fd = open (".", O_RDONLY);
+  char *cwd;
+  int fd;
   int i;
 
+  cwd = getcwd (NULL, 0);
   ASSERT (cwd);
+
+  fd = open (".", O_RDONLY);
   ASSERT (0 <= fd);
 
-  /* Check for failure cases.  */
+  /* Test behaviour for invalid file descriptors.  */
+  {
+    errno = 0;
+    ASSERT (fchdir (-1) == -1);
+    ASSERT (errno == EBADF);
+  }
+  {
+    close (99);
+    errno = 0;
+    ASSERT (fchdir (99) == -1);
+    ASSERT (errno == EBADF);
+  }
+
+  /* Check for other failure cases.  */
   {
     int bad_fd = open ("/dev/null", O_RDONLY);
     ASSERT (0 <= bad_fd);
@@ -51,9 +65,6 @@ main (void)
     ASSERT (fchdir (bad_fd) == -1);
     ASSERT (errno == ENOTDIR);
     ASSERT (close (bad_fd) == 0);
-    errno = 0;
-    ASSERT (fchdir (-1) == -1);
-    ASSERT (errno == EBADF);
   }
 
   /* Repeat test twice, once in '.' and once in '..'.  */

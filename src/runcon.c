@@ -1,5 +1,5 @@
 /* runcon -- run command with specified security context
-   Copyright (C) 2005-2011 Free Software Foundation, Inc.
+   Copyright (C) 2005-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -15,9 +15,9 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /*
- * runcon [ context |
- *         ( [ -c ] [ -r role ] [-t type] [ -u user ] [ -l levelrange ] )
- *         command [arg1 [arg2 ...] ]
+ * runcon [ context
+ *          | ( [ -c ] [ -r role ] [-t type] [ -u user ] [ -l levelrange ] )
+ *          command [arg1 [arg2 ...] ]
  *
  * attempt to run the specified command with the specified context.
  *
@@ -56,7 +56,7 @@
 #include "quote.h"
 #include "quotearg.h"
 
-/* The official name of this program (e.g., no `g' prefix).  */
+/* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "runcon"
 
 #define AUTHORS proper_name ("Russell Coker")
@@ -77,8 +77,7 @@ void
 usage (int status)
 {
   if (status != EXIT_SUCCESS)
-    fprintf (stderr, _("Try `%s --help' for more information.\n"),
-             program_name);
+    emit_try_help ();
   else
     {
       printf (_("\
@@ -88,7 +87,11 @@ Usage: %s CONTEXT COMMAND [args]\n\
       fputs (_("\
 Run a program in a different security context.\n\
 With neither CONTEXT nor COMMAND, print the current security context.\n\
-\n\
+"), stdout);
+
+      emit_mandatory_arg_note ();
+
+      fputs (_("\
   CONTEXT            Complete security context\n\
   -c, --compute      compute process transition context before modifying\n\
   -t, --type=TYPE    type (for same role as parent)\n\

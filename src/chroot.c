@@ -1,5 +1,5 @@
 /* chroot -- run command or shell with special root directory
-   Copyright (C) 1995-1997, 1999-2004, 2007-2011 Free Software Foundation, Inc.
+   Copyright (C) 1995-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 #include "userspec.h"
 #include "xstrtol.h"
 
-/* The official name of this program (e.g., no `g' prefix).  */
+/* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "chroot"
 
 #define AUTHORS proper_name ("Roland McGrath")
@@ -51,6 +51,17 @@ static struct option const long_opts[] =
   {GETOPT_VERSION_OPTION_DECL},
   {NULL, 0, NULL, 0}
 };
+
+#if ! HAVE_SETGROUPS
+/* At least Interix lacks supplemental group support.  Define an
+   always-successful replacement to avoid checking for setgroups
+   availability everywhere, just to support broken platforms. */
+static int
+setgroups (size_t size ATTRIBUTE_UNUSED, gid_t const *list ATTRIBUTE_UNUSED)
+{
+  return 0;
+}
+#endif
 
 /* Call setgroups to set the supplementary groups to those listed in GROUPS.
    GROUPS is a comma separated list of supplementary groups (names or numbers).
@@ -115,8 +126,7 @@ void
 usage (int status)
 {
   if (status != EXIT_SUCCESS)
-    fprintf (stderr, _("Try `%s --help' for more information.\n"),
-             program_name);
+    emit_try_help ();
   else
     {
       printf (_("\
@@ -138,7 +148,7 @@ Run COMMAND with root directory set to NEWROOT.\n\
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
       fputs (_("\
 \n\
-If no command is given, run ``${SHELL} -i'' (default: /bin/sh).\n\
+If no command is given, run '${SHELL} -i' (default: '/bin/sh -i').\n\
 "), stdout);
       emit_ancillary_info ();
     }

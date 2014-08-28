@@ -1,5 +1,5 @@
 /* getlimits - print various platform dependent limits.
-   Copyright (C) 2008-2011 Free Software Foundation, Inc.
+   Copyright (C) 2008-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -59,8 +59,7 @@ void
 usage (int status)
 {
   if (status != EXIT_SUCCESS)
-    fprintf (stderr, _("Try `%s --help' for more information.\n"),
-             program_name);
+    emit_try_help ();
   else
     {
       printf (_("\
