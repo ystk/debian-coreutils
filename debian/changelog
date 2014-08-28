@@ -1,21 +1,55 @@
-coreutils (8.13-3.5) wheezy; urgency=low
+coreutils (8.21-1.2) unstable; urgency=low
 
   * Non-maintainer upload.
-  * Multiple test-suite fixes. Closes: #687906
-    + Extend the fix for #685238: recognise if valgrind is not
-      installed and skip the test
-    + Apply upstream fix in the test for parse-datetime so that it works
-      regardless of system DST status
+  * Ensure config.{sub,guess} are up to date for new arches, using
+    autotools-dev (Closes: #689611)
+  * Add aarch64 assembler in longlong.h (from Colin Watson) (Closes: #698330)
 
- -- Steve McIntyre <93sam@debian.org>  Sat, 26 Jan 2013 12:10:17 +0000
+ -- Wookey <wookey@debian.org>  Sat, 12 Apr 2014 01:51:02 +0000
 
-coreutils (8.13-3.4) wheezy; urgency=low
+coreutils (8.21-1.1) unstable; urgency=medium
 
-  * Non-maintainer upload.
-  * Backport upstream patches to fix data-loss and free-memory read bugs in
-    'sort -u' (closes: #685238).  Thanks, Colin Watson!
+  * Non-Maintainer Upload
+  * Do not install su on hurd-i386 any more (Closes: #737806).
 
- -- Julien Cristau <jcristau@debian.org>  Mon, 26 Nov 2012 14:35:00 +0100
+ -- Samuel Thibault <sthibault@debian.org>  Wed, 05 Feb 2014 22:50:43 +0000
+
+coreutils (8.21-1) unstable; urgency=low
+
+  * New upstream version
+  * Disable tests by default. I'm not entirely happy about doing this, as the
+    build tests have uncovered more than one library bug that would have been
+    problematic, but of late they've failed more because of buildd oddities
+    than real problems. I am trying this early in the jessie cycle, and will
+    turn the tests back on if it ends up being an issue.
+
+ -- Michael Stone <mstone@debian.org>  Sat, 20 Jul 2013 15:45:55 -0400
+
+coreutils (8.20-3) unstable; urgency=low
+
+  * actually include autopkgtest changes
+
+ -- Michael Stone <mstone@debian.org>  Sun, 18 Nov 2012 10:17:12 -0500
+
+coreutils (8.20-2) unstable; urgency=low
+
+  * Add upstream patch to fix build failure on hppa (Closes: #693578)
+  * Disable df test which seems to fail on some buildds
+  * Get rid of realpath (provided by other package) (Closes: #693211)
+  * Add autopkgtest. Thanks Martin Pitt. (Closes: #692748)
+  * Fix HAVE_LONG_LONG typo in factor. Thanks Daniel Schepler 
+    (Closes: #693337)
+
+ -- Michael Stone <mstone@debian.org>  Sun, 18 Nov 2012 09:26:57 -0500
+
+coreutils (8.20-1) unstable; urgency=low
+
+  * New upstream version
+    - fixes possible data loss in sort -u (from 8.6) (Closes: #685238)
+    - df prefers shorter device names (Closes: #653073)
+  * Update watch file (Closes: #693171)
+
+ -- Michael Stone <mstone@debian.org>  Tue, 13 Nov 2012 20:49:45 -0500
 
 coreutils (8.13-3.3) unstable; urgency=low
 
@@ -62,7 +96,6 @@ coreutils (8.13-3.1) unstable; urgency=low
 
 coreutils (8.13-3) unstable; urgency=low
 
-  * [86] upstream patch for ppc float issue (Closes: #642291)
   * revert previous change to -mlong-double-64
 
  -- Michael Stone <mstone@debian.org>  Sat, 01 Oct 2011 12:31:33 -0400
@@ -71,7 +104,6 @@ coreutils (8.13-2) unstable; urgency=low
 
   * Fix typo in kfbsd test patch
   * Move libstdbuf.so back to /usr/lib
-  * [84] upstream patch to gnulib getcwd which fixes build test failure on kfbsd
   * [85] kfbsd ignores fractional part of timeouts over 100000s
     (Closes: #641832)
   * PPC uses -mlong-double-64 to prevent test failures (Closes: #641907)

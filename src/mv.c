@@ -1,5 +1,5 @@
 /* mv -- move or rename files
-   Copyright (C) 1986, 1989-1991, 1995-2011 Free Software Foundation, Inc.
+   Copyright (C) 1986-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 #include "root-dev-ino.h"
 #include "priv-set.h"
 
-/* The official name of this program (e.g., no `g' prefix).  */
+/* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "mv"
 
 #define AUTHORS \
@@ -73,10 +73,11 @@ static void
 rm_option_init (struct rm_options *x)
 {
   x->ignore_missing_files = false;
+  x->remove_empty_directories = true;
   x->recursive = true;
   x->one_file_system = false;
 
-  /* Should we prompt for removal, too?  No.  Prompting for the `move'
+  /* Should we prompt for removal, too?  No.  Prompting for the 'move'
      part is enough.  It implies removal.  */
   x->interactive = RMI_NEVER;
   x->stdin_tty = false;
@@ -84,9 +85,9 @@ rm_option_init (struct rm_options *x)
   x->verbose = false;
 
   /* Since this program may well have to process additional command
-     line arguments after any call to `rm', that function must preserve
+     line arguments after any call to 'rm', that function must preserve
      the initial working directory, in case one of those is a
-     `.'-relative name.  */
+     '.'-relative name.  */
   x->require_restore_cwd = true;
 
   {
@@ -117,6 +118,7 @@ cp_option_init (struct cp_options *x)
   x->preserve_links = true;
   x->preserve_mode = true;
   x->preserve_timestamps = true;
+  x->explicit_no_preserve_mode= false;
   x->preserve_security_context = selinux_enabled;
   x->reduce_diagnostics = false;
   x->data_copy_required = true;
@@ -149,7 +151,7 @@ target_directory_operand (char const *file)
   int err = (stat (file, &st) == 0 ? 0 : errno);
   bool is_a_dir = !err && S_ISDIR (st.st_mode);
   if (err && err != ENOENT)
-    error (EXIT_FAILURE, err, _("accessing %s"), quote (file));
+    error (EXIT_FAILURE, err, _("failed to access %s"), quote (file));
   return is_a_dir;
 }
 
@@ -173,11 +175,11 @@ do_move (const char *source, const char *dest, const struct cp_options *x)
              the same as, or a parent of DEST.  In this case we know it's a
              parent.  It doesn't make sense to move a directory into itself, and
              besides in some situations doing so would give highly nonintuitive
-             results.  Run this `mkdir b; touch a c; mv * b' in an empty
-             directory.  Here's the result of running echo `find b -print`:
-             b b/a b/b b/b/a b/c.  Notice that only file `a' was copied
+             results.  Run this 'mkdir b; touch a c; mv * b' in an empty
+             directory.  Here's the result of running echo $(find b -print):
+             b b/a b/b b/b/a b/c.  Notice that only file 'a' was copied
              into b/b.  Handle this by giving a diagnostic, removing the
-             copied-into-self directory, DEST (`b/b' in the example),
+             copied-into-self directory, DEST ('b/b' in the example),
              and failing.  */
 
           dir_to_remove = NULL;
@@ -202,7 +204,7 @@ do_move (const char *source, const char *dest, const struct cp_options *x)
              supports uploading, downloading and deleting, but not renaming.
 
              Also, note that comparing device numbers is not a reliable
-             check for `can-rename'.  Some systems can be set up so that
+             check for 'can-rename'.  Some systems can be set up so that
              files from many different physical devices all have the same
              st_dev field.  This is a feature of some NFS mounting
              configurations.
@@ -278,8 +280,7 @@ void
 usage (int status)
 {
   if (status != EXIT_SUCCESS)
-    fprintf (stderr, _("Try `%s --help' for more information.\n"),
-             program_name);
+    emit_try_help ();
   else
     {
       printf (_("\
@@ -290,11 +291,10 @@ Usage: %s [OPTION]... [-T] SOURCE DEST\n\
               program_name, program_name, program_name);
       fputs (_("\
 Rename SOURCE to DEST, or move SOURCE(s) to DIRECTORY.\n\
-\n\
 "), stdout);
-      fputs (_("\
-Mandatory arguments to long options are mandatory for short options too.\n\
-"), stdout);
+
+      emit_mandatory_arg_note ();
+
       fputs (_("\
       --backup[=CONTROL]       make a backup of each existing destination file\
 \n\
@@ -321,7 +321,7 @@ If you specify more than one of -i, -f, -n, only the final one takes effect.\n\
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
       fputs (_("\
 \n\
-The backup suffix is `~', unless set with --suffix or SIMPLE_BACKUP_SUFFIX.\n\
+The backup suffix is '~', unless set with --suffix or SIMPLE_BACKUP_SUFFIX.\n\
 The version control method may be selected via the --backup option or through\n\
 the VERSION_CONTROL environment variable.  Here are the values:\n\
 \n\
@@ -397,7 +397,8 @@ main (int argc, char **argv)
             {
               struct stat st;
               if (stat (optarg, &st) != 0)
-                error (EXIT_FAILURE, errno, _("accessing %s"), quote (optarg));
+                error (EXIT_FAILURE, errno, _("failed to access %s"),
+                       quote (optarg));
               if (! S_ISDIR (st.st_mode))
                 error (EXIT_FAILURE, 0, _("target %s is not a directory"),
                        quote (optarg));

@@ -1,5 +1,5 @@
 /* expr -- evaluate expressions.
-   Copyright (C) 1986, 1991-1997, 1999-2011 Free Software Foundation, Inc.
+   Copyright (C) 1986-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
    Modified for arbitrary-precision calculation by James Youngman.
 
    This program evaluates expressions.  Each token (operator, operand,
-   parenthesis) of the expression must be a seperate argument.  The
+   parenthesis) of the expression must be a separate argument.  The
    parser used is a reasonably general one, though any incarnation of
    it is language-specific.  It is especially nice for expressions.
 
@@ -144,7 +144,7 @@ mpz_out_str (FILE *stream, int base, mpz_t z)
 }
 #endif
 
-/* The official name of this program (e.g., no `g' prefix).  */
+/* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "expr"
 
 #define AUTHORS \
@@ -197,8 +197,7 @@ void
 usage (int status)
 {
   if (status != EXIT_SUCCESS)
-    fprintf (stderr, _("Try `%s --help' for more information.\n"),
-             program_name);
+    emit_try_help ();
   else
     {
       printf (_("\
@@ -251,7 +250,7 @@ separates increasing precedence groups.  EXPRESSION may be:\n\
 "), stdout);
       fputs (_("\
   + TOKEN                    interpret TOKEN as a string, even if it is a\n\
-                               keyword like `match' or an operator like `/'\n\
+                               keyword like 'match' or an operator like '/'\n\
 \n\
   ( EXPRESSION )             value of EXPRESSION\n\
 "), stdout);
@@ -314,7 +313,7 @@ main (int argc, char **argv)
                       usage, AUTHORS, (char const *) NULL);
 
   /* The above handles --help and --version.
-     Since there is no other invocation of getopt, handle `--' here.  */
+     Since there is no other invocation of getopt, handle '--' here.  */
   unsigned int u_argc = argc;
   if (1 < u_argc && STREQ (argv[1], "--"))
     {

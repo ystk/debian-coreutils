@@ -1,5 +1,5 @@
 /* copy.c -- core functions for copying files and directories
-   Copyright (C) 1989-1991, 1995-2011 Free Software Foundation, Inc.
+   Copyright (C) 1989-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -34,10 +34,12 @@
 #include "acl.h"
 #include "backupfile.h"
 #include "buffer-lcm.h"
+#include "canonicalize.h"
 #include "copy.h"
 #include "cp-hash.h"
 #include "extent-scan.h"
 #include "error.h"
+#include "fadvise.h"
 #include "fcntl--.h"
 #include "fiemap.h"
 #include "file-set.h"
@@ -151,20 +153,19 @@ sparse_copy (int src_fd, int dest_fd, char *buf, size_t buf_size,
              uintmax_t max_n_read, off_t *total_n_read,
              bool *last_write_made_hole)
 {
-  typedef uintptr_t word;
   *last_write_made_hole = false;
   *total_n_read = 0;
 
   while (max_n_read)
     {
-      word *wp = NULL;
+      bool make_hole = false;
 
       ssize_t n_read = read (src_fd, buf, MIN (max_n_read, buf_size));
       if (n_read < 0)
         {
           if (errno == EINTR)
             continue;
-          error (0, errno, _("reading %s"), quote (src_name));
+          error (0, errno, _("error reading %s"), quote (src_name));
           return false;
         }
       if (n_read == 0)
@@ -174,11 +175,10 @@ sparse_copy (int src_fd, int dest_fd, char *buf, size_t buf_size,
 
       if (make_holes)
         {
-          char *cp;
-
-          /* Sentinel to stop loop.  */
+          /* Sentinel required by is_nul().  */
           buf[n_read] = '\1';
 #ifdef lint
+          typedef uintptr_t word;
           /* Usually, buf[n_read] is not the byte just before a "word"
              (aka uintptr_t) boundary.  In that case, the word-oriented
              test below (*wp++ == 0) would read some uninitialized bytes
@@ -188,49 +188,32 @@ sparse_copy (int src_fd, int dest_fd, char *buf, size_t buf_size,
           memset (buf + n_read + 1, 0, sizeof (word) - 1);
 #endif
 
-          /* Find first nonzero *word*, or the word with the sentinel.  */
-
-          wp = (word *) buf;
-          while (*wp++ == 0)
-            continue;
-
-          /* Find the first nonzero *byte*, or the sentinel.  */
-
-          cp = (char *) (wp - 1);
-          while (*cp++ == 0)
-            continue;
-
-          if (cp <= buf + n_read)
-            /* Clear to indicate that a normal write is needed. */
-            wp = NULL;
-          else
+          if ((make_hole = is_nul (buf, n_read)))
             {
-              /* We found the sentinel, so the whole input block was zero.
-                 Make a hole.  */
               if (lseek (dest_fd, n_read, SEEK_CUR) < 0)
                 {
                   error (0, errno, _("cannot lseek %s"), quote (dst_name));
                   return false;
                 }
-              *last_write_made_hole = true;
             }
         }
 
-      if (!wp)
+      if (!make_hole)
         {
           size_t n = n_read;
           if (full_write (dest_fd, buf, n) != n)
             {
-              error (0, errno, _("writing %s"), quote (dst_name));
+              error (0, errno, _("error writing %s"), quote (dst_name));
               return false;
             }
-          *last_write_made_hole = false;
 
           /* It is tempting to return early here upon a short read from a
              regular file.  That would save the final read syscall for each
              file.  Unfortunately that doesn't work for certain files in
              /proc with linux kernels from at least 2.6.9 .. 2.6.29.  */
         }
+
+      *last_write_made_hole = make_hole;
     }
 
   return true;
@@ -786,7 +769,7 @@ is_probably_sparse (struct stat const *sb)
 /* Copy a regular file from SRC_NAME to DST_NAME.
    If the source file contains holes, copies holes and blocks of zeros
    in the source file as holes in the destination file.
-   (Holes are read as zeroes by the `read' system call.)
+   (Holes are read as zeroes by the 'read' system call.)
    When creating the destination, use DST_MODE & ~OMITTED_PERMISSIONS
    as the third argument in the call to open, adding
    OMITTED_PERMISSIONS after copying as needed.
@@ -844,7 +827,9 @@ copy_reg (char const *src_name, char const *dst_name,
      by the specs for both cp and mv.  */
   if (! *new_dst)
     {
-      dest_desc = open (dst_name, O_WRONLY | O_TRUNC | O_BINARY);
+      int open_flags =
+        O_WRONLY | O_BINARY | (x->data_copy_required ? O_TRUNC : 0);
+      dest_desc = open (dst_name, open_flags);
       dest_errno = errno;
 
       /* When using cp --preserve=context to copy to an existing destination,
@@ -907,6 +892,8 @@ copy_reg (char const *src_name, char const *dst_name,
 
   if (*new_dst)
     {
+    open_with_O_CREAT:;
+
       int open_flags = O_WRONLY | O_CREAT | O_BINARY;
       dest_desc = open (dst_name, open_flags | O_EXCL,
                         dst_mode & ~omitted_permissions);
@@ -957,6 +944,23 @@ copy_reg (char const *src_name, char const *dst_name,
 
   if (dest_desc < 0)
     {
+      /* If we've just failed due to ENOENT for an ostensibly preexisting
+         destination (*new_dst was 0), that's a bit of a contradiction/race:
+         the prior stat/lstat said the file existed (*new_dst was 0), yet
+         the subsequent open-existing-file failed with ENOENT.  With NFS,
+         the race window is wider still, since its meta-data caching tends
+         to make the stat succeed for a just-removed remote file, while the
+         more-definitive initial open call will fail with ENOENT.  When this
+         situation arises, we attempt to open again, but this time with
+         O_CREAT.  Do this only when not in move-mode, since when handling
+         a cross-device move, we must never open an existing destination.  */
+      if (dest_errno == ENOENT && ! *new_dst && ! x->move_mode)
+        {
+          *new_dst = 1;
+          goto open_with_O_CREAT;
+        }
+
+      /* Otherwise, it's an error.  */
       error (0, dest_errno, _("cannot create regular file %s"),
              quote (dst_name));
       return_val = false;
@@ -995,6 +999,8 @@ copy_reg (char const *src_name, char const *dst_name,
       size_t buf_alignment = lcm (getpagesize (), sizeof (word));
       size_t buf_alignment_slop = sizeof (word) + buf_alignment - 1;
       size_t buf_size = io_blksize (sb);
+
+      fdadvise (source_desc, 0, 0, FADVISE_SEQUENTIAL);
 
       /* Deal with sparse files.  */
       bool make_holes = false;
@@ -1071,8 +1077,8 @@ copy_reg (char const *src_name, char const *dst_name,
                           make_holes, src_name, dst_name,
                           UINTMAX_MAX, &n_read,
                           &wrote_hole_at_eof)
-           || (wrote_hole_at_eof &&
-               ftruncate (dest_desc, n_read) < 0))
+           || (wrote_hole_at_eof
+               && ftruncate (dest_desc, n_read) < 0))
         {
           error (0, errno, _("failed to extend %s"), quote (dst_name));
           return_val = false;
@@ -1145,6 +1151,11 @@ preserve_metadata:
       if (set_acl (dst_name, dest_desc, x->mode) != 0)
         return_val = false;
     }
+  else if (x->explicit_no_preserve_mode)
+    {
+      if (set_acl (dst_name, dest_desc, 0666 & ~cached_umask ()) != 0)
+        return_val = false;
+    }
   else if (omitted_permissions)
     {
       omitted_permissions &= ~ cached_umask ();
@@ -1161,13 +1172,13 @@ preserve_metadata:
 close_src_and_dst_desc:
   if (close (dest_desc) < 0)
     {
-      error (0, errno, _("closing %s"), quote (dst_name));
+      error (0, errno, _("failed to close %s"), quote (dst_name));
       return_val = false;
     }
 close_src_desc:
   if (close (source_desc) < 0)
     {
-      error (0, errno, _("closing %s"), quote (src_name));
+      error (0, errno, _("failed to close %s"), quote (src_name));
       return_val = false;
     }
 
@@ -1177,8 +1188,8 @@ close_src_desc:
 }
 
 /* Return true if it's ok that the source and destination
-   files are the `same' by some measure.  The goal is to avoid
-   making the `copy' operation remove both copies of the file
+   files are the 'same' by some measure.  The goal is to avoid
+   making the 'copy' operation remove both copies of the file
    in that case, while still allowing the user to e.g., move or
    copy a regular file onto a symlink that points to it.
    Try to minimize the cost of this function in the common case.
@@ -1186,8 +1197,8 @@ close_src_desc:
    work to do and should return successfully, right away.
 
    Set *UNLINK_SRC if we've determined that the caller wants to do
-   `rename (a, b)' where `a' and `b' are distinct hard links to the same
-   file. In that case, the caller should try to unlink `a' and then return
+   'rename (a, b)' where 'a' and 'b' are distinct hard links to the same
+   file. In that case, the caller should try to unlink 'a' and then return
    successfully.  Ideally, we wouldn't have to do that, and we'd be
    able to rely on rename to remove the source file.  However, POSIX
    mistakenly requires that such a rename call do *nothing* and return
@@ -1225,10 +1236,33 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
       same_link = same;
 
       /* If both the source and destination files are symlinks (and we'll
-         know this here IFF preserving symlinks), then it's ok -- as long
-         as they are distinct.  */
+         know this here IFF preserving symlinks), then it's usually ok
+         when they are distinct.  */
       if (S_ISLNK (src_sb->st_mode) && S_ISLNK (dst_sb->st_mode))
-        return ! same_name (src_name, dst_name);
+        {
+          bool sn = same_name (src_name, dst_name);
+          if ( ! sn)
+            {
+              /* It's fine when we're making any type of backup.  */
+              if (x->backup_type != no_backups)
+                return true;
+
+              /* Here we have two symlinks that are hard-linked together,
+                 and we're not making backups.  In this unusual case, simply
+                 returning true would lead to mv calling "rename(A,B)",
+                 which would do nothing and return 0.  I.e., A would
+                 not be removed.  Hence, the solution is to tell the
+                 caller that all it must do is unlink A and return.  */
+              if (same_link)
+                {
+                  *unlink_src = true;
+                  *return_now = true;
+                  return true;
+                }
+            }
+
+          return ! sn;
+        }
 
       src_sb_link = src_sb;
       dst_sb_link = dst_sb;
@@ -1277,8 +1311,8 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
           /* FIXME-note: even with the following kludge, we can still provoke
              the offending diagnostic.  It's just a little harder to do :-)
              $ rm -f a b c; touch c; ln -s c b; ln -s b a; cp -b a b
-             cp: cannot open `a' for reading: No such file or directory
-             That's misleading, since a subsequent `ls' shows that `a'
+             cp: cannot open 'a' for reading: No such file or directory
+             That's misleading, since a subsequent 'ls' shows that 'a'
              is still there.
              One solution would be to open the source file *before* moving
              aside the destination, but that'd involve a big rewrite. */
@@ -1313,8 +1347,8 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
 
   /* They may refer to the same file if we're in move mode and the
      target is a symlink.  That is ok, since we remove any existing
-     destination file before opening it -- via `rename' if they're on
-     the same file system, via `unlink (DST_NAME)' otherwise.
+     destination file before opening it -- via 'rename' if they're on
+     the same file system, via 'unlink (DST_NAME)' otherwise.
      It's also ok if they're distinct hard links to the same file.  */
   if (x->move_mode || x->unlink_dest_before_opening)
     {
@@ -1346,6 +1380,39 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
         {
           *return_now = true;
           return true;
+        }
+    }
+
+  /* At this point, it is normally an error (data loss) to move a symlink
+     onto its referent, but in at least one narrow case, it is not:
+     In move mode, when
+     1) src is a symlink,
+     2) dest has a link count of 2 or more and
+     3) dest and the referent of src are not the same directory entry,
+     then it's ok, since while we'll lose one of those hard links,
+     src will still point to a remaining link.
+     Note that technically, condition #3 obviates condition #2, but we
+     retain the 1 < st_nlink condition because that means fewer invocations
+     of the more expensive #3.
+
+     Given this,
+       $ touch f && ln f l && ln -s f s
+       $ ls -og f l s
+       -rw-------. 2  0 Jan  4 22:46 f
+       -rw-------. 2  0 Jan  4 22:46 l
+       lrwxrwxrwx. 1  1 Jan  4 22:46 s -> f
+     this must fail: mv s f
+     this must succeed: mv s l */
+  if (x->move_mode
+      && S_ISLNK (src_sb->st_mode)
+      && 1 < dst_sb_link->st_nlink)
+    {
+      char *abs_src = canonicalize_file_name (src_name);
+      if (abs_src)
+        {
+          bool result = ! same_name (abs_src, dst_name);
+          free (abs_src);
+          return result;
         }
     }
 
@@ -1450,7 +1517,7 @@ src_info_init (struct cp_options *x)
 
 /* When effecting a move (e.g., for mv(1)), and given the name DST_NAME
    of the destination and a corresponding stat buffer, DST_SB, return
-   true if the logical `move' operation should _not_ proceed.
+   true if the logical 'move' operation should _not_ proceed.
    Otherwise, return false.
    Depending on options specified in X, this code may issue an
    interactive prompt asking whether it's ok to overwrite DST_NAME.  */
@@ -1469,7 +1536,7 @@ abandon_move (const struct cp_options *x,
               && ! yesno ()));
 }
 
-/* Print --verbose output on standard output, e.g. `new' -> `old'.
+/* Print --verbose output on standard output, e.g. 'new' -> 'old'.
    If BACKUP_DST_NAME is non-NULL, then also indicate that it is
    the name of a backup file.  */
 static void
@@ -1692,7 +1759,7 @@ copy_internal (char const *src_name, char const *dst_name,
 
           /* When there is an existing destination file, we may end up
              returning early, and hence not copying/moving the file.
-             This may be due to an interactive `negative' reply to the
+             This may be due to an interactive 'negative' reply to the
              prompt about the existing file.  It may also be due to the
              use of the --reply=no option.
 
@@ -1751,7 +1818,7 @@ copy_internal (char const *src_name, char const *dst_name,
                  This mv command must fail (likewise for cp):
                    rm -rf a b c; mkdir a b c; touch a/f b/f; mv a/f b/f c
                  Otherwise, the contents of b/f would be lost.
-                 In the case of `cp', b/f would be lost if the user simulated
+                 In the case of 'cp', b/f would be lost if the user simulated
                  a move using cp and rm.
                  Note that it works fine if you use --backup=numbered.  */
               if (command_line_arg
@@ -1815,7 +1882,7 @@ copy_internal (char const *src_name, char const *dst_name,
                  destroy the source file.  Before, running the commands
                  cd /tmp; rm -f a a~; : > a; echo A > a~; cp --b=simple a~ a
                  would leave two zero-length files: a and a~.  */
-              /* FIXME: but simply change e.g., the final a~ to `./a~'
+              /* FIXME: but simply change e.g., the final a~ to './a~'
                  and the source will still be destroyed.  */
               if (STREQ (tmp_backup, src_name))
                 {
@@ -1837,6 +1904,10 @@ copy_internal (char const *src_name, char const *dst_name,
                  to use fts, so using alloca here will be less of a problem.  */
               ASSIGN_STRDUPA (dst_backup, tmp_backup);
               free (tmp_backup);
+              /* In move mode, when src_name and dst_name are on the
+                 same partition (FIXME, and when they are non-directories),
+                 make the operation atomic: link dest
+                 to backup, then rename src to dest.  */
               if (rename (dst_name, dst_backup) != 0)
                 {
                   if (errno != ENOENT)
@@ -1939,7 +2010,7 @@ copy_internal (char const *src_name, char const *dst_name,
         been copied.
      - when using -H and processing a command line argument;
         that command line argument could be a symlink pointing to another
-        command line argument.  With `cp -H --preserve=link', we hard-link
+        command line argument.  With 'cp -H --preserve=link', we hard-link
         those two destination files.
      - likewise for -L except that it applies to all files, not just
         command line arguments.
@@ -2030,7 +2101,7 @@ copy_internal (char const *src_name, char const *dst_name,
                  to overwrite that file again, we can detect it and fail.  */
               /* It's fine to use the _source_ stat buffer (src_sb) to get the
                  _destination_ dev/ino, since the rename above can't have
-                 changed those, and `mv' always uses lstat.
+                 changed those, and 'mv' always uses lstat.
                  We could limit it further by operating
                  only on non-directories.  */
               record_file (x->dest_info, dst_name, &src_sb);
@@ -2076,9 +2147,9 @@ copy_internal (char const *src_name, char const *dst_name,
          e-mail.  One way to do that is to run a command like this
            find /usr/include/. -type f \
              | xargs grep 'define.*\<E[A-Z]*\>.*\<18\>' /dev/null
-         where you'd replace `18' with the integer in parentheses that
+         where you'd replace '18' with the integer in parentheses that
          was output from the perl one-liner above.
-         If necessary, of course, change `/tmp' to some other directory.  */
+         If necessary, of course, change '/tmp' to some other directory.  */
       if (errno != EXDEV)
         {
           /* There are many ways this can happen due to a race condition.
@@ -2086,7 +2157,7 @@ copy_internal (char const *src_name, char const *dst_name,
              subsequent rename, we can get many different types of errors.
              For example, if the destination is initially a non-directory
              or non-existent, but it is created as a directory, the rename
-             fails.  If two `mv' commands try to rename the same file at
+             fails.  If two 'mv' commands try to rename the same file at
              about the same time, one will succeed and the other will fail.
              If the permissions on the directory containing the source or
              destination file are made too restrictive, the rename will
@@ -2099,7 +2170,7 @@ copy_internal (char const *src_name, char const *dst_name,
         }
 
       /* The rename attempt has failed.  Remove any existing destination
-         file so that a cross-device `mv' acts as if it were really using
+         file so that a cross-device 'mv' acts as if it were really using
          the rename syscall.  */
       if (unlink (dst_name) != 0 && errno != ENOENT)
         {
@@ -2298,10 +2369,10 @@ copy_internal (char const *src_name, char const *dst_name,
      link() on a symlink creates a hard-link to the symlink, or only
      to the referent (effectively dereferencing the symlink) (POSIX
      2001 required the latter behavior, although many systems provided
-     the former).  Yet cp, invoked with `--link --no-dereference',
+     the former).  Yet cp, invoked with '--link --no-dereference',
      should not follow the link.  We can approximate the desired
      behavior by skipping this hard-link creating block and instead
-     copying the symlink, via the `S_ISLNK'- copying code below.
+     copying the symlink, via the 'S_ISLNK'- copying code below.
      LINK_FOLLOWS_SYMLINKS is tri-state; if it is -1, we don't know
      how link() behaves, so we use the fallback case for safety.
 
@@ -2323,8 +2394,13 @@ copy_internal (char const *src_name, char const *dst_name,
       /* POSIX says the permission bits of the source file must be
          used as the 3rd argument in the open call.  Historical
          practice passed all the source mode bits to 'open', but the extra
-         bits were ignored, so it should be the same either way.  */
-      if (! copy_reg (src_name, dst_name, x, src_mode & S_IRWXUGO,
+         bits were ignored, so it should be the same either way.
+
+         This call uses DST_MODE_BITS, not SRC_MODE.  These are
+         normally the same, and the exception (where x->set_mode) is
+         used only by 'install', which POSIX does not specify and
+         where DST_MODE_BITS is what's wanted.  */
+      if (! copy_reg (src_name, dst_name, x, dst_mode_bits & S_IRWXUGO,
                       omitted_permissions, &new_dst, &src_sb))
         goto un_backup;
     }
@@ -2395,7 +2471,7 @@ copy_internal (char const *src_name, char const *dst_name,
 
       if (x->preserve_ownership)
         {
-          /* Preserve the owner and group of the just-`copied'
+          /* Preserve the owner and group of the just-'copied'
              symbolic link, if possible.  */
           if (HAVE_LCHOWN
               && lchown (dst_name, src_sb.st_uid, src_sb.st_gid) != 0
@@ -2439,7 +2515,7 @@ copy_internal (char const *src_name, char const *dst_name,
   if (copied_as_regular)
     return delayed_ok;
 
-  /* POSIX says that `cp -p' must restore the following:
+  /* POSIX says that 'cp -p' must restore the following:
      - permission bits
      - setuid, setgid bits
      - owner and group
@@ -2504,6 +2580,11 @@ copy_internal (char const *src_name, char const *dst_name,
       if (set_acl (dst_name, -1, x->mode) != 0)
         return false;
     }
+  else if (x->explicit_no_preserve_mode)
+    {
+      if (set_acl (dst_name, -1, 0777 & ~cached_umask ()) != 0)
+        return false;
+    }
   else
     {
       if (omitted_permissions)
@@ -2552,7 +2633,7 @@ un_backup:
      If we've just added a dev/ino entry via the remember_copied
      call above (i.e., unless we've just failed to create a hard link),
      remove the entry associating the source dev/ino with the
-     destination file name, so we don't try to `preserve' a link
+     destination file name, so we don't try to 'preserve' a link
      to a file we didn't create.  */
   if (earlier_file == NULL)
     forget_created (src_sb.st_ino, src_sb.st_dev);

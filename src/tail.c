@@ -1,5 +1,5 @@
 /* tail -- output the last part of file(s)
-   Copyright (C) 1989-1991, 1995-2006, 2008-2011 Free Software Foundation, Inc.
+   Copyright (C) 1989-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -49,11 +49,12 @@
 #if HAVE_INOTIFY
 # include "hash.h"
 # include <sys/inotify.h>
-/* `select' is used by tail_forever_inotify.  */
+/* 'select' is used by tail_forever_inotify.  */
 # include <sys/select.h>
 
 /* inotify needs to know if a file is local.  */
 # include "fs.h"
+# include "fs-is-local.h"
 # if HAVE_SYS_STATFS_H
 #  include <sys/statfs.h>
 # elif HAVE_SYS_VFS_H
@@ -61,7 +62,7 @@
 # endif
 #endif
 
-/* The official name of this program (e.g., no `g' prefix).  */
+/* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "tail"
 
 #define AUTHORS \
@@ -251,8 +252,7 @@ void
 usage (int status)
 {
   if (status != EXIT_SUCCESS)
-    fprintf (stderr, _("Try `%s --help' for more information.\n"),
-             program_name);
+    emit_try_help ();
   else
     {
       printf (_("\
@@ -263,11 +263,10 @@ Usage: %s [OPTION]... [FILE]...\n\
 Print the last %d lines of each FILE to standard output.\n\
 With more than one FILE, precede each with a header giving the file name.\n\
 With no FILE, or when FILE is -, read standard input.\n\
-\n\
 "), DEFAULT_N_LINES);
-     fputs (_("\
-Mandatory arguments to long options are mandatory for short options too.\n\
-"), stdout);
+
+      emit_mandatory_arg_note ();
+
      fputs (_("\
   -c, --bytes=K            output the last K bytes; alternatively, use -c +K\n\
                            to output bytes starting with the Kth of each file\n\
@@ -310,7 +309,7 @@ Mandatory arguments to long options are mandatory for short options too.\n\
      fputs (VERSION_OPTION_DESCRIPTION, stdout);
      fputs (_("\
 \n\
-If the first character of K (the number of bytes or lines) is a `+',\n\
+If the first character of K (the number of bytes or lines) is a '+',\n\
 print beginning with the Kth item from the start of each file, otherwise,\n\
 print the last K items in the file.  K may have a multiplier suffix:\n\
 b 512, kB 1000, K 1024, MB 1000*1000, M 1024*1024,\n\
@@ -466,7 +465,7 @@ xlseek (int fd, off_t offset, int whence, char const *filename)
 }
 
 /* Print the last N_LINES lines from the end of file FD.
-   Go backward through the file, reading `BUFSIZ' bytes at a time (except
+   Go backward through the file, reading 'BUFSIZ' bytes at a time (except
    probably the first), until we hit the start of the file or have
    read NUMBER newlines.
    START_POS is the starting position of the read pointer for the file
@@ -485,12 +484,12 @@ file_lines (const char *pretty_filename, int fd, uintmax_t n_lines,
   if (n_lines == 0)
     return true;
 
-  /* Set `bytes_read' to the size of the last, probably partial, buffer;
-     0 < `bytes_read' <= `BUFSIZ'.  */
+  /* Set 'bytes_read' to the size of the last, probably partial, buffer;
+     0 < 'bytes_read' <= 'BUFSIZ'.  */
   bytes_read = (pos - start_pos) % BUFSIZ;
   if (bytes_read == 0)
     bytes_read = BUFSIZ;
-  /* Make `pos' a multiple of `BUFSIZ' (0 if the file is short), so that all
+  /* Make 'pos' a multiple of 'BUFSIZ' (0 if the file is short), so that all
      reads will be on block boundaries, which might increase efficiency.  */
   pos -= bytes_read;
   xlseek (fd, pos, SEEK_SET, pretty_filename);
@@ -608,7 +607,7 @@ pipe_lines (const char *pretty_filename, int fd, uintmax_t n_lines,
       total_lines += tmp->nlines;
 
       /* If there is enough room in the last buffer read, just append the new
-         one to it.  This is because when reading from a pipe, `n_read' can
+         one to it.  This is because when reading from a pipe, 'n_read' can
          often be very small.  */
       if (tmp->nbytes + last->nbytes < BUFSIZ)
         {
@@ -670,8 +669,8 @@ pipe_lines (const char *pretty_filename, int fd, uintmax_t n_lines,
     char const *buffer_end = tmp->buffer + tmp->nbytes;
     if (total_lines > n_lines)
       {
-        /* Skip `total_lines' - `n_lines' newlines.  We made sure that
-           `total_lines' - `n_lines' <= `tmp->nlines'.  */
+        /* Skip 'total_lines' - 'n_lines' newlines.  We made sure that
+           'total_lines' - 'n_lines' <= 'tmp->nlines'.  */
         size_t j;
         for (j = total_lines - n_lines; j; --j)
           {
@@ -735,7 +734,7 @@ pipe_bytes (const char *pretty_filename, int fd, uintmax_t n_bytes,
 
       total_bytes += tmp->nbytes;
       /* If there is enough room in the last buffer read, just append the new
-         one to it.  This is because when reading from a pipe, `nbytes' can
+         one to it.  This is because when reading from a pipe, 'nbytes' can
          often be very small.  */
       if (tmp->nbytes + last->nbytes < BUFSIZ)
         {
@@ -778,7 +777,7 @@ pipe_bytes (const char *pretty_filename, int fd, uintmax_t n_bytes,
     total_bytes -= tmp->nbytes;
 
   /* Find the correct beginning, then print the rest of the file.
-     We made sure that `total_bytes' - `n_bytes' <= `tmp->nbytes'.  */
+     We made sure that 'total_bytes' - 'n_bytes' <= 'tmp->nbytes'.  */
   if (total_bytes > n_bytes)
     i = total_bytes - n_bytes;
   else
@@ -847,9 +846,7 @@ start_lines (const char *pretty_filename, int fd, uintmax_t n_lines,
   while (1)
     {
       char buffer[BUFSIZ];
-      char *p = buffer;
       size_t bytes_read = safe_read (fd, buffer, BUFSIZ);
-      char *buffer_end = buffer + bytes_read;
       if (bytes_read == 0) /* EOF */
         return -1;
       if (bytes_read == SAFE_READ_ERROR) /* error */
@@ -858,8 +855,11 @@ start_lines (const char *pretty_filename, int fd, uintmax_t n_lines,
           return 1;
         }
 
+      char *buffer_end = buffer + bytes_read;
+
       *read_pos += bytes_read;
 
+      char *p = buffer;
       while ((p = memchr (p, '\n', buffer_end - p)))
         {
           ++p;
@@ -896,24 +896,24 @@ fremote (int fd, const char *name)
     }
   else
     {
-      switch (buf.f_type)
+      switch (is_local_fs_type (buf.f_type))
         {
-        case S_MAGIC_AFS:
-        case S_MAGIC_CIFS:
-        case S_MAGIC_CODA:
-        case S_MAGIC_FUSEBLK:
-        case S_MAGIC_FUSECTL:
-        case S_MAGIC_GFS:
-        case S_MAGIC_KAFS:
-        case S_MAGIC_LUSTRE:
-        case S_MAGIC_NCP:
-        case S_MAGIC_NFS:
-        case S_MAGIC_NFSD:
-        case S_MAGIC_OCFS2:
-        case S_MAGIC_SMB:
+        case 0:
+          break;
+        case -1:
+          {
+            unsigned long int fs_type = buf.f_type;
+            error (0, 0, _("unrecognized file system type 0x%08lx for %s. "
+                           "please report this to %s. reverting to polling"),
+                   fs_type, quote (name), PACKAGE_BUGREPORT);
+            /* Treat as "remote", so caller polls.  */
+          }
+          break;
+        case 1:
+          remote = false;
           break;
         default:
-          remote = false;
+          assert (!"unexpected return value from is_local_fs_type");
         }
     }
 # endif
@@ -1140,6 +1140,7 @@ tail_forever (struct File_spec *f, size_t n_files, double sleep_interval)
                   f[i].fd = -1;
                   f[i].errnum = errno;
                   error (0, errno, "%s", name);
+                  close (fd); /* ignore failure */
                   continue;
                 }
 
@@ -1266,7 +1267,7 @@ wd_comparator (const void *e1, const void *e2)
   return spec1->wd == spec2->wd;
 }
 
-/* Helper function used by `tail_forever_inotify'.  */
+/* Helper function used by 'tail_forever_inotify'.  */
 static void
 check_fspec (struct File_spec *fspec, int wd, int *prev_wd)
 {
@@ -1275,9 +1276,9 @@ check_fspec (struct File_spec *fspec, int wd, int *prev_wd)
 
   if (fstat (fspec->fd, &stats) != 0)
     {
+      fspec->errnum = errno;
       close_fd (fspec->fd, name);
       fspec->fd = -1;
-      fspec->errnum = errno;
       return;
     }
 
@@ -1425,7 +1426,7 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
 
   /* Wait for inotify events and handle them.  Events on directories
      ensure that watched files can be re-added when following by name.
-     This loop blocks on the `safe_read' call until a new event is notified.
+     This loop blocks on the 'safe_read' call until a new event is notified.
      But when --pid=P is specified, tail usually waits via the select.  */
   while (1)
     {
@@ -1521,7 +1522,7 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
 
           fspec = &(f[j]);
 
-          /* Remove `fspec' and re-add it using `new_fd' as its key.  */
+          /* Remove 'fspec' and re-add it using 'new_fd' as its key.  */
           hash_delete (wd_to_name, fspec);
           fspec->wd = new_wd;
 
@@ -1687,7 +1688,7 @@ tail_lines (const char *pretty_filename, int fd, uintmax_t n_lines,
         {
           /* Under very unlikely circumstances, it is possible to reach
              this point after positioning the file pointer to end of file
-             via the `lseek (...SEEK_END)' above.  In that case, reposition
+             via the 'lseek (...SEEK_END)' above.  In that case, reposition
              the file pointer back to start_pos before calling pipe_lines.  */
           if (start_pos != -1)
             xlseek (fd, start_pos, SEEK_SET, pretty_filename);
@@ -1768,7 +1769,7 @@ tail_file (struct File_spec *f, uintmax_t n_units)
           struct stat stats;
 
 #if TEST_RACE_BETWEEN_FINAL_READ_AND_INITIAL_FSTAT
-          /* Before the tail function provided `read_pos', there was
+          /* Before the tail function provided 'read_pos', there was
              a race condition described in the URL below.  This sleep
              call made the window big enough to exercise the problem.  */
           xnanosleep (1);
@@ -2109,8 +2110,8 @@ main (int argc, char **argv)
   parse_options (argc, argv, &n_units, &header_mode, &sleep_interval);
 
   /* To start printing with item N_UNITS from the start of the file, skip
-     N_UNITS - 1 items.  `tail -n +0' is actually meaningless, but for Unix
-     compatibility it's treated the same as `tail -n +1'.  */
+     N_UNITS - 1 items.  'tail -n +0' is actually meaningless, but for Unix
+     compatibility it's treated the same as 'tail -n +1'.  */
   if (from_start)
     {
       if (n_units)
@@ -2140,7 +2141,7 @@ main (int argc, char **argv)
     if (found_hyphen && follow_mode == Follow_name)
       error (EXIT_FAILURE, 0, _("cannot follow %s by name"), quote ("-"));
 
-    /* When following forever, warn if any file is `-'.
+    /* When following forever, warn if any file is '-'.
        This is only a warning, since tail's output (before a failing seek,
        and that from any non-stdin files) might still be useful.  */
     if (forever && found_hyphen && isatty (STDIN_FILENO))

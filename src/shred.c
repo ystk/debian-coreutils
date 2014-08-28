@@ -1,6 +1,6 @@
 /* shred.c - overwrite files and devices to make it harder to recover data
 
-   Copyright (C) 1999-2011 Free Software Foundation, Inc.
+   Copyright (C) 1999-2013 Free Software Foundation, Inc.
    Copyright (C) 1997, 1998, 1999 Colin Plumb.
 
    This program is free software: you can redistribute it and/or modify
@@ -17,17 +17,6 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Written by Colin Plumb.  */
-
-/* TODO:
-   - use consistent non-capitalization in error messages
-   - add standard GNU copyleft comment
-
-  - Add -r/-R/--recursive
-  - Add -i/--interactive
-  - Reserve -d
-  - Add -L
-  - Add an unlink-all option to emulate rm.
- */
 
 /*
  * Do a more secure overwrite of given files or devices, to make it harder
@@ -79,7 +68,7 @@
  *   drastically bad if told to attack a named pipe or socket?
  */
 
-/* The official name of this program (e.g., no `g' prefix).  */
+/* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "shred"
 
 #define AUTHORS proper_name ("Colin Plumb")
@@ -152,19 +141,17 @@ void
 usage (int status)
 {
   if (status != EXIT_SUCCESS)
-    fprintf (stderr, _("Try `%s --help' for more information.\n"),
-             program_name);
+    emit_try_help ();
   else
     {
       printf (_("Usage: %s [OPTION]... FILE...\n"), program_name);
       fputs (_("\
 Overwrite the specified FILE(s) repeatedly, in order to make it harder\n\
 for even very expensive hardware probing to recover the data.\n\
-\n\
 "), stdout);
-      fputs (_("\
-Mandatory arguments to long options are mandatory for short options too.\n\
-"), stdout);
+
+      emit_mandatory_arg_note ();
+
       printf (_("\
   -f, --force    change permissions to allow writing if necessary\n\
   -n, --iterations=N  overwrite N times instead of the default (%d)\n\
@@ -497,10 +484,11 @@ dopass (int fd, char const *qname, off_t *sizep, int type,
 
       offset += soff;
 
+      bool done = offset == size;
+
       /* Time to print progress? */
-      if (n
-          && ((offset == size && *previous_human_offset)
-              || thresh <= (now = time (NULL))))
+      if (n && ((done && *previous_human_offset)
+                || thresh <= (now = time (NULL))))
         {
           char offset_buf[LONGEST_HUMAN_READABLE + 1];
           char size_buf[LONGEST_HUMAN_READABLE + 1];
@@ -510,8 +498,7 @@ dopass (int fd, char const *qname, off_t *sizep, int type,
             = human_readable (offset, offset_buf,
                               human_floor | human_progress_opts, 1, 1);
 
-          if (offset == size
-              || !STREQ (previous_human_offset, human_offset))
+          if (done || !STREQ (previous_human_offset, human_offset))
             {
               if (size < 0)
                 error (0, 0, _("%s: pass %lu/%lu (%s)...%s"),
@@ -528,7 +515,7 @@ dopass (int fd, char const *qname, off_t *sizep, int type,
                     = human_readable (size, size_buf,
                                       human_ceiling | human_progress_opts,
                                       1, 1);
-                  if (offset == size)
+                  if (done)
                     human_offset = human_size;
                   error (0, 0, _("%s: pass %lu/%lu (%s)...%s/%s %d%%"),
                          qname, k, n, pass_string, human_offset, human_size,
@@ -822,7 +809,7 @@ do_wipefd (int fd, char const *qname, struct randint_source *s,
             }
         }
 
-      /* Allow `rounding up' only for regular files.  */
+      /* Allow 'rounding up' only for regular files.  */
       if (0 <= size && !(flags->exact) && S_ISREG (st.st_mode))
         {
           size += ST_BLKSIZE (st) - 1 - (size - 1) % ST_BLKSIZE (st);

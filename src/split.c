@@ -1,5 +1,5 @@
 /* split.c -- split a file into pieces.
-   Copyright (C) 1988, 1991, 1995-2011 Free Software Foundation, Inc.
+   Copyright (C) 1988-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@
 #include "xfreopen.h"
 #include "xstrtol.h"
 
-/* The official name of this program (e.g., no `g' prefix).  */
+/* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "split"
 
 #define AUTHORS \
@@ -74,14 +74,26 @@ static char *outfile;
    Suffixes are inserted here.  */
 static char *outfile_mid;
 
+/* Generate new suffix when suffixes are exhausted.  */
+static bool suffix_auto = true;
+
 /* Length of OUTFILE's suffix.  */
 static size_t suffix_length;
 
 /* Alphabet of characters to use in suffix.  */
 static char const *suffix_alphabet = "abcdefghijklmnopqrstuvwxyz";
 
+/* Numerical suffix start value.  */
+static const char *numeric_suffix_start;
+
+/* Additional suffix to append to output file names.  */
+static char const *additional_suffix;
+
 /* Name of input file.  May be "-".  */
 static char *infile;
+
+/* stat buf for input file.  */
+static struct stat in_stat_buf;
 
 /* Descriptor on which output file is open.  */
 static int output_desc = -1;
@@ -110,7 +122,8 @@ enum
 {
   VERBOSE_OPTION = CHAR_MAX + 1,
   FILTER_OPTION,
-  IO_BLKSIZE_OPTION
+  IO_BLKSIZE_OPTION,
+  ADDITIONAL_SUFFIX_OPTION
 };
 
 static struct option const longopts[] =
@@ -122,7 +135,9 @@ static struct option const longopts[] =
   {"elide-empty-files", no_argument, NULL, 'e'},
   {"unbuffered", no_argument, NULL, 'u'},
   {"suffix-length", required_argument, NULL, 'a'},
-  {"numeric-suffixes", no_argument, NULL, 'd'},
+  {"additional-suffix", required_argument, NULL,
+   ADDITIONAL_SUFFIX_OPTION},
+  {"numeric-suffixes", optional_argument, NULL, 'd'},
   {"filter", required_argument, NULL, FILTER_OPTION},
   {"verbose", no_argument, NULL, VERBOSE_OPTION},
   {"-io-blksize", required_argument, NULL,
@@ -146,6 +161,12 @@ set_suffix_length (uintmax_t n_units, enum Split_type split_type)
 
   size_t suffix_needed = 0;
 
+  /* The suffix auto length feature is incompatible with
+     a user specified start value as the generated suffixes
+     are not all consecutive.  */
+  if (numeric_suffix_start)
+    suffix_auto = false;
+
   /* Auto-calculate the suffix length if the number of files is given.  */
   if (split_type == type_chunk_bytes || split_type == type_chunk_lines
       || split_type == type_rr)
@@ -155,6 +176,7 @@ set_suffix_length (uintmax_t n_units, enum Split_type split_type)
       while (n_units /= alphabet_len)
         suffix_needed++;
       suffix_needed += alphabet_slop;
+      suffix_auto = false;
     }
 
   if (suffix_length)            /* set by user */
@@ -165,6 +187,7 @@ set_suffix_length (uintmax_t n_units, enum Split_type split_type)
                  _("the suffix length needs to be at least %zu"),
                  suffix_needed);
         }
+      suffix_auto = false;
       return;
     }
   else
@@ -175,8 +198,7 @@ void
 usage (int status)
 {
   if (status != EXIT_SUCCESS)
-    fprintf (stderr, _("Try `%s --help' for more information.\n"),
-             program_name);
+    emit_try_help ();
   else
     {
       printf (_("\
@@ -185,23 +207,24 @@ Usage: %s [OPTION]... [INPUT [PREFIX]]\n\
               program_name);
       fputs (_("\
 Output fixed-size pieces of INPUT to PREFIXaa, PREFIXab, ...; default\n\
-size is 1000 lines, and default PREFIX is `x'.  With no INPUT, or when INPUT\n\
+size is 1000 lines, and default PREFIX is 'x'.  With no INPUT, or when INPUT\n\
 is -, read standard input.\n\
-\n\
 "), stdout);
-      fputs (_("\
-Mandatory arguments to long options are mandatory for short options too.\n\
-"), stdout);
+
+      emit_mandatory_arg_note ();
+
       fprintf (stdout, _("\
-  -a, --suffix-length=N   use suffixes of length N (default %d)\n\
+  -a, --suffix-length=N   generate suffixes of length N (default %d)\n\
+      --additional-suffix=SUFFIX  append an additional SUFFIX to file names.\n\
   -b, --bytes=SIZE        put SIZE bytes per output file\n\
   -C, --line-bytes=SIZE   put at most SIZE bytes of lines per output file\n\
-  -d, --numeric-suffixes  use numeric suffixes instead of alphabetic\n\
-  -e, --elide-empty-files  do not generate empty output files with `-n'\n\
+  -d, --numeric-suffixes[=FROM]  use numeric suffixes instead of alphabetic.\n\
+                                   FROM changes the start value (default 0).\n\
+  -e, --elide-empty-files  do not generate empty output files with '-n'\n\
       --filter=COMMAND    write to shell COMMAND; file name is $FILE\n\
   -l, --lines=NUMBER      put NUMBER lines per output file\n\
   -n, --number=CHUNKS     generate CHUNKS output files.  See below\n\
-  -u, --unbuffered        immediately copy input to output with `-n r/...'\n\
+  -u, --unbuffered        immediately copy input to output with '-n r/...'\n\
 "), DEFAULT_SUFFIX_LENGTH);
       fputs (_("\
       --verbose           print a diagnostic just before each\n\
@@ -216,7 +239,7 @@ N       split into N files based on size of input\n\
 K/N     output Kth of N to stdout\n\
 l/N     split into N files without splitting lines\n\
 l/K/N   output Kth of N to stdout without splitting lines\n\
-r/N     like `l' but use round robin distribution\n\
+r/N     like 'l' but use round robin distribution\n\
 r/K/N   likewise but only output Kth of N to stdout\n\
 "), stdout);
       emit_ancillary_info ();
@@ -225,32 +248,82 @@ r/K/N   likewise but only output Kth of N to stdout\n\
 }
 
 /* Compute the next sequential output file name and store it into the
-   string `outfile'.  */
+   string 'outfile'.  */
 
 static void
 next_file_name (void)
 {
   /* Index in suffix_alphabet of each character in the suffix.  */
   static size_t *sufindex;
+  static size_t outbase_length;
+  static size_t outfile_length;
+  static size_t addsuf_length;
 
   if (! outfile)
     {
-      /* Allocate and initialize the first file name.  */
+      bool widen;
 
-      size_t outbase_length = strlen (outbase);
-      size_t outfile_length = outbase_length + suffix_length;
+new_name:
+      widen = !! outfile_length;
+
+      if (! widen)
+        {
+          /* Allocate and initialize the first file name.  */
+
+          outbase_length = strlen (outbase);
+          addsuf_length = additional_suffix ? strlen (additional_suffix) : 0;
+          outfile_length = outbase_length + suffix_length + addsuf_length;
+        }
+      else
+        {
+          /* Reallocate and initialize a new wider file name.
+             We do this by subsuming the unchanging part of
+             the generated suffix into the prefix (base), and
+             reinitializing the now one longer suffix.  */
+
+          outfile_length += 2;
+          suffix_length++;
+        }
+
       if (outfile_length + 1 < outbase_length)
         xalloc_die ();
-      outfile = xmalloc (outfile_length + 1);
+      outfile = xrealloc (outfile, outfile_length + 1);
+
+      if (! widen)
+        memcpy (outfile, outbase, outbase_length);
+      else
+        {
+          /* Append the last alphabet character to the file name prefix.  */
+          outfile[outbase_length] = suffix_alphabet[sufindex[0]];
+          outbase_length++;
+        }
+
       outfile_mid = outfile + outbase_length;
-      memcpy (outfile, outbase, outbase_length);
       memset (outfile_mid, suffix_alphabet[0], suffix_length);
+      if (additional_suffix)
+        memcpy (outfile_mid + suffix_length, additional_suffix, addsuf_length);
       outfile[outfile_length] = 0;
+
+      free (sufindex);
       sufindex = xcalloc (suffix_length, sizeof *sufindex);
+
+      if (numeric_suffix_start)
+        {
+          assert (! widen);
+
+          /* Update the output file name.  */
+          size_t i = strlen (numeric_suffix_start);
+          memcpy (outfile_mid + suffix_length - i, numeric_suffix_start, i);
+
+          /* Update the suffix index.  */
+          size_t *sufindex_end = sufindex + suffix_length;
+          while (i-- != 0)
+            *--sufindex_end = numeric_suffix_start[i] - '0';
+        }
 
 #if ! _POSIX_NO_TRUNC && HAVE_PATHCONF && defined _PC_NAME_MAX
       /* POSIX requires that if the output file name is too long for
-         its directory, `split' must fail without creating any files.
+         its directory, 'split' must fail without creating any files.
          This must be checked for explicitly on operating systems that
          silently truncate file names.  */
       {
@@ -270,6 +343,8 @@ next_file_name (void)
       while (i-- != 0)
         {
           sufindex[i]++;
+          if (suffix_auto && i == 0 && ! suffix_alphabet[sufindex[0] + 1])
+            goto new_name;
           outfile_mid[i] = suffix_alphabet[sufindex[i]];
           if (outfile_mid[i])
             return;
@@ -289,8 +364,20 @@ create (const char *name)
     {
       if (verbose)
         fprintf (stdout, _("creating file %s\n"), quote (name));
-      return open (name, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY,
-                   (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH));
+
+      int fd = open (name, O_WRONLY | O_CREAT | O_BINARY, MODE_RW_UGO);
+      if (fd < 0)
+        return fd;
+      struct stat out_stat_buf;
+      if (fstat (fd, &out_stat_buf) != 0)
+        error (EXIT_FAILURE, errno, _("failed to stat %s"), quote (name));
+      if (SAME_INODE (in_stat_buf, out_stat_buf))
+        error (EXIT_FAILURE, 0, _("%s would overwrite input; aborting"),
+               quote (name));
+      if (ftruncate (fd, 0) != 0)
+        error (EXIT_FAILURE, errno, _("%s: error truncating"), quote (name));
+
+      return fd;
     }
   else
     {
@@ -623,11 +710,11 @@ lines_chunk_split (uintmax_t k, uintmax_t n, char *buf, size_t bufsize,
     {
       char *bp = buf, *eob;
       size_t n_read = full_read (STDIN_FILENO, buf, bufsize);
-      n_read = MIN (n_read, file_size - n_written);
       if (n_read < bufsize && errno)
         error (EXIT_FAILURE, errno, "%s", infile);
       else if (n_read == 0)
         break; /* eof.  */
+      n_read = MIN (n_read, file_size - n_written);
       chunk_truncated = false;
       eob = buf + n_read;
 
@@ -718,11 +805,11 @@ bytes_chunk_extract (uintmax_t k, uintmax_t n, char *buf, size_t bufsize,
   while (start < end)
     {
       size_t n_read = full_read (STDIN_FILENO, buf, bufsize);
-      n_read = MIN (n_read, end - start);
       if (n_read < bufsize && errno)
         error (EXIT_FAILURE, errno, "%s", infile);
       else if (n_read == 0)
         break; /* eof.  */
+      n_read = MIN (n_read, end - start);
       if (full_write (STDOUT_FILENO, buf, n_read) != n_read
           && ! ignorable (errno))
         error (EXIT_FAILURE, errno, "%s", quote ("-"));
@@ -775,7 +862,7 @@ ofile_open (of_t *files, size_t i_check, size_t nfiles)
                  get an error, rather than waiting indefinitely.
                  In specialised cases the consumer can keep reading
                  from the fifo, terminating on conditions in the data
-                 itself, or perhaps never in the case of `tail -f`.
+                 itself, or perhaps never in the case of 'tail -f'.
                  I.E. for fifos it is valid to attempt this reopen.
 
                  We don't handle the filter_command case here, as create()
@@ -956,6 +1043,7 @@ no_filters:
           files[i_file].ofd = OFD_APPEND;
         }
     }
+  IF_LINT (free (files));
 }
 
 #define FAIL_ONLY_ONE_WAY()					\
@@ -985,10 +1073,8 @@ parse_chunk (uintmax_t *k_units, uintmax_t *n_units, char *slash)
 int
 main (int argc, char **argv)
 {
-  struct stat stat_buf;
   enum Split_type split_type = type_undef;
   size_t in_blk_size = 0;	/* optimal block size of input file device */
-  char *buf;			/* file i/o buffer */
   size_t page_size = getpagesize ();
   uintmax_t k_units = 0;
   uintmax_t n_units;
@@ -996,7 +1082,7 @@ main (int argc, char **argv)
   static char const multipliers[] = "bEGKkMmPTYZ0";
   int c;
   int digits_optind = 0;
-  off_t file_size;
+  off_t file_size IF_LINT (= 0);
 
   initialize_main (&argc, &argv);
   set_program_name (argv[0]);
@@ -1035,6 +1121,17 @@ main (int argc, char **argv)
               }
             suffix_length = tmp;
           }
+          break;
+
+        case ADDITIONAL_SUFFIX_OPTION:
+          if (last_component (optarg) != optarg)
+            {
+              error (0, 0,
+                     _("invalid suffix %s, contains directory separator"),
+                     quote (optarg));
+              usage (EXIT_FAILURE);
+            }
+          additional_suffix = optarg;
           break;
 
         case 'b':
@@ -1143,6 +1240,23 @@ main (int argc, char **argv)
 
         case 'd':
           suffix_alphabet = "0123456789";
+          if (optarg)
+            {
+              if (strlen (optarg) != strspn (optarg, suffix_alphabet))
+                {
+                  error (0, 0,
+                         _("%s: invalid start value for numerical suffix"),
+                         optarg);
+                  usage (EXIT_FAILURE);
+                }
+              else
+                {
+                  /* Skip any leading zero.  */
+                  while (*optarg == '0' && *(optarg + 1) != '\0')
+                    optarg++;
+                  numeric_suffix_start = optarg;
+                }
+            }
           break;
 
         case 'e':
@@ -1213,6 +1327,15 @@ main (int argc, char **argv)
       usage (EXIT_FAILURE);
     }
 
+  /* Check that the suffix length is large enough for the numerical
+     suffix start value.  */
+  if (numeric_suffix_start && strlen (numeric_suffix_start) > suffix_length)
+    {
+      error (0, 0, _("numerical suffix start value is too large "
+                     "for the suffix length"));
+      usage (EXIT_FAILURE);
+    }
+
   /* Open the input file.  */
   if (! STREQ (infile, "-")
       && fd_reopen (STDIN_FILENO, infile, O_RDONLY, 0) < 0)
@@ -1225,15 +1348,23 @@ main (int argc, char **argv)
 
   /* Get the optimal block size of input device and make a buffer.  */
 
-  if (fstat (STDIN_FILENO, &stat_buf) != 0)
+  if (fstat (STDIN_FILENO, &in_stat_buf) != 0)
     error (EXIT_FAILURE, errno, "%s", infile);
   if (in_blk_size == 0)
-    in_blk_size = io_blksize (stat_buf);
-  file_size = stat_buf.st_size;
+    in_blk_size = io_blksize (in_stat_buf);
 
   if (split_type == type_chunk_bytes || split_type == type_chunk_lines)
     {
       off_t input_offset = lseek (STDIN_FILENO, 0, SEEK_CUR);
+      if (usable_st_size (&in_stat_buf))
+        file_size = in_stat_buf.st_size;
+      else if (0 <= input_offset)
+        {
+          file_size = lseek (STDIN_FILENO, 0, SEEK_END);
+          input_offset = (file_size < 0
+                          ? file_size
+                          : lseek (STDIN_FILENO, input_offset, SEEK_SET));
+        }
       if (input_offset < 0)
         error (EXIT_FAILURE, 0, _("%s: cannot determine file size"),
                quote (infile));
@@ -1250,7 +1381,8 @@ main (int argc, char **argv)
       file_size = MAX (file_size, n_units);
     }
 
-  buf = ptr_align (xmalloc (in_blk_size + 1 + page_size - 1), page_size);
+  void *b = xmalloc (in_blk_size + 1 + page_size - 1);
+  char *buf = ptr_align (b, page_size);
 
   /* When filtering, closure of one pipe must not terminate the process,
      as there may still be other streams expecting input from us.  */
@@ -1291,7 +1423,7 @@ main (int argc, char **argv)
       break;
 
     case type_rr:
-      /* Note, this is like `sed -n ${k}~${n}p` when k > 0,
+      /* Note, this is like 'sed -n ${k}~${n}p' when k > 0,
          but the functionality is provided for symmetry.  */
       lines_rr (k_units, n_units, buf, in_blk_size);
       break;
@@ -1299,6 +1431,8 @@ main (int argc, char **argv)
     default:
       abort ();
     }
+
+  IF_LINT (free (b));
 
   if (close (STDIN_FILENO) != 0)
     error (EXIT_FAILURE, errno, "%s", infile);

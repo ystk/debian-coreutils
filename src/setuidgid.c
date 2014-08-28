@@ -1,5 +1,5 @@
 /* setuidgid - run a command with the UID and GID of a specified user
-   Copyright (C) 2003-2011 Free Software Foundation, Inc.
+   Copyright (C) 2003-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -43,8 +43,7 @@ void
 usage (int status)
 {
   if (status != EXIT_SUCCESS)
-    fprintf (stderr, _("Try `%s --help' for more information.\n"),
-             program_name);
+    emit_try_help ();
   else
     {
       printf (_("\
@@ -108,7 +107,7 @@ main (int argc, char **argv)
                   {
                     if (! (xstrtoul (gr, &ptr, 10, &tmp_ul, NULL) == LONGINT_OK
                            && tmp_ul <= GID_T_MAX))
-                      error (EXIT_FAILURE, 0, _("invalid group %s"),
+                      error (SETUIDGID_FAILURE, 0, _("invalid group %s"),
                              quote (gr));
                     if (n_gids == n_gids_allocated)
                       gids = X2NREALLOC (gids, &n_gids_allocated);
@@ -160,8 +159,7 @@ main (int argc, char **argv)
         pwd = getpwnam (user);
         if (pwd == NULL)
           {
-            error (SETUIDGID_FAILURE, errno,
-                   _("unknown user-ID: %s"), quote (user));
+            error (0, errno, _("unknown user-ID: %s"), quote (user));
             usage (SETUIDGID_FAILURE);
           }
         uid = pwd->pw_uid;
@@ -171,7 +169,7 @@ main (int argc, char **argv)
         pwd = getpwuid (uid);
         if (pwd == NULL)
           {
-            error (SETUIDGID_FAILURE, errno,
+            error (0, errno,
                    _("to use user-ID %s you need to use -g too"), quote (user));
             usage (SETUIDGID_FAILURE);
           }
@@ -182,8 +180,8 @@ main (int argc, char **argv)
       {
         int n = xgetgroups (pwd->pw_name, pwd->pw_gid, &gids);
         if (n <= 0)
-          error (EXIT_FAILURE, errno, _("failed to get groups for user %s"),
-                 quote (pwd->pw_name));
+          error (SETUIDGID_FAILURE, errno,
+                 _("failed to get groups for user %s"), quote (pwd->pw_name));
         n_gids = n;
       }
 

@@ -20,10 +20,10 @@ ifeq ($(DEB_HOST_ARCH_OS),)
   endif
 endif
 
+# implement no optimization build option
 CFLAGS = $(shell dpkg-buildflags --get CFLAGS)
 LDFLAGS = $(shell dpkg-buildflags --get LDFLAGS)
 CPPFLAGS = $(shell dpkg-buildflags --get CPPFLAGS)
-
 CFLAGS += -DSYSLOG_SUCCESS -DSYSLOG_FAILURE -DSYSLOG_NON_ROOT
 
 # Renesas SH(sh4) need -mieee option.
@@ -32,11 +32,7 @@ ifeq ($(DEB_HOST_ARCH_CPU),sh4)
 endif
 
 # programs to include/not include
-ifeq ($(DEB_HOST_ARCH_OS),hurd)
-  BUILDPROG_OPTS := --enable-install-program=su,arch
-else
-  BUILDPROG_OPTS := --enable-install-program=arch
-endif
+BUILDPROG_OPTS := --enable-install-program=arch
 
 BIN_PROGS = cat chgrp chmod chown cp date dd df dir echo false ln ls mkdir \
 	mknod mv pwd readlink rm rmdir vdir sleep stty sync touch true uname \
@@ -48,6 +44,7 @@ default: binary
 configure: patch configure-stamp 
 configure-stamp: 
 	dh_testdir
+	dh_autotools-dev_updateconfig
 
 	CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)" \
 		LDFLAGS='$(LDFLAGS)' ./configure \
@@ -63,11 +60,6 @@ build: patch configure build-stamp
 build-stamp: 
 	dh_testdir
 	$(MAKE)
-ifeq (,$(findstring nocheck,$(DEB_BUILD_OPTIONS)))
-  ifeq (,$(findstring mips,$(DEB_BUILD_ARCH)))
-	$(MAKE) check VERBOSE=yes 
-  endif
-endif
 	echo built > build-stamp
 
 clean: unpatch clean1
@@ -76,6 +68,7 @@ clean1:
 	rm -f build-stamp configure-stamp
 	rm -rf debian/buildinfo
 	make distclean || true
+	dh_autotools-dev_restoreconfig
 	rm -f config.log
 	rm -f config.status
 	dh_clean
@@ -119,11 +112,9 @@ ifeq ($(DEB_HOST_ARCH_OS),linux)
 else
 	mv $(d)/usr/bin/kill $(d)/bin
 endif
-ifneq ($(DEB_HOST_ARCH_OS),hurd)
-		rm -f $(d)/usr/bin/su $(d)/usr/share/man/man1/su.1
-endif
 	rm -f $(d)/usr/bin/hostname $(d)/usr/share/man/man1/hostname.1
 	rm -f $(d)/usr/bin/uptime $(d)/usr/share/man/man1/uptime.1
+	rm -f $(d)/usr/bin/realpath $(d)/usr/share/man/man1/realpath.1
 
 	# the [ program doesn't have its own man page yet
 	ln -s test.1 $(d)/usr/share/man/man1/[.1
@@ -182,9 +173,6 @@ endif
 	dh_link -a
 	dh_compress -a
 	dh_fixperms -a
-ifeq ($(DEB_HOST_ARCH_OS),hurd)
-	chmod u+s $(d)/usr/bin/su
-endif
 	dh_installdeb -a
 	dh_shlibdeps -a
 	dh_gencontrol -a

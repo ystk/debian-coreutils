@@ -1,6 +1,6 @@
 /* Generate buffers of random data.
 
-   Copyright (C) 2006, 2008-2011 Free Software Foundation, Inc.
+   Copyright (C) 2006-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -17,6 +17,9 @@
 
 /* Written by Paul Eggert.  */
 
+/* FIXME: Improve performance by adding support for the RDRAND machine
+   instruction if available (e.g., Ivy Bridge processors).  */
+
 #include <config.h>
 
 #include "randread.h"
@@ -26,6 +29,7 @@
 #include <exitfail.h>
 #include <fcntl.h>
 #include <quotearg.h>
+#include <stdalign.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -59,7 +63,6 @@
 #if _STRING_ARCH_unaligned
 # define ALIGNED_POINTER(ptr, type) true
 #else
-# define alignof(type) offsetof (struct { char c; type x; }, x)
 # define ALIGNED_POINTER(ptr, type) ((size_t) (ptr) % alignof (type) == 0)
 #endif
 

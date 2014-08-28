@@ -1,5 +1,5 @@
 /* uniq -- remove duplicate lines from a sorted file
-   Copyright (C) 1986, 1991, 1995-2011 Free Software Foundation, Inc.
+   Copyright (C) 1986-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 #include "xstrtol.h"
 #include "memcasecmp.h"
 
-/* The official name of this program (e.g., no `g' prefix).  */
+/* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "uniq"
 
 #define AUTHORS \
@@ -128,8 +128,7 @@ void
 usage (int status)
 {
   if (status != EXIT_SUCCESS)
-    fprintf (stderr, _("Try `%s --help' for more information.\n"),
-             program_name);
+    emit_try_help ();
   else
     {
       printf (_("\
@@ -141,11 +140,10 @@ Filter adjacent matching lines from INPUT (or standard input),\n\
 writing to OUTPUT (or standard output).\n\
 \n\
 With no options, matching lines are merged to the first occurrence.\n\
-\n\
 "), stdout);
-     fputs (_("\
-Mandatory arguments to long options are mandatory for short options too.\n\
-"), stdout);
+
+      emit_mandatory_arg_note ();
+
      fputs (_("\
   -c, --count           prefix lines by the number of occurrences\n\
   -d, --repeated        only print duplicate lines\n\
@@ -173,8 +171,8 @@ characters.  Fields are skipped before chars.\n\
      fputs (_("\
 \n\
 Note: 'uniq' does not detect repeated lines unless they are adjacent.\n\
-You may want to sort the input first, or use `sort -u' without `uniq'.\n\
-Also, comparisons honor the rules specified by `LC_COLLATE'.\n\
+You may want to sort the input first, or use 'sort -u' without 'uniq'.\n\
+Also, comparisons honor the rules specified by 'LC_COLLATE'.\n\
 "), stdout);
       emit_ancillary_info ();
     }
@@ -294,7 +292,7 @@ check_file (const char *infile, const char *outfile, char delimiter)
   initbuffer (thisline);
   initbuffer (prevline);
 
-  /* The duplication in the following `if' and `else' blocks is an
+  /* The duplication in the following 'if' and 'else' blocks is an
      optimization to distinguish the common case (in which none of
      the following options has been specified: --count, -repeated,
      --all-repeated, --unique) from the others.  In the common case,

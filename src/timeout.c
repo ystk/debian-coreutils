@@ -1,5 +1,5 @@
 /* timeout -- run a command with bounded time
-   Copyright (C) 2008-2011 Free Software Foundation, Inc.
+   Copyright (C) 2008-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -32,8 +32,8 @@
      If you start a command in the background, which reads from the tty
      and so is immediately sent SIGTTIN to stop, then the timeout
      process will ignore this so it can timeout the command as expected.
-     This can be seen with `timeout 10 dd&` for example.
-     However if one brings this group to the foreground with the `fg`
+     This can be seen with 'timeout 10 dd&' for example.
+     However if one brings this group to the foreground with the 'fg'
      command before the timer expires, the command will remain
      in the stop state as the shell doesn't send a SIGCONT
      because the timeout process (group leader) is already running.
@@ -49,6 +49,9 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <signal.h>
+#if HAVE_PRCTL
+# include <sys/prctl.h>
+#endif
 #include <sys/wait.h>
 
 #include "system.h"
@@ -77,14 +80,15 @@
 static int timed_out;
 static int term_signal = SIGTERM;  /* same default as kill command.  */
 static int monitored_pid;
-static int sigs_to_ignore[NSIG];   /* so monitor can ignore sigs it resends.  */
 static double kill_after;
-static bool foreground;            /* whether to use another program group.  */
+static bool foreground;      /* whether to use another program group.  */
+static bool preserve_status; /* whether to use a timeout status or not.  */
 
 /* for long options with no corresponding short option, use enum */
 enum
 {
-      FOREGROUND_OPTION = CHAR_MAX + 1
+      FOREGROUND_OPTION = CHAR_MAX + 1,
+      PRESERVE_STATUS_OPTION
 };
 
 static struct option const long_options[] =
@@ -92,10 +96,21 @@ static struct option const long_options[] =
   {"kill-after", required_argument, NULL, 'k'},
   {"signal", required_argument, NULL, 's'},
   {"foreground", no_argument, NULL, FOREGROUND_OPTION},
+  {"preserve-status", no_argument, NULL, PRESERVE_STATUS_OPTION},
   {GETOPT_HELP_OPTION_DECL},
   {GETOPT_VERSION_OPTION_DECL},
   {NULL, 0, NULL, 0}
 };
+
+static void
+unblock_signal (int sig)
+{
+  sigset_t unblock_set;
+  sigemptyset (&unblock_set);
+  sigaddset (&unblock_set, sig);
+  if (sigprocmask (SIG_UNBLOCK, &unblock_set, NULL) != 0)
+    error (0, errno, _("warning: sigprocmask"));
+}
 
 /* Start the timeout after which we'll receive a SIGALRM.
    Round DURATION up to the next representable value.
@@ -105,6 +120,11 @@ static struct option const long_options[] =
 static void
 settimeout (double duration)
 {
+
+  /* We configure timers below so that SIGALRM is sent on expiry.
+     Therefore ensure we don't inherit a mask blocking SIGALRM.  */
+  unblock_signal (SIGALRM);
+
 /* timer_settime() provides potentially nanosecond resolution.
    setitimer() is more portable (to Darwin for example),
    but only provides microsecond resolution and thus is
@@ -141,12 +161,20 @@ settimeout (double duration)
   alarm (timeint);
 }
 
-/* send sig to group but not ourselves.
- * FIXME: Is there a better way to achieve this?  */
+/* send SIG avoiding the current process.  */
+
 static int
 send_sig (int where, int sig)
 {
-  sigs_to_ignore[sig] = 1;
+  /* If sending to the group, then ignore the signal,
+     so we don't go into a signal loop.  Note that this will ignore any of the
+     signals registered in install_signal_handlers(), that are sent after we
+     propagate the first one, which hopefully won't be an issue.  Note this
+     process can be implicitly multithreaded due to some timer_settime()
+     implementations, therefore a signal sent to the group, can be sent
+     multiple times to this process.  */
+  if (where == 0)
+    signal (sig, SIG_IGN);
   return kill (where, sig);
 }
 
@@ -160,11 +188,6 @@ cleanup (int sig)
     }
   if (monitored_pid)
     {
-      if (sigs_to_ignore[sig])
-        {
-          sigs_to_ignore[sig] = 0;
-          return;
-        }
       if (kill_after)
         {
           /* Start a new timeout after which we'll send SIGKILL.  */
@@ -196,8 +219,7 @@ void
 usage (int status)
 {
   if (status != EXIT_SUCCESS)
-    fprintf (stderr, _("Try `%s --help' for more information.\n"),
-             program_name);
+    emit_try_help ();
   else
     {
       printf (_("\
@@ -206,10 +228,14 @@ Usage: %s [OPTION] DURATION COMMAND [ARG]...\n\
 
       fputs (_("\
 Start COMMAND, and kill it if still running after DURATION.\n\
-\n\
-Mandatory arguments to long options are mandatory for short options too.\n\
 "), stdout);
+
+      emit_mandatory_arg_note ();
+
       fputs (_("\
+      --preserve-status\n\
+                 exit with the same status as COMMAND, even when the\n\
+                 command times out\n\
       --foreground\n\
                  When not running timeout directly from a shell prompt,\n\
                  allow COMMAND to read from the TTY and receive TTY signals.\n\
@@ -219,23 +245,24 @@ Mandatory arguments to long options are mandatory for short options too.\n\
                  this long after the initial signal was sent.\n\
   -s, --signal=SIGNAL\n\
                  specify the signal to be sent on timeout.\n\
-                 SIGNAL may be a name like `HUP' or a number.\n\
-                 See `kill -l` for a list of signals\n"), stdout);
+                 SIGNAL may be a name like 'HUP' or a number.\n\
+                 See 'kill -l' for a list of signals\n"), stdout);
 
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
 
       fputs (_("\n\
 DURATION is a floating point number with an optional suffix:\n\
-`s' for seconds (the default), `m' for minutes, `h' for hours \
-or `d' for days.\n"), stdout);
+'s' for seconds (the default), 'm' for minutes, 'h' for hours \
+or 'd' for days.\n"), stdout);
 
       fputs (_("\n\
-If the command times out, then exit with status 124.  Otherwise, exit\n\
-with the status of COMMAND.  If no signal is specified, send the TERM\n\
-signal upon timeout.  The TERM signal kills any process that does not\n\
-block or catch that signal.  For other processes, it may be necessary to\n\
-use the KILL (9) signal, since this signal cannot be caught.\n"), stdout);
+If the command times out, and --preserve-status is not set, then exit with\n\
+status 124.  Otherwise, exit with the status of COMMAND.  If no signal\n\
+is specified, send the TERM signal upon timeout.  The TERM signal kills\n\
+any process that does not block or catch that signal.  It may be necessary\n\
+to use the KILL (9) signal, since this signal cannot be caught, in which\n\
+case the exit status is 128+9 rather than 124.\n"), stdout);
       emit_ancillary_info ();
     }
   exit (status);
@@ -243,8 +270,8 @@ use the KILL (9) signal, since this signal cannot be caught.\n"), stdout);
 
 /* Given a floating point value *X, and a suffix character, SUFFIX_CHAR,
    scale *X by the multiplier implied by SUFFIX_CHAR.  SUFFIX_CHAR may
-   be the NUL byte or `s' to denote seconds, `m' for minutes, `h' for
-   hours, or `d' for days.  If SUFFIX_CHAR is invalid, don't modify *X
+   be the NUL byte or 's' to denote seconds, 'm' for minutes, 'h' for
+   hours, or 'd' for days.  If SUFFIX_CHAR is invalid, don't modify *X
    and return false.  Otherwise return true.  */
 
 static bool
@@ -314,6 +341,29 @@ install_signal_handlers (int sigterm)
   sigaction (sigterm, &sa, NULL); /* user specified termination signal.  */
 }
 
+/* Try to disable core dumps for this process.
+   Return TRUE if successful, FALSE otherwise.  */
+static bool
+disable_core_dumps (void)
+{
+#if HAVE_PRCTL && defined PR_SET_DUMPABLE
+  if (prctl (PR_SET_DUMPABLE, 0) == 0)
+    return true;
+
+#elif HAVE_SETRLIMIT && defined RLIMIT_CORE
+  /* Note this doesn't disable processing by a filter in
+     /proc/sys/kernel/core_pattern on Linux.  */
+  if (setrlimit (RLIMIT_CORE, &(struct rlimit) {0,0}) == 0)
+    return true;
+
+#else
+  return false;
+#endif
+
+  error (0, errno, _("warning: disabling core dumps failed"));
+  return false;
+}
+
 int
 main (int argc, char **argv)
 {
@@ -346,6 +396,10 @@ main (int argc, char **argv)
 
         case FOREGROUND_OPTION:
           foreground = true;
+          break;
+
+        case PRESERVE_STATUS_OPTION:
+          preserve_status = true;
           break;
 
         case_GETOPT_HELP_CHAR;
@@ -424,21 +478,14 @@ main (int argc, char **argv)
           else if (WIFSIGNALED (status))
             {
               int sig = WTERMSIG (status);
-/* The following is not used as one cannot disable processing
-   by a filter in /proc/sys/kernel/core_pattern on Linux.  */
-#if 0 && HAVE_SETRLIMIT && defined RLIMIT_CORE
-              if (!timed_out)
+              if (WCOREDUMP (status))
+                error (0, 0, _("the monitored command dumped core"));
+              if (!timed_out && disable_core_dumps ())
                 {
-                  /* exit with the signal flag set, but avoid core files.  */
-                  if (setrlimit (RLIMIT_CORE, &(struct rlimit) {0,0}) == 0)
-                    {
-                      signal (sig, SIG_DFL);
-                      raise (sig);
-                    }
-                  else
-                    error (0, errno, _("warning: disabling core dumps failed"));
+                  /* exit with the signal flag set.  */
+                  signal (sig, SIG_DFL);
+                  raise (sig);
                 }
-#endif
               status = sig + 128; /* what sh returns for signaled processes.  */
             }
           else
@@ -449,7 +496,7 @@ main (int argc, char **argv)
             }
         }
 
-      if (timed_out)
+      if (timed_out && !preserve_status)
         return EXIT_TIMEDOUT;
       else
         return status;

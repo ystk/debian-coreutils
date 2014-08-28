@@ -1,5 +1,5 @@
 /* Base64 encode/decode strings or files.
-   Copyright (C) 2004-2011 Free Software Foundation, Inc.
+   Copyright (C) 2004-2013 Free Software Foundation, Inc.
 
    This file is part of Base64.
 
@@ -34,7 +34,7 @@
 
 #include "base64.h"
 
-/* The official name of this program (e.g., no `g' prefix).  */
+/* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "base64"
 
 #define AUTHORS proper_name ("Simon Josefsson")
@@ -54,14 +54,16 @@ void
 usage (int status)
 {
   if (status != EXIT_SUCCESS)
-    fprintf (stderr, _("Try `%s --help' for more information.\n"),
-             program_name);
+    emit_try_help ();
   else
     {
       printf (_("\
 Usage: %s [OPTION]... [FILE]\n\
 Base64 encode or decode FILE, or standard input, to standard output.\n\
-\n"), program_name);
+"), program_name);
+
+      emit_mandatory_arg_note ();
+
       fputs (_("\
   -d, --decode          decode data\n\
   -i, --ignore-garbage  when decoding, ignore non-alphabet characters\n\

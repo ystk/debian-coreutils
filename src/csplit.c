@@ -1,5 +1,5 @@
 /* csplit - split a file into sections determined by context lines
-   Copyright (C) 1991, 1995-2011 Free Software Foundation, Inc.
+   Copyright (C) 1991-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 #include "stdio--.h"
 #include "xstrtol.h"
 
-/* The official name of this program (e.g., no `g' prefix).  */
+/* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "csplit"
 
 #define AUTHORS \
@@ -51,7 +51,7 @@ struct control
   uintmax_t lines_required;	/* Number of lines required. */
   uintmax_t repeat;		/* Repeat count. */
   int argnum;			/* ARGV index. */
-  bool repeat_forever;		/* True if `*' used as a repeat count. */
+  bool repeat_forever;		/* True if '*' used as a repeat count. */
   bool ignore;			/* If true, produce no output (for regexp). */
   bool regexpr;			/* True if regular expression was used. */
   struct re_pattern_buffer re_compiled;	/* Compiled regular expression. */
@@ -111,7 +111,6 @@ static void close_output_file (void);
 static void create_output_file (void);
 static void delete_all_files (bool);
 static void save_line_to_file (const struct cstring *line);
-void usage (int status);
 
 /* Start of buffer list. */
 static struct buffer_record *head = NULL;
@@ -119,7 +118,7 @@ static struct buffer_record *head = NULL;
 /* Partially read line. */
 static char *hold_area = NULL;
 
-/* Number of bytes in `hold_area'. */
+/* Number of bytes in 'hold_area'. */
 static size_t hold_count = 0;
 
 /* Number of the last line in the buffers. */
@@ -171,7 +170,7 @@ static bool elide_empty_files;
    the input file. */
 static struct control *controls;
 
-/* Number of elements in `controls'. */
+/* Number of elements in 'controls'. */
 static size_t control_used;
 
 /* The set of signals that are caught.  */
@@ -426,6 +425,7 @@ free_buffer (struct buffer_record *buf)
       free (l);
       l = n;
     }
+  buf->line_start = NULL;
   free (buf->buffer);
   buf->buffer = NULL;
 }
@@ -487,7 +487,7 @@ load_buffer (void)
       bytes_avail = b->bytes_alloc; /* Size of buffer returned. */
       p = b->buffer;
 
-      /* First check the `holding' area for a partial line. */
+      /* First check the 'holding' area for a partial line. */
       if (hold_count)
         {
           memcpy (p, hold_area, hold_count);
@@ -500,8 +500,6 @@ load_buffer (void)
       b->bytes_used += read_input (p, bytes_avail);
 
       lines_found = record_line_starts (b);
-      if (!lines_found)
-        free_buffer (b);
 
       if (lines_found || have_read_eof)
         break;
@@ -516,7 +514,10 @@ load_buffer (void)
   if (lines_found)
     save_buffer (b);
   else
-    free (b);
+    {
+      free_buffer (b);
+      free (b);
+    }
 
   return lines_found != 0;
 }
@@ -1071,7 +1072,7 @@ parse_repeat_count (int argnum, struct control *p, char *str)
 
   end = str + strlen (str) - 1;
   if (*end != '}')
-    error (EXIT_FAILURE, 0, _("%s: `}' is required in repeat count"), str);
+    error (EXIT_FAILURE, 0, _("%s: '}' is required in repeat count"), str);
   *end = '\0';
 
   if (str+1 == end-1 && *(str+1) == '*')
@@ -1081,7 +1082,7 @@ parse_repeat_count (int argnum, struct control *p, char *str)
       if (xstrtoumax (str + 1, NULL, 10, &val, "") != LONGINT_OK)
         {
           error (EXIT_FAILURE, 0,
-                 _("%s}: integer required between `{' and `}'"),
+                 _("%s}: integer required between '{' and '}'"),
                  global_argv[argnum]);
         }
       p->repeat = val;
@@ -1108,7 +1109,7 @@ extract_regexp (int argnum, bool ignore, char const *str)
   closing_delim = strrchr (str + 1, delim);
   if (closing_delim == NULL)
     error (EXIT_FAILURE, 0,
-           _("%s: closing delimiter `%c' missing"), str, delim);
+           _("%s: closing delimiter '%c' missing"), str, delim);
 
   len = closing_delim - str - 1;
   p = new_control_record ();
@@ -1444,8 +1445,7 @@ void
 usage (int status)
 {
   if (status != EXIT_SUCCESS)
-    fprintf (stderr, _("Try `%s --help' for more information.\n"),
-             program_name);
+    emit_try_help ();
   else
     {
       printf (_("\
@@ -1453,16 +1453,15 @@ Usage: %s [OPTION]... FILE PATTERN...\n\
 "),
               program_name);
       fputs (_("\
-Output pieces of FILE separated by PATTERN(s) to files `xx00', `xx01', ...,\n\
+Output pieces of FILE separated by PATTERN(s) to files 'xx00', 'xx01', ...,\n\
 and output byte counts of each piece to standard output.\n\
-\n\
 "), stdout);
-      fputs (_("\
-Mandatory arguments to long options are mandatory for short options too.\n\
-"), stdout);
+
+      emit_mandatory_arg_note ();
+
       fputs (_("\
   -b, --suffix-format=FORMAT  use sprintf FORMAT instead of %02d\n\
-  -f, --prefix=PREFIX        use PREFIX instead of `xx'\n\
+  -f, --prefix=PREFIX        use PREFIX instead of 'xx'\n\
   -k, --keep-files           do not remove output files on errors\n\
 "), stdout);
       fputs (_("\
@@ -1484,7 +1483,7 @@ Read standard input if FILE is -.  Each PATTERN may be:\n\
   {INTEGER}          repeat the previous pattern specified number of times\n\
   {*}                repeat the previous pattern as many times as possible\n\
 \n\
-A line OFFSET is a required `+' or `-' followed by a positive integer.\n\
+A line OFFSET is a required '+' or '-' followed by a positive integer.\n\
 "), stdout);
       emit_ancillary_info ();
     }
