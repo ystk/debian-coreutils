@@ -1,5 +1,5 @@
 /* env - run a program in a modified environment
-   Copyright (C) 1986-2013 Free Software Foundation, Inc.
+   Copyright (C) 1986-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ Set each NAME to VALUE in the environment and run COMMAND.\n\
 
       fputs (_("\
   -i, --ignore-environment  start with an empty environment\n\
-  -0, --null           end each output line with 0 byte rather than newline\n\
+  -0, --null           end each output line with NUL, not newline\n\
   -u, --unset=NAME     remove variable from the environment\n\
 "), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);

@@ -1,5 +1,5 @@
 /* dd -- convert a file while copying it.
-   Copyright (C) 1985-2013 Free Software Foundation, Inc.
+   Copyright (C) 1985-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -136,9 +136,7 @@ enum
 enum
   {
     STATUS_NOXFER = 01,
-    STATUS_NOCOUNTS = 02,
-    STATUS_LAST = STATUS_NOCOUNTS,
-    STATUS_NONE = STATUS_LAST | (STATUS_LAST - 1)
+    STATUS_NONE = 02
   };
 
 /* The name of the input file, or NULL for the standard input. */
@@ -236,6 +234,9 @@ static uintmax_t r_truncate = 0;
 static char newline_character = '\n';
 static char space_character = ' ';
 
+/* Input buffer. */
+static char *ibuf;
+
 /* Output buffer. */
 static char *obuf;
 
@@ -273,9 +274,9 @@ struct symbol_value
 /* Conversion symbols, for conv="...".  */
 static struct symbol_value const conversions[] =
 {
-  {"ascii", C_ASCII | C_TWOBUFS},	/* EBCDIC to ASCII. */
-  {"ebcdic", C_EBCDIC | C_TWOBUFS},	/* ASCII to EBCDIC. */
-  {"ibm", C_IBM | C_TWOBUFS},	/* Slightly different ASCII to EBCDIC. */
+  {"ascii", C_ASCII | C_UNBLOCK | C_TWOBUFS},	/* EBCDIC to ASCII. */
+  {"ebcdic", C_EBCDIC | C_BLOCK | C_TWOBUFS},	/* ASCII to EBCDIC. */
+  {"ibm", C_IBM | C_BLOCK | C_TWOBUFS},	/* Different ASCII to EBCDIC. */
   {"block", C_BLOCK | C_TWOBUFS},	/* Variable to fixed length records. */
   {"unblock", C_UNBLOCK | C_TWOBUFS},	/* Fixed to variable length records. */
   {"lcase", C_LCASE | C_TWOBUFS},	/* Translate upper to lower case. */
@@ -380,24 +381,29 @@ static struct symbol_value const statuses[] =
 /* Translation table formed by applying successive transformations. */
 static unsigned char trans_table[256];
 
+/* Standard translation tables, taken from POSIX 1003.1-2013.
+   Beware of imitations; there are lots of ASCII<->EBCDIC tables
+   floating around the net, perhaps valid for some applications but
+   not correct here.  */
+
 static char const ascii_to_ebcdic[] =
 {
   '\000', '\001', '\002', '\003', '\067', '\055', '\056', '\057',
   '\026', '\005', '\045', '\013', '\014', '\015', '\016', '\017',
   '\020', '\021', '\022', '\023', '\074', '\075', '\062', '\046',
   '\030', '\031', '\077', '\047', '\034', '\035', '\036', '\037',
-  '\100', '\117', '\177', '\173', '\133', '\154', '\120', '\175',
+  '\100', '\132', '\177', '\173', '\133', '\154', '\120', '\175',
   '\115', '\135', '\134', '\116', '\153', '\140', '\113', '\141',
   '\360', '\361', '\362', '\363', '\364', '\365', '\366', '\367',
   '\370', '\371', '\172', '\136', '\114', '\176', '\156', '\157',
   '\174', '\301', '\302', '\303', '\304', '\305', '\306', '\307',
   '\310', '\311', '\321', '\322', '\323', '\324', '\325', '\326',
   '\327', '\330', '\331', '\342', '\343', '\344', '\345', '\346',
-  '\347', '\350', '\351', '\112', '\340', '\132', '\137', '\155',
+  '\347', '\350', '\351', '\255', '\340', '\275', '\232', '\155',
   '\171', '\201', '\202', '\203', '\204', '\205', '\206', '\207',
   '\210', '\211', '\221', '\222', '\223', '\224', '\225', '\226',
   '\227', '\230', '\231', '\242', '\243', '\244', '\245', '\246',
-  '\247', '\250', '\251', '\300', '\152', '\320', '\241', '\007',
+  '\247', '\250', '\251', '\300', '\117', '\320', '\137', '\007',
   '\040', '\041', '\042', '\043', '\044', '\025', '\006', '\027',
   '\050', '\051', '\052', '\053', '\054', '\011', '\012', '\033',
   '\060', '\061', '\032', '\063', '\064', '\065', '\066', '\010',
@@ -407,10 +413,10 @@ static char const ascii_to_ebcdic[] =
   '\130', '\131', '\142', '\143', '\144', '\145', '\146', '\147',
   '\150', '\151', '\160', '\161', '\162', '\163', '\164', '\165',
   '\166', '\167', '\170', '\200', '\212', '\213', '\214', '\215',
-  '\216', '\217', '\220', '\232', '\233', '\234', '\235', '\236',
-  '\237', '\240', '\252', '\253', '\254', '\255', '\256', '\257',
+  '\216', '\217', '\220', '\152', '\233', '\234', '\235', '\236',
+  '\237', '\240', '\252', '\253', '\254', '\112', '\256', '\257',
   '\260', '\261', '\262', '\263', '\264', '\265', '\266', '\267',
-  '\270', '\271', '\272', '\273', '\274', '\275', '\276', '\277',
+  '\270', '\271', '\272', '\273', '\274', '\241', '\276', '\277',
   '\312', '\313', '\314', '\315', '\316', '\317', '\332', '\333',
   '\334', '\335', '\336', '\337', '\352', '\353', '\354', '\355',
   '\356', '\357', '\372', '\373', '\374', '\375', '\376', '\377'
@@ -463,21 +469,21 @@ static char const ebcdic_to_ascii[] =
   '\220', '\221', '\026', '\223', '\224', '\225', '\226', '\004',
   '\230', '\231', '\232', '\233', '\024', '\025', '\236', '\032',
   '\040', '\240', '\241', '\242', '\243', '\244', '\245', '\246',
-  '\247', '\250', '\133', '\056', '\074', '\050', '\053', '\041',
+  '\247', '\250', '\325', '\056', '\074', '\050', '\053', '\174',
   '\046', '\251', '\252', '\253', '\254', '\255', '\256', '\257',
-  '\260', '\261', '\135', '\044', '\052', '\051', '\073', '\136',
+  '\260', '\261', '\041', '\044', '\052', '\051', '\073', '\176',
   '\055', '\057', '\262', '\263', '\264', '\265', '\266', '\267',
-  '\270', '\271', '\174', '\054', '\045', '\137', '\076', '\077',
+  '\270', '\271', '\313', '\054', '\045', '\137', '\076', '\077',
   '\272', '\273', '\274', '\275', '\276', '\277', '\300', '\301',
   '\302', '\140', '\072', '\043', '\100', '\047', '\075', '\042',
   '\303', '\141', '\142', '\143', '\144', '\145', '\146', '\147',
   '\150', '\151', '\304', '\305', '\306', '\307', '\310', '\311',
   '\312', '\152', '\153', '\154', '\155', '\156', '\157', '\160',
-  '\161', '\162', '\313', '\314', '\315', '\316', '\317', '\320',
-  '\321', '\176', '\163', '\164', '\165', '\166', '\167', '\170',
-  '\171', '\172', '\322', '\323', '\324', '\325', '\326', '\327',
+  '\161', '\162', '\136', '\314', '\315', '\316', '\317', '\320',
+  '\321', '\345', '\163', '\164', '\165', '\166', '\167', '\170',
+  '\171', '\172', '\322', '\323', '\324', '\133', '\326', '\327',
   '\330', '\331', '\332', '\333', '\334', '\335', '\336', '\337',
-  '\340', '\341', '\342', '\343', '\344', '\345', '\346', '\347',
+  '\340', '\341', '\342', '\343', '\344', '\135', '\346', '\347',
   '\173', '\101', '\102', '\103', '\104', '\105', '\106', '\107',
   '\110', '\111', '\350', '\351', '\352', '\353', '\354', '\355',
   '\175', '\112', '\113', '\114', '\115', '\116', '\117', '\120',
@@ -646,6 +652,65 @@ Options are:\n\
   exit (status);
 }
 
+static char *
+human_size (size_t n)
+{
+  static char hbuf[LONGEST_HUMAN_READABLE + 1];
+  int human_opts =
+    (human_autoscale | human_round_to_nearest | human_base_1024
+     | human_space_before_unit | human_SI | human_B);
+  return human_readable (n, hbuf, human_opts, 1, 1);
+}
+
+/* Ensure input buffer IBUF is allocated.  */
+
+static void
+alloc_ibuf (void)
+{
+  if (ibuf)
+    return;
+
+  char *real_buf = malloc (input_blocksize + INPUT_BLOCK_SLOP);
+  if (!real_buf)
+    error (EXIT_FAILURE, 0,
+           _("memory exhausted by input buffer of size %zu bytes (%s)"),
+           input_blocksize, human_size (input_blocksize));
+
+  real_buf += SWAB_ALIGN_OFFSET;	/* allow space for swab */
+
+  ibuf = ptr_align (real_buf, page_size);
+}
+
+/* Ensure output buffer OBUF is allocated/initialized.  */
+
+static void
+alloc_obuf (void)
+{
+  if (obuf)
+    return;
+
+  if (conversions_mask & C_TWOBUFS)
+    {
+      /* Page-align the output buffer, too.  */
+      char *real_obuf = malloc (output_blocksize + OUTPUT_BLOCK_SLOP);
+      if (!real_obuf)
+        error (EXIT_FAILURE, 0,
+               _("memory exhausted by output buffer of size %zu bytes (%s)"),
+               output_blocksize, human_size (output_blocksize));
+      obuf = ptr_align (real_obuf, page_size);
+    }
+  else
+    {
+      alloc_ibuf ();
+      obuf = ibuf;
+    }
+
+  /* Write a sentinel to the slop after the buffer,
+   to allow efficient checking for NUL blocks.  */
+  assert (sizeof (uintptr_t) <= OUTPUT_BLOCK_SLOP);
+  memset (obuf + output_blocksize, 1, sizeof (uintptr_t));
+}
+
 static void
 translate_charset (char const *new_trans)
 {
@@ -676,7 +741,7 @@ print_stats (void)
   double delta_s;
   char const *bytes_per_second;
 
-  if ((status_flags & STATUS_NONE) == STATUS_NONE)
+  if (status_flags & STATUS_NONE)
     return;
 
   fprintf (stderr,
@@ -969,12 +1034,13 @@ iread (int fd, char *buf, size_t size)
       if (0 < prev_nread && prev_nread < size)
         {
           uintmax_t prev = prev_nread;
-          error (0, 0, ngettext (("warning: partial read (%"PRIuMAX" byte); "
-                                  "suggest iflag=fullblock"),
-                                 ("warning: partial read (%"PRIuMAX" bytes); "
-                                  "suggest iflag=fullblock"),
-                                 select_plural (prev)),
-                 prev);
+          if (!(status_flags & STATUS_NONE))
+            error (0, 0, ngettext (("warning: partial read (%"PRIuMAX" byte); "
+                                    "suggest iflag=fullblock"),
+                                   ("warning: partial read (%"PRIuMAX" bytes); "
+                                    "suggest iflag=fullblock"),
+                                   select_plural (prev)),
+                   prev);
           warn_partial_read = false;
         }
 
@@ -1018,7 +1084,8 @@ iwrite (int fd, char const *buf, size_t size)
   if ((output_flags & O_DIRECT) && size < output_blocksize)
     {
       int old_flags = fcntl (STDOUT_FILENO, F_GETFL);
-      if (fcntl (STDOUT_FILENO, F_SETFL, old_flags & ~O_DIRECT) != 0)
+      if (fcntl (STDOUT_FILENO, F_SETFL, old_flags & ~O_DIRECT) != 0
+          && !(status_flags & STATUS_NONE))
         error (0, errno, _("failed to turn off O_DIRECT: %s"),
                quote (output_file));
 
@@ -1511,9 +1578,11 @@ skip_via_lseek (char const *filename, int fdesc, off_t offset, int whence)
       && ioctl (fdesc, MTIOCGET, &s2) == 0
       && MT_SAME_POSITION (s1, s2))
     {
-      error (0, 0, _("warning: working around lseek kernel bug for file (%s)\n\
-  of mt_type=0x%0lx -- see <sys/mtio.h> for the list of types"),
-             filename, s2.mt_type);
+      if (!(status_flags & STATUS_NONE))
+        error (0, 0, _("warning: working around lseek kernel bug for file "
+                       "(%s)\n  of mt_type=0x%0lx -- "
+                       "see <sys/mtio.h> for the list of types"),
+               filename, s2.mt_type);
       errno = 0;
       new_position = -1;
     }
@@ -1526,7 +1595,7 @@ skip_via_lseek (char const *filename, int fdesc, off_t offset, int whence)
 
 /* Throw away RECORDS blocks of BLOCKSIZE bytes plus BYTES bytes on
    file descriptor FDESC, which is open with read permission for FILE.
-   Store up to BLOCKSIZE bytes of the data at a time in BUF, if
+   Store up to BLOCKSIZE bytes of the data at a time in IBUF or OBUF, if
    necessary. RECORDS or BYTES must be nonzero. If FDESC is
    STDIN_FILENO, advance the input offset. Return the number of
    records remaining, i.e., that were not skipped because EOF was
@@ -1535,7 +1604,7 @@ skip_via_lseek (char const *filename, int fdesc, off_t offset, int whence)
 
 static uintmax_t
 skip (int fdesc, char const *file, uintmax_t records, size_t blocksize,
-      size_t *bytes, char *buf)
+      size_t *bytes)
 {
   uintmax_t offset = records * blocksize + *bytes;
 
@@ -1607,6 +1676,18 @@ skip (int fdesc, char const *file, uintmax_t records, size_t blocksize,
         }
       /* else file_size && offset > OFF_T_MAX or file ! seekable */
 
+      char *buf;
+      if (fdesc == STDIN_FILENO)
+        {
+          alloc_ibuf ();
+          buf = ibuf;
+        }
+      else
+        {
+          alloc_obuf ();
+          buf = obuf;
+        }
+
       do
         {
           ssize_t nread = iread_fnc (fdesc, buf, records ? blocksize : *bytes);
@@ -1671,7 +1752,7 @@ advance_input_after_read_error (size_t nbytes)
           if (offset == input_offset)
             return true;
           diff = input_offset - offset;
-          if (! (0 <= diff && diff <= nbytes))
+          if (! (0 <= diff && diff <= nbytes) && !(status_flags & STATUS_NONE))
             error (0, 0, _("warning: invalid file offset after failed read"));
           if (0 <= skip_via_lseek (input_file, STDIN_FILENO, diff, SEEK_CUR))
             return true;
@@ -1823,26 +1904,12 @@ set_fd_flags (int fd, int add_flags, char const *name)
     }
 }
 
-static char *
-human_size (size_t n)
-{
-  static char hbuf[LONGEST_HUMAN_READABLE + 1];
-  int human_opts =
-    (human_autoscale | human_round_to_nearest | human_base_1024
-     | human_space_before_unit | human_SI | human_B);
-  return human_readable (n, hbuf, human_opts, 1, 1);
-}
-
 /* The main loop.  */
 
 static int
 dd_copy (void)
 {
-  char *ibuf, *bufstart;	/* Input buffer. */
-  /* These are declared static so that even though we don't free the
-     buffers, valgrind will recognize that there is no "real" leak.  */
-  static char *real_buf;	/* real buffer address before alignment */
-  static char *real_obuf;
+  char *bufstart;		/* Input buffer. */
   ssize_t nread;		/* Bytes read in the current block.  */
 
   /* If nonzero, then the previously read block was partial and
@@ -1869,45 +1936,12 @@ dd_copy (void)
      It is necessary when accessing raw (i.e. character special) disk
      devices on Unixware or other SVR4-derived system.  */
 
-  real_buf = malloc (input_blocksize + INPUT_BLOCK_SLOP);
-  if (!real_buf)
-    error (EXIT_FAILURE, 0,
-           _("memory exhausted by input buffer of size %zu bytes (%s)"),
-           input_blocksize, human_size (input_blocksize));
-
-  ibuf = real_buf;
-  ibuf += SWAB_ALIGN_OFFSET;	/* allow space for swab */
-
-  ibuf = ptr_align (ibuf, page_size);
-
-  if (conversions_mask & C_TWOBUFS)
-    {
-      /* Page-align the output buffer, too.  */
-      real_obuf = malloc (output_blocksize + OUTPUT_BLOCK_SLOP);
-      if (!real_obuf)
-        error (EXIT_FAILURE, 0,
-               _("memory exhausted by output buffer of size %zu bytes (%s)"),
-               output_blocksize, human_size (output_blocksize));
-      obuf = ptr_align (real_obuf, page_size);
-    }
-  else
-    {
-      real_obuf = NULL;
-      obuf = ibuf;
-    }
-
-  /* Write a sentinel to the slop after the buffer,
-     to allow efficient checking for NUL blocks.  */
-  assert (sizeof (uintptr_t) <= OUTPUT_BLOCK_SLOP);
-  memset (obuf + output_blocksize, 1, sizeof (uintptr_t));
-
   if (skip_records != 0 || skip_bytes != 0)
     {
       uintmax_t us_bytes = input_offset + (skip_records * input_blocksize)
                            + skip_bytes;
       uintmax_t us_blocks = skip (STDIN_FILENO, input_file,
-                                  skip_records, input_blocksize, &skip_bytes,
-                                  ibuf);
+                                  skip_records, input_blocksize, &skip_bytes);
       us_bytes -= input_offset;
 
       /* POSIX doesn't say what to do when dd detects it has been
@@ -1916,7 +1950,8 @@ dd_copy (void)
              1. file is too small
              2. pipe has not enough data
              3. partial reads  */
-      if (us_blocks || (!input_offset_overflow && us_bytes))
+      if ((us_blocks || (!input_offset_overflow && us_bytes))
+          && !(status_flags & STATUS_NONE))
         {
           error (0, 0,
                  _("%s: cannot skip to specified offset"), quote (input_file));
@@ -1927,8 +1962,7 @@ dd_copy (void)
     {
       size_t bytes = seek_bytes;
       uintmax_t write_records = skip (STDOUT_FILENO, output_file,
-                                      seek_records, output_blocksize, &bytes,
-                                      obuf);
+                                      seek_records, output_blocksize, &bytes);
 
       if (write_records != 0 || bytes != 0)
         {
@@ -1954,6 +1988,9 @@ dd_copy (void)
 
   if (max_records == 0 && max_bytes == 0)
     return exit_status;
+
+  alloc_ibuf ();
+  alloc_obuf ();
 
   while (1)
     {
@@ -1981,7 +2018,9 @@ dd_copy (void)
 
       if (nread < 0)
         {
-          error (0, errno, _("error reading %s"), quote (input_file));
+          if (!(conversions_mask & C_NOERROR) || !(status_flags & STATUS_NONE))
+            error (0, errno, _("error reading %s"), quote (input_file));
+
           if (conversions_mask & C_NOERROR)
             {
               print_stats ();

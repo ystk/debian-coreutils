@@ -1,5 +1,5 @@
 /* truncate -- truncate or extend the length of files.
-   Copyright (C) 2008-2013 Free Software Foundation, Inc.
+   Copyright (C) 2008-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -114,7 +114,7 @@ reads as zero bytes.\n\
 "), stdout);
       fputs (_("\
   -r, --reference=RFILE  base size on RFILE\n\
-  -s, --size=SIZE        set or adjust the file size by SIZE\n"), stdout);
+  -s, --size=SIZE        set or adjust the file size by SIZE bytes\n"), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
       emit_size_note ();
@@ -420,5 +420,5 @@ main (int argc, char **argv)
         }
     }
 
-  return errors ? EXIT_FAILURE : EXIT_SUCCESS;
+  exit (errors ? EXIT_FAILURE : EXIT_SUCCESS);
 }

@@ -2,7 +2,7 @@
 # 'md5sum' tests for generation and checking of
 # BSD traditional and alternate formats (md5 [-r])
 
-# Copyright (C) 2011-2013 Free Software Foundation, Inc.
+# Copyright (C) 2011-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -70,7 +70,7 @@ nl='
 tab='	'
 rm check.md5
 for i in 'a\b' 'a\' "a${nl}b" "a${tab}b"; do
-  :> "$i"
+  > "$i"
   md5sum --tag "$i" >> check.md5
 done
 md5sum --strict -c check.md5 || fail=1

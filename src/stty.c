@@ -1,5 +1,5 @@
 /* stty -- change and print terminal line settings
-   Copyright (C) 1990-2013 Free Software Foundation, Inc.
+   Copyright (C) 1990-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -205,6 +205,9 @@ static struct mode_info const mode_info[] =
 {
   {"parenb", control, REV, PARENB, 0},
   {"parodd", control, REV, PARODD, 0},
+#ifdef CMSPAR
+  {"cmspar", control, REV, CMSPAR, 0},
+#endif
   {"cs5", control, 0, CS5, CSIZE},
   {"cs6", control, 0, CS6, CSIZE},
   {"cs7", control, 0, CS7, CSIZE},
@@ -593,6 +596,7 @@ Control settings:\n\
    [-]hupcl      same as [-]hup\n\
    [-]parenb     generate parity bit in output and expect parity bit in input\n\
    [-]parodd     set odd parity (or even parity with '-')\n\
+ * [-]cmspar     use \"stick\" (mark/space) parity\n\
 "), stdout);
       fputs (_("\
 \n\
@@ -630,7 +634,7 @@ Output settings:\n\
 "), stdout);
       fputs (_("\
  * [-]ocrnl      translate carriage return to newline\n\
- * [-]ofdel      use delete characters for fill instead of null characters\n\
+ * [-]ofdel      use delete characters for fill instead of NUL characters\n\
  * [-]ofill      use fill (padding) characters instead of timing for delays\n\
  * [-]olcuc      translate lowercase characters to uppercase\n\
  * [-]onlcr      translate newline to carriage return-newline\n\
@@ -745,7 +749,7 @@ main (int argc, char **argv)
   int argi = 0;
   int opti = 1;
   bool require_set_attr;
-  bool speed_was_set ATTRIBUTE_UNUSED;
+  bool speed_was_set _GL_UNUSED;
   bool verbose_output;
   bool recoverable_output;
   int k;

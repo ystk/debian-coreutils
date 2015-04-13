@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure that tail -F handles rotation
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -47,7 +47,7 @@ for i in $(seq 50); do
     # Normally less than a second is required here, but with heavy load
     # and a lot of disk activity, even 20 seconds is insufficient, which
     # leads to this timeout killing tail before the "ok" is written below.
-    :>k && :>x || framework_failure_ failed to initialize files
+    >k && >x || framework_failure_ failed to initialize files
     timeout 40 tail -F k > out 2>&1 &
     pid=$!
     sleep .1

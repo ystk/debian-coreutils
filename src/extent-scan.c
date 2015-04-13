@@ -1,5 +1,5 @@
 /* extent-scan.c -- core functions for scanning extents
-   Copyright (C) 2010-2013 Free Software Foundation, Inc.
+   Copyright (C) 2010-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -28,9 +28,7 @@
 #include "xstrtol.h"
 
 
-/* Work around Linux kernel issues on BTRFS and EXT4 before 2.6.39.
-   FIXME: remove in 2013, or whenever we're pretty confident
-   that the offending, unpatched kernels are no longer in use.  */
+/* Work around Linux kernel issues on BTRFS and EXT4.  */
 static bool
 extent_need_sync (void)
 {
@@ -218,7 +216,7 @@ extent_scan_read (struct extent_scan *scan)
 }
 #else
 extern bool
-extent_scan_read (struct extent_scan *scan ATTRIBUTE_UNUSED)
+extent_scan_read (struct extent_scan *scan _GL_UNUSED)
 {
   scan->initial_scan_failed = true;
   errno = ENOTSUP;

@@ -1,5 +1,5 @@
 /* Compute checksums of files or strings.
-   Copyright (C) 1995-2013 Free Software Foundation, Inc.
+   Copyright (C) 1995-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -194,14 +194,12 @@ With no FILE, or when FILE is -, read standard input.\n\
 "), stdout);
       fputs (_("\
 \n\
-The following three options are useful only when verifying checksums:\n\
+The following four options are useful only when verifying checksums:\n\
       --quiet          don't print OK for each successfully verified file\n\
       --status         don't output anything, status code shows success\n\
+      --strict         exit non-zero for improperly formatted checksum lines\n\
   -w, --warn           warn about improperly formatted checksum lines\n\
 \n\
-"), stdout);
-      fputs (_("\
-      --strict         with --check, exit non-zero for any invalid input\n\
 "), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
@@ -657,11 +655,17 @@ digest_check (const char *checkfile_name)
           && (!strict || n_improperly_formatted_lines == 0));
 }
 
+/* If ESCAPE is true, then translate each NEWLINE byte to the string, "\\n",
+   and each backslash to "\\\\".  */
 static void
-print_filename (char const *file)
+print_filename (char const *file, bool escape)
 {
-  /* Translate each NEWLINE byte to the string, "\\n",
-     and each backslash to "\\\\".  */
+  if (! escape)
+    {
+      fputs (file, stdout);
+      return;
+    }
+
   while (*file)
     {
       switch (*file)
@@ -823,14 +827,23 @@ main (int argc, char **argv)
             ok = false;
           else
             {
+              /* We don't really need to escape, and hence detect, the '\\'
+                 char, and not doing so should be both forwards and backwards
+                 compatible, since only escaped lines would have a '\\' char at
+                 the start.  However just in case users are directly comparing
+                 against old (hashed) outputs, in the presence of files
+                 containing '\\' characters, we decided to not simplify the
+                 output in this case.  */
+              bool needs_escape = strchr (file, '\\') || strchr (file, '\n');
+
               if (prefix_tag)
                 {
-                  if (strchr (file, '\n') || strchr (file, '\\'))
+                  if (needs_escape)
                     putchar ('\\');
 
                   fputs (DIGEST_TYPE_STRING, stdout);
                   fputs (" (", stdout);
-                  print_filename (file);
+                  print_filename (file, needs_escape);
                   fputs (") = ", stdout);
                 }
 
@@ -838,7 +851,7 @@ main (int argc, char **argv)
 
               /* Output a leading backslash if the file name contains
                  a newline or backslash.  */
-              if (!prefix_tag && (strchr (file, '\n') || strchr (file, '\\')))
+              if (!prefix_tag && needs_escape)
                 putchar ('\\');
 
               for (i = 0; i < (digest_hex_bytes / 2); ++i)
@@ -850,7 +863,7 @@ main (int argc, char **argv)
 
                   putchar (file_is_binary ? '*' : ' ');
 
-                  print_filename (file);
+                  print_filename (file, needs_escape);
                 }
 
               putchar ('\n');

@@ -1,5 +1,5 @@
 # Customize maint.mk                           -*- makefile -*-
-# Copyright (C) 2003-2013 Free Software Foundation, Inc.
+# Copyright (C) 2003-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -45,10 +45,10 @@ export VERBOSE = yes
 # 4914152 9e
 export XZ_OPT = -8e
 
-old_NEWS_hash = b93e7e43dd35f32961c354e41211b86e
+old_NEWS_hash = adf13e9314300d0dff82fa37b247d7db
 
 # Add an exemption for sc_makefile_at_at_check.
-_makefile_at_at_check_exceptions = ' && !/^cu_install_program =/'
+_makefile_at_at_check_exceptions = ' && !/^cu_install_prog/ && !/dynamic-dep/'
 
 # Our help-version script is in a slightly different location.
 _hv_file ?= $(srcdir)/tests/misc/help-version
@@ -115,6 +115,21 @@ sc_tests_list_consistency:
 	    | $(EGREP) "$$test_extensions_rx\$$";			\
 	} | sort | uniq -u | grep . && exit 1; :
 
+# Ensure that all version-controlled test scripts are executable.
+sc_tests_executable:
+	@test_extensions_rx=`echo $(TEST_EXTENSIONS)			\
+	  | sed -e "s/ / -o -name */g" -e "s/^/-name */"`; \
+	find tests/ \( $$test_extensions_rx \) \! -perm -111 -print \
+	  | sed -e "s/^/$(ME): Please make test executable: /" | grep . \
+	    && exit 1; :
+
+# Avoid :>file which doesn't propagate errors
+sc_prohibit_colon_redirection:
+	@cd $(srcdir)/tests && GIT_PAGER= git grep -n ': *>.*||' \
+	  && { echo '$(ME): '"The leading colon in :> will hide errors" 1>&2; \
+	       exit 1; }  \
+	  || :
+
 # Create a list of regular expressions matching the names
 # of files included from system.h.  Exclude a couple.
 .re-list:
@@ -142,6 +157,14 @@ sc_system_h_headers: .re-list
 	    && { echo '$(ME): the above are already included via system.h'\
 		  1>&2;  exit 1; } || :;				\
 	fi
+
+# Files in src/ should not use '%s' notation in format strings,
+# i.e., single quotes around %s (or similar) should be avoided.
+sc_prohibit_quotes_notation:
+	@cd $(srcdir)/src && GIT_PAGER= git grep -n "\".*[\`']%s'.*\"" *.c \
+	  && { echo '$(ME): '"Use quote() to avoid quoted '%s' notation" 1>&2; \
+	       exit 1; }  \
+	  || :
 
 sc_sun_os_names:
 	@grep -nEi \
@@ -173,7 +196,7 @@ sc_check-AUTHORS: $(all_programs)
 	    exe='[';					\
 	  fi;						\
 	  LC_ALL=$$locale ./src/$$exe --version		\
-	    | perl -0 -pi -e 's/,\n/, /gm'		\
+	    | perl -0 -p -e 's/,\n/, /gm'		\
 	    | sed -n -e '/Written by /{ s//'"$$i"': /;'	\
 		  -e 's/,* and /, /; s/\.$$//; p; }';	\
 	done > $(au_actual) &&				\
@@ -201,13 +224,25 @@ sc_prohibit-j-printf-format:
 	  && { echo '$(ME): Use PRI*MAX instead of %j' 1>&2; exit 1; }  \
 	  || :
 
+# Ensure the alternative __attribute (keyword) form isn't used as
+# that form is not elided where required.  Also ensure that we don't
+# directly use attributes already defined by gnulib.
+# TODO: move the check for _GL... attributes to gnulib.
+sc_prohibit-gl-attributes:
+	@prohibit='__attribute |__(unused|pure|const)__'	\
+	in_vc_files='\.[ch]$$'					\
+	halt='Use _GL... attribute macros'			\
+	  $(_sc_search_regexp)
+
 # Look for lines longer than 80 characters, except omit:
 # - program-generated long lines in diff headers,
+# - the help2man script copied from upstream,
 # - tests involving long checksum lines, and
 # - the 'pr' test cases.
 LINE_LEN_MAX = 80
 FILTER_LONG_LINES =						\
   /^[^:]*\.diff:[^:]*:@@ / d;					\
+  \|^[^:]*man/help2man:| d;			\
   \|^[^:]*tests/misc/sha[0-9]*sum.*\.pl[-:]| d;			\
   \|^[^:]*tests/pr/|{ \|^[^:]*tests/pr/pr-tests:| !d; };
 sc_long_lines:
@@ -388,6 +423,13 @@ sc_prohibit_test_backticks:
 	halt='use $$(...), not `...` in tests/'				\
 	  $(_sc_search_regexp)
 
+# Ensure that compare is used to check empty files
+# so that the unexpected contents are displayed
+sc_prohibit_test_empty:
+	@prohibit='test -s.*&&' in_vc_files='^tests/'			\
+	halt='use `compare /dev/null ...`, not `test -s ...` in tests/'	\
+	  $(_sc_search_regexp)
+
 # Programs like sort, ls, expr use PROG_FAILURE in place of EXIT_FAILURE.
 # Others, use the EXIT_CANCELED, EXIT_ENOENT, etc. macros defined in system.h.
 # In those programs, ensure that EXIT_FAILURE is not used by mistake.
@@ -397,6 +439,13 @@ sc_some_programs_must_avoid_exit_failure:
 	  | grep -vE '= EXIT_FAILURE|exit \(.* \?' | grep .		\
 	    && { echo '$(ME): do not use EXIT_FAILURE in the above'	\
 		  1>&2; exit 1; } || :
+
+# Ensure that tests call the require_ulimit_v_ function if using ulimit -v
+sc_prohibit_test_ulimit_without_require_:
+	@(git grep -l require_ulimit_v_ tests;				\
+	  git grep -l 'ulimit -v' tests)				\
+	  | sort | uniq -u | grep . && { echo "$(ME): the above test(s)"\
+	  " should match require_ulimit_v_ with ulimit -v" 1>&2; exit 1; } || :
 
 # Ensure that tests call the print_ver_ function for programs which are
 # actually used in that test.
@@ -528,6 +577,14 @@ sc_marked_devdiagnostics:
 	halt='found marked developer diagnostic(s)'                     \
 	  $(_sc_search_regexp)
 
+# Ensure we keep hex constants as 4 or 8 bytes for consistency
+# and so that make src/fs-magic-compare works consistently
+sc_fs-magic-compare:
+	@sed -n 's|.*/\* \(0x[0-9A-Fa-f]\{1,\}\) .*\*/|\1|p'		\
+	  $(srcdir)/src/stat.c | grep -Ev '^0x([0-9A-F]{4}){1,2}$$'	\
+	    && { echo '$(ME): Constants in src/stat.c should be 4 or 8' \
+		      'upper-case chars' 1>&2; exit 1; } || :
+
 # Override the default Cc: used in generating an announcement.
 announcement_Cc_ = $(translation_project_), \
   coreutils@gnu.org, coreutils-announce@gnu.org
@@ -541,10 +598,10 @@ update-copyright-env = \
 
 # List syntax-check exemptions.
 exclude_file_name_regexp--sc_space_tab = \
-  ^(tests/pr/|tests/misc/nl\.sh$$|gl/.*\.diff$$)
+  ^(tests/pr/|tests/misc/nl\.sh$$|gl/.*\.diff$$|man/help2man$$)
 exclude_file_name_regexp--sc_bindtextdomain = \
   ^(gl/.*|lib/euidaccess-stat|src/make-prime-list)\.c$$
-exclude_file_name_regexp--sc_trailing_blank = ^tests/pr/
+exclude_file_name_regexp--sc_trailing_blank = ^(tests/pr/|man/help2man)
 exclude_file_name_regexp--sc_system_h_headers = \
   ^src/((system|copy)\.h|libstdbuf\.c|make-prime-list\.c)$$
 
@@ -554,7 +611,7 @@ exclude_file_name_regexp--sc_require_config_h_first = \
 exclude_file_name_regexp--sc_require_config_h = \
   $(exclude_file_name_regexp--sc_require_config_h_first)
 
-exclude_file_name_regexp--sc_po_check = ^gl/
+exclude_file_name_regexp--sc_po_check = ^(gl/|man/help2man)
 exclude_file_name_regexp--sc_prohibit_always-defined_macros = \
   ^src/(seq|remove)\.c$$
 exclude_file_name_regexp--sc_prohibit_empty_lines_at_EOF = ^tests/pr/
@@ -586,7 +643,7 @@ exclude_file_name_regexp--sc_prohibit_stat_st_blocks = \
   ^(src/system\.h|tests/du/2g\.sh)$$
 
 exclude_file_name_regexp--sc_prohibit_continued_string_alpha_in_column_1 = \
-  ^src/(system\.h|od\.c|printf\.c)$$
+  ^src/(system\.h|od\.c|printf\.c|getlimits\.c)$$
 
 exclude_file_name_regexp--sc_prohibit_test_backticks = \
   ^tests/(local\.mk|(init|misc/stdbuf|factor/create-test)\.sh)$$
@@ -597,6 +654,9 @@ exclude_file_name_regexp--sc_prohibit_operator_at_end_of_line = \
 
 exclude_file_name_regexp--sc_error_message_uppercase = ^src/factor\.c$$
 exclude_file_name_regexp--sc_prohibit_atoi_atof = ^src/make-prime-list\.c$$
+
+# Exception here as we don't want __attribute elided on non GCC
+exclude_file_name_regexp--sc_prohibit-gl-attributes = ^src/libstdbuf\.c$$
 
 # Augment AM_CFLAGS to include our per-directory options:
 AM_CFLAGS += $($(@D)_CFLAGS)

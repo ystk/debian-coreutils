@@ -2,7 +2,7 @@
 # In coreutils-8.12, rm,du,chmod, etc. would use too much memory
 # when processing a directory with many entries (as in > 100,000).
 
-# Copyright (C) 2011-2013 Free Software Foundation, Inc.
+# Copyright (C) 2011-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ rm du chmod
+require_ulimit_v_
 
 expensive_
 

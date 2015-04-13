@@ -1,5 +1,5 @@
 /* core functions for copying files and directories
-   Copyright (C) 1989-2013 Free Software Foundation, Inc.
+   Copyright (C) 1989-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -158,6 +158,9 @@ struct cp_options
   bool preserve_mode;
   bool preserve_timestamps;
   bool explicit_no_preserve_mode;
+
+  /* If true, attempt to set specified security context */
+  bool set_security_context;
 
   /* Enabled for mv, and for cp by the --preserve=links option.
      If true, attempt to preserve in the destination files any

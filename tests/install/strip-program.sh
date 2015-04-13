@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure "install -s --strip-program=PROGRAM" uses the program to strip
 
-# Copyright (C) 2008-2013 Free Software Foundation, Inc.
+# Copyright (C) 2008-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,5 +32,9 @@ echo abc > src || fail=1
 echo aBc > exp || fail=1
 ginstall src dest -s --strip-program=./b || fail=1
 compare exp dest || fail=1
+
+# Check that install cleans up properly if strip fails.
+ginstall src dest2 -s --strip-program=./FOO && fail=1
+test -e dest2 && fail=1
 
 Exit $fail

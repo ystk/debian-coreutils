@@ -1,7 +1,7 @@
 #!/bin/sh
 # test nohup
 
-# Copyright (C) 2003-2013 Free Software Foundation, Inc.
+# Copyright (C) 2003-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -63,12 +63,17 @@ rm -f nohup.out err
 # to stderr must be fatal.  Requires stdout to be terminal.
 if test -w /dev/full && test -c /dev/full; then
 (
+  # POSIX shells immediately exit the subshell on exec error.
+  # So check we can write to /dev/tty before the exec, which
+  # isn't possible if we've no controlling tty for example.
+  test -c /dev/tty && >/dev/tty || exit 0
+
   exec >/dev/tty
   test -t 1 || exit 0
   nohup echo hi 2> /dev/full
   test $? = 125 || fail=1
   test -f nohup.out || fail=1
-  test -s nohup.out && fail=1
+  compare /dev/null nohup.out || fail=1
   rm -f nohup.out
   exit $fail
 ) || fail=1
@@ -81,7 +86,7 @@ if test -t 1; then
   # It must exist.
   test -f nohup.out || fail=1
   # It must be empty.
-  test -s nohup.out && fail=1
+  compare /dev/null nohup.out || fail=1
 fi
 
 cat <<\EOF > exp || fail=1
@@ -101,7 +106,7 @@ if test -t 1; then
   # It must exist.
   test -f nohup.out || fail=1
   # It must be empty.
-  test -s nohup.out && fail=1
+  compare /dev/null nohup.out || fail=1
 fi
 
 cat <<\EOF > exp || fail=1

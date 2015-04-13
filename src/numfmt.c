@@ -1,5 +1,5 @@
 /* Reformat numbers like 11505426432 to the more human-readable 11G
-   Copyright (C) 2012 Free Software Foundation, Inc.
+   Copyright (C) 2012-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 
 #include "mbsalign.h"
 #include "argmatch.h"
+#include "c-ctype.h"
 #include "error.h"
 #include "quote.h"
 #include "system.h"
@@ -169,6 +170,7 @@ static int grouping = 0;
 static char *padding_buffer = NULL;
 static size_t padding_buffer_size = 0;
 static long int padding_width = 0;
+static long int zero_padding_width = 0;
 static const char *format_str = NULL;
 static char *format_str_prefix = NULL;
 static char *format_str_suffix = NULL;
@@ -196,22 +198,6 @@ static int decimal_point_length;
 
 /* debugging for developers.  Enables devmsg().  */
 static bool dev_debug = false;
-
-/* Like error(0, 0, ...), but without an implicit newline.
-   Also a noop unless the global DEV_DEBUG is set.
-   TODO: Replace with variadic macro in system.h or
-   move to a separate module.  */
-static inline void
-devmsg (char const *fmt, ...)
-{
-  if (dev_debug)
-    {
-      va_list ap;
-      va_start (ap, fmt);
-      vfprintf (stderr, fmt, ap);
-      va_end (ap);
-    }
-}
 
 static inline int
 default_scale_base (enum scale_type scale)
@@ -272,7 +258,7 @@ suffix_power (const char suf)
 }
 
 static inline const char *
-suffix_power_character (unsigned int power)
+suffix_power_char (unsigned int power)
 {
   switch (power)
     {
@@ -469,13 +455,9 @@ simple_strtod_int (const char *input_str,
     *negative = false;
 
   *endptr = (char *) input_str;
-  while (*endptr && isdigit (**endptr))
+  while (*endptr && c_isdigit (**endptr))
     {
       int digit = (**endptr) - '0';
-
-      /* can this happen in some strange locale?  */
-      if (digit < 0 || digit > 9)
-        return SSE_INVALID_NUMBER;
 
       if (digits > MAX_UNSCALED_DIGITS)
         e = SSE_OK_PRECISION_LOSS;
@@ -598,8 +580,9 @@ simple_strtod_human (const char *input_str,
   /* 'scale_auto' is checked below.  */
   int scale_base = default_scale_base (allowed_scaling);
 
-  devmsg ("simple_strtod_human:\n  input string: '%s'\n  "
-          "locale decimal-point: '%s'\n", input_str, decimal_point);
+  devmsg ("simple_strtod_human:\n  input string: %s\n  "
+          "locale decimal-point: %s\n",
+          quote_n (0, input_str), quote_n (1, decimal_point));
 
   enum simple_strtod_error e =
     simple_strtod_float (input_str, endptr, value, precision);
@@ -614,7 +597,7 @@ simple_strtod_human (const char *input_str,
       /* process suffix.  */
 
       /* Skip any blanks between the number and suffix.  */
-      while (isblank (**endptr))
+      while (isblank (to_uchar (**endptr)))
         (*endptr)++;
 
       if (!valid_suffix (**endptr))
@@ -673,29 +656,29 @@ simple_strtod_fatal (enum simple_strtod_error err, char const *input_str)
       abort ();
 
     case SSE_OVERFLOW:
-      msgid = N_("value too large to be converted: '%s'");
+      msgid = N_("value too large to be converted: %s");
       break;
 
     case SSE_INVALID_NUMBER:
-      msgid = N_("invalid number: '%s'");
+      msgid = N_("invalid number: %s");
       break;
 
     case SSE_VALID_BUT_FORBIDDEN_SUFFIX:
-      msgid = N_("rejecting suffix in input: '%s' (consider using --from)");
+      msgid = N_("rejecting suffix in input: %s (consider using --from)");
       break;
 
     case SSE_INVALID_SUFFIX:
-      msgid = N_("invalid suffix in input: '%s'");
+      msgid = N_("invalid suffix in input: %s");
       break;
 
     case SSE_MISSING_I_SUFFIX:
-      msgid = N_("missing 'i' suffix in input: '%s' (e.g Ki/Mi/Gi)");
+      msgid = N_("missing 'i' suffix in input: %s (e.g Ki/Mi/Gi)");
       break;
 
     }
 
   if (_invalid != inval_ignore)
-    error (conv_exit_code, 0, gettext (msgid), input_str);
+    error (conv_exit_code, 0, gettext (msgid), quote (input_str));
 }
 
 /* Convert VAL to a human format string in BUF.  */
@@ -704,6 +687,21 @@ double_to_human (long double val, int precision,
                  char *buf, size_t buf_size,
                  enum scale_type scale, int group, enum round_type round)
 {
+  int num_size;
+  char fmt[64];
+  verify (sizeof (fmt) > (INT_BUFSIZE_BOUND (zero_padding_width)
+                          + INT_BUFSIZE_BOUND (precision)
+                          + 10 /* for %.Lf  etc.  */));
+
+  char *pfmt = fmt;
+  *pfmt++ = '%';
+
+  if (group)
+    *pfmt++ = '\'';
+
+  if (zero_padding_width)
+    pfmt += snprintf (pfmt, sizeof (fmt) - 2, "0%ld", zero_padding_width);
+
   devmsg ("double_to_human:\n");
 
   if (scale == scale_none)
@@ -716,9 +714,10 @@ double_to_human (long double val, int precision,
               "  no scaling, returning (grouped) value: %'.*Lf\n" :
               "  no scaling, returning value: %.*Lf\n", precision, val);
 
-      int i = snprintf (buf, buf_size, (group) ? "%'.*Lf" : "%.*Lf",
-                        precision, val);
-      if (i < 0 || i >= (int) buf_size)
+      stpcpy (pfmt, ".*Lf");
+
+      num_size = snprintf (buf, buf_size, fmt, precision, val);
+      if (num_size < 0 || num_size >= (int) buf_size)
         error (EXIT_FAILURE, 0,
                _("failed to prepare value '%Lf' for printing"), val);
       return;
@@ -760,13 +759,18 @@ double_to_human (long double val, int precision,
 
   devmsg ("  after rounding, value=%Lf * %0.f ^ %d\n", val, scale_base, power);
 
-  snprintf (buf, buf_size, (show_decimal_point) ? "%.1Lf%s" : "%.0Lf%s",
-            val, suffix_power_character (power));
+  stpcpy (pfmt, show_decimal_point ? ".1Lf%s" : ".0Lf%s");
+
+  /* buf_size - 1 used here to ensure place for possible scale_IEC_I suffix.  */
+  num_size = snprintf (buf, buf_size - 1, fmt, val, suffix_power_char (power));
+  if (num_size < 0 || num_size >= (int) buf_size - 1)
+    error (EXIT_FAILURE, 0,
+           _("failed to prepare value '%Lf' for printing"), val);
 
   if (scale == scale_IEC_I && power > 0)
-    strncat (buf, "i", buf_size - strlen (buf) - 1);
+    strncat (buf, "i", buf_size - num_size - 1);
 
-  devmsg ("  returning value: '%s'\n", buf);
+  devmsg ("  returning value: %s\n", quote (buf));
 
   return;
 }
@@ -784,7 +788,7 @@ unit_to_umax (const char *n_string)
   s_err = xstrtoumax (n_string, &end, 10, &n, "KMGTPEZY");
 
   if (s_err != LONGINT_OK || *end || n == 0)
-    error (EXIT_FAILURE, 0, _("invalid unit size: '%s'"), n_string);
+    error (EXIT_FAILURE, 0, _("invalid unit size: %s"), quote (n_string));
 
   return n;
 }
@@ -797,10 +801,7 @@ setup_padding_buffer (size_t min_size)
     return;
 
   padding_buffer_size = min_size + 1;
-  padding_buffer = realloc (padding_buffer, padding_buffer_size);
-  if (!padding_buffer)
-    error (EXIT_FAILURE, 0, _("out of memory (requested %zu bytes)"),
-           padding_buffer_size);
+  padding_buffer = xrealloc (padding_buffer, padding_buffer_size);
 }
 
 void
@@ -905,8 +906,8 @@ UNIT options:\n"), stdout);
       fputs (_("\n\
 FORMAT must be suitable for printing one floating-point argument '%f'.\n\
 Optional quote (%'f) will enable --grouping (if supported by current locale).\n\
-Optional width value (%10f) will pad output. Optional negative width values\n\
-(%-10f) will left-pad output.\n\
+Optional width value (%10f) will pad output. Optional zero (%010f) width\n\
+will zero pad the number. Optional negative values (%-10f) will left align.\n\
 "), stdout);
 
       printf (_("\n\
@@ -966,6 +967,7 @@ parse_format_string (char const *fmt)
   size_t suffix_pos;
   long int pad = 0;
   char *endptr = NULL;
+  bool zero_padding = false;
 
   for (i = 0; !(fmt[i] == '%' && fmt[i + 1] != '%'); i += (fmt[i] == '%') + 1)
     {
@@ -976,13 +978,24 @@ parse_format_string (char const *fmt)
     }
 
   i++;
-  i += strspn (fmt + i, " ");
-  if (fmt[i] == '\'')
+  while (true)
     {
-      grouping = 1;
-      i++;
+      size_t skip = strspn (fmt + i, " ");
+      i += skip;
+      if (fmt[i] == '\'')
+        {
+          grouping = 1;
+          i++;
+        }
+      else if (fmt[i] == '0')
+        {
+          zero_padding = true;
+          i++;
+        }
+      else if (! skip)
+        break;
     }
-  i += strspn (fmt + i, " ");
+
   errno = 0;
   pad = strtol (fmt + i, &endptr, 10);
   if (errno == ERANGE)
@@ -991,6 +1004,9 @@ parse_format_string (char const *fmt)
 
   if (endptr != (fmt + i) && pad != 0)
     {
+      if (debug && padding_width && !(zero_padding && pad > 0))
+        error (0, 0, _("--format padding overridding --padding"));
+
       if (pad < 0)
         {
           padding_alignment = MBS_ALIGN_LEFT;
@@ -998,8 +1014,12 @@ parse_format_string (char const *fmt)
         }
       else
         {
-          padding_width = pad;
+          if (zero_padding)
+            zero_padding_width = pad;
+          else
+            padding_width = pad;
         }
+
     }
   i = endptr - fmt;
 
@@ -1008,7 +1028,7 @@ parse_format_string (char const *fmt)
 
   if (fmt[i] != 'f')
     error (EXIT_FAILURE, 0, _("invalid format %s,"
-                              " directive must be %%['][-][N]f"),
+                              " directive must be %%[0]['][-][N]f"),
            quote (fmt));
   i++;
   suffix_pos = i;
@@ -1019,27 +1039,18 @@ parse_format_string (char const *fmt)
              quote (fmt));
 
   if (prefix_len)
-    {
-      format_str_prefix = xstrndup (fmt, prefix_len);
-      if (!format_str_prefix)
-        error (EXIT_FAILURE, 0, _("out of memory (requested %zu bytes)"),
-               prefix_len + 1);
-    }
+    format_str_prefix = xstrndup (fmt, prefix_len);
   if (fmt[suffix_pos] != '\0')
-    {
-      format_str_suffix = strdup (fmt + suffix_pos);
-      if (!format_str_suffix)
-        error (EXIT_FAILURE, 0, _("out of memory (requested %zu bytes)"),
-               strlen (fmt + suffix_pos));
-    }
+    format_str_suffix = xstrdup (fmt + suffix_pos);
 
   devmsg ("format String:\n  input: %s\n  grouping: %s\n"
                    "  padding width: %ld\n  alignment: %s\n"
-                   "  prefix: '%s'\n  suffix: '%s'\n",
-          quote (fmt), (grouping) ? "yes" : "no",
+                   "  prefix: %s\n  suffix: %s\n",
+          quote_n (0, fmt), (grouping) ? "yes" : "no",
           padding_width,
           (padding_alignment == MBS_ALIGN_LEFT) ? "Left" : "Right",
-          format_str_prefix, format_str_suffix);
+          quote_n (1, format_str_prefix ? format_str_prefix : ""),
+          quote_n (2, format_str_suffix ? format_str_suffix : ""));
 }
 
 /* Parse a numeric value (with optional suffix) from a string.
@@ -1067,8 +1078,8 @@ parse_human_number (const char *str, long double /*output */ *value,
   if (ptr && *ptr != '\0')
     {
       if (_invalid != inval_ignore)
-        error (conv_exit_code, 0, _("invalid suffix in input '%s': '%s'"),
-               str, ptr);
+        error (conv_exit_code, 0, _("invalid suffix in input %s: %s"),
+               quote_n (0, str), quote_n (1, ptr));
       e = SSE_INVALID_SUFFIX;
     }
   return e;
@@ -1107,7 +1118,8 @@ prepare_padded_number (const long double val, size_t precision)
   if (suffix)
     strncat (buf, suffix, sizeof (buf) - strlen (buf) -1);
 
-  devmsg ("formatting output:\n  value: %Lf\n  humanized: '%s'\n", val, buf);
+  devmsg ("formatting output:\n  value: %Lf\n  humanized: %s\n",
+          val, quote (buf));
 
   if (padding_width && strlen (buf) < padding_width)
     {
@@ -1115,7 +1127,7 @@ prepare_padded_number (const long double val, size_t precision)
       mbsalign (buf, padding_buffer, padding_buffer_size, &w,
                 padding_alignment, MBA_UNIBYTE_ONLY);
 
-      devmsg ("  After padding: '%s'\n", padding_buffer);
+      devmsg ("  After padding: %s\n", quote (padding_buffer));
     }
   else
     {
@@ -1151,7 +1163,7 @@ process_suffixed_number (char *text, long double *result, size_t *precision)
         {
           /* trim suffix, ONLY if it's at the end of the text.  */
           *possible_suffix = '\0';
-          devmsg ("trimming suffix '%s'\n", suffix);
+          devmsg ("trimming suffix %s\n", quote (suffix));
         }
       else
         devmsg ("no valid suffix found\n");
@@ -1159,7 +1171,7 @@ process_suffixed_number (char *text, long double *result, size_t *precision)
 
   /* Skip white space - always.  */
   char *p = text;
-  while (*p && isblank (*p))
+  while (*p && isblank (to_uchar (*p)))
     ++p;
   const unsigned int skip_count = text - p;
 
@@ -1181,7 +1193,8 @@ process_suffixed_number (char *text, long double *result, size_t *precision)
   long double val = 0;
   enum simple_strtod_error e = parse_human_number (p, &val, precision);
   if (e == SSE_OK_PRECISION_LOSS && debug)
-    error (0, 0, _("large input value '%s': possible precision loss"), p);
+    error (0, 0, _("large input value %s: possible precision loss"),
+           quote (p));
 
   if (from_unit_size != 1 || to_unit_size != 1)
     val = (val * from_unit_size) / to_unit_size;
@@ -1194,8 +1207,7 @@ process_suffixed_number (char *text, long double *result, size_t *precision)
 /* Skip the requested number of fields in the input string.
    Returns a pointer to the *delimiter* of the requested field,
    or a pointer to NUL (if reached the end of the string).  */
-static inline char *
-__attribute ((pure))
+static inline char * _GL_ATTRIBUTE_PURE
 skip_fields (char *buf, int fields)
 {
   char *ptr = buf;
@@ -1214,9 +1226,9 @@ skip_fields (char *buf, int fields)
   else
     while (*ptr && fields--)
       {
-        while (*ptr && isblank (*ptr))
+        while (*ptr && isblank (to_uchar (*ptr)))
           ++ptr;
-        while (*ptr && !isblank (*ptr))
+        while (*ptr && !isblank (to_uchar (*ptr)))
           ++ptr;
       }
   return ptr;
@@ -1242,7 +1254,8 @@ extract_fields (char *line, int _field,
   *_data = NULL;
   *_suffix = NULL;
 
-  devmsg ("extracting Fields:\n  input: '%s'\n  field: %d\n", line, _field);
+  devmsg ("extracting Fields:\n  input: %s\n  field: %d\n",
+          quote (line), _field);
 
   if (field > 1)
     {
@@ -1252,7 +1265,7 @@ extract_fields (char *line, int _field,
       if (*ptr == '\0')
         {
           /* not enough fields in the input - print warning?  */
-          devmsg ("  TOO FEW FIELDS!\n  prefix: '%s'\n", *_prefix);
+          devmsg ("  TOO FEW FIELDS!\n  prefix: %s\n", quote (*_prefix));
           return;
         }
 
@@ -1272,8 +1285,10 @@ extract_fields (char *line, int _field,
   else
     *_suffix = NULL;
 
-  devmsg ("  prefix: '%s'\n  number: '%s'\n  suffix: '%s'\n",
-          *_prefix, *_data, *_suffix);
+  devmsg ("  prefix: %s\n  number: %s\n  suffix: %s\n",
+          quote_n (0, *_prefix ? *_prefix : ""),
+          quote_n (1, *_data),
+          quote_n (2, *_suffix ? *_suffix : ""));
 }
 
 
@@ -1385,7 +1400,8 @@ main (int argc, char **argv)
         case PADDING_OPTION:
           if (xstrtol (optarg, NULL, 10, &padding_width, "") != LONGINT_OK
               || padding_width == 0)
-            error (EXIT_FAILURE, 0, _("invalid padding value '%s'"), optarg);
+            error (EXIT_FAILURE, 0, _("invalid padding value %s"),
+                   quote (optarg));
           if (padding_width < 0)
             {
               padding_alignment = MBS_ALIGN_LEFT;
@@ -1398,7 +1414,8 @@ main (int argc, char **argv)
         case FIELD_OPTION:
           if (xstrtol (optarg, NULL, 10, &field, "") != LONGINT_OK
               || field <= 0)
-            error (EXIT_FAILURE, 0, _("invalid field value '%s'"), optarg);
+            error (EXIT_FAILURE, 0, _("invalid field value %s"),
+                   quote (optarg));
           break;
 
         case 'd':
@@ -1427,8 +1444,8 @@ main (int argc, char **argv)
             {
               if (xstrtoumax (optarg, NULL, 10, &header, "") != LONGINT_OK
                   || header == 0)
-                error (EXIT_FAILURE, 0, _("invalid header value '%s'"),
-                       optarg);
+                error (EXIT_FAILURE, 0, _("invalid header value %s"),
+                       quote (optarg));
             }
           else
             {
@@ -1454,8 +1471,6 @@ main (int argc, char **argv)
 
   if (format_str != NULL && grouping)
     error (EXIT_FAILURE, 0, _("--grouping cannot be combined with --format"));
-  if (format_str != NULL && padding_width > 0)
-    error (EXIT_FAILURE, 0, _("--padding cannot be combined with --format"));
 
   /* Warn about no-op.  */
   if (debug && scale_from == scale_none && scale_to == scale_none

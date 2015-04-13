@@ -1,7 +1,7 @@
 #!/bin/sh
 # Verify behavior of env.
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,16 +20,24 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ env
 
+# A simple shebang program to call "echo" from symlinks like "./-u" or "./--".
+echo "#!$abs_top_builddir/src/echo simple_echo" > simple_echo \
+  || framework_failure_
+chmod a+x simple_echo || framework_failure_
+
+# Verify we can run the shebang which is not the case if
+# there are spaces in $abs_top_builddir.
+./simple_echo || skip_ "Error running simple_echo script"
 
 # Verify clearing the environment
 a=1
 export a
 env - > out || fail=1
-test -s out && fail=1
+compare /dev/null out || fail=1
 env -i > out || fail=1
-test -s out && fail=1
+compare /dev/null out || fail=1
 env -u a -i -u a -- > out || fail=1
-test -s out && fail=1
+compare /dev/null out || fail=1
 env -i -- a=b > out || fail=1
 echo a=b > exp || framework_failure_
 compare exp out || fail=1
@@ -62,7 +70,7 @@ fi
 
 ENV_TEST1=a
 export ENV_TEST1
-: >out || framework_failure_
+>out || framework_failure_
 env ENV_TEST2= > all || fail=1
 grep '^ENV_TEST' all | LC_ALL=C sort >> out || framework_failure_
 env -u ENV_TEST1 ENV_TEST3=c > all || fail=1
@@ -105,9 +113,10 @@ export PATH
 # Use -- to end options (but not variable assignments).
 # On some systems, execve("-i") invokes a shebang script ./-i on PATH as
 # '/bin/sh -i', rather than '/bin/sh -- -i', which doesn't do what we want.
-# Avoid the issue by using an executable rather than a script.
+# Avoid the issue by using a shebang to 'echo' passing a second parameter
+# before the '-i'. See the definition of simple_echo before.
 # Test -u, rather than -i, to minimize PATH problems.
-ln -s "$abs_top_builddir/src/echo" ./-u || framework_failure_
+ln -s "simple_echo" ./-u || framework_failure_
 case $(env -u echo echo good) in
   good) ;;
   *) fail=1 ;;
@@ -117,16 +126,16 @@ case $(env -u echo -- echo good) in
   *) fail=1 ;;
 esac
 case $(env -- -u pass) in
-  pass) ;;
+  *pass) ;;
   *) fail=1 ;;
 esac
 
 # After options have ended, the first argument not containing = is a program.
 env a=b -- true
 test $? = 127 || fail=1
-ln -s "$abs_top_builddir/src/echo" ./-- || framework_failure_
+ln -s "simple_echo" ./-- || framework_failure_
 case $(env a=b -- true || echo fail) in
-  true) ;;
+  *true) ;;
   *) fail=1 ;;
 esac
 

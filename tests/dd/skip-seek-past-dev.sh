@@ -1,7 +1,7 @@
 #!/bin/sh
 # test diagnostics are printed immediately when seeking beyond device.
 
-# Copyright (C) 2008-2013 Free Software Foundation, Inc.
+# Copyright (C) 2008-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ get_device_size() {
 
 # Get path to device the current dir is on.
 # Note df can only get fs size, not device size.
-device=$(df -P . | tail -n1 | cut -d' ' -f1) || framework_failure_
+device=$(df --output=source . | tail -n1) || framework_failure_
 
 dev_size=$(get_device_size "$device") ||
   skip_ "failed to determine size of $device"

@@ -1,5 +1,5 @@
 /* tac - concatenate and print files in reverse
-   Copyright (C) 1988-2013 Free Software Foundation, Inc.
+   Copyright (C) 1988-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -409,7 +409,7 @@ record_or_unlink_tempfile (char const *fn, FILE *fp)
 #else
 
 static void
-record_or_unlink_tempfile (char const *fn, FILE *fp ATTRIBUTE_UNUSED)
+record_or_unlink_tempfile (char const *fn, FILE *fp _GL_UNUSED)
 {
   unlink (fn);
 }

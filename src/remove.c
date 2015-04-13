@@ -1,5 +1,5 @@
 /* remove.c -- core functions for removing files and directories
-   Copyright (C) 1988-2013 Free Software Foundation, Inc.
+   Copyright (C) 1988-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -283,10 +283,11 @@ prompt (FTS const *fts, FTSENT const *ent, bool is_dir,
 
           fprintf (stderr,
                    (write_protected
-                    /* TRANSLATORS: You may find it more convenient to
-                       translate "%s: remove %s (write-protected) %s? "
-                       instead.  It should avoid grammatical problems
-                       with the output of file_type.  */
+                    /* TRANSLATORS: In the next two strings the second %s is
+                       replaced by the type of the file.  To avoid grammatical
+                       problems, it may be more convenient to translate these
+                       strings instead as: "%1$s: %3$s is write-protected and
+                       is of type '%2$s' -- remove it? ".  */
                     ? _("%s: remove write-protected %s %s? ")
                     : _("%s: remove %s %s? ")),
                    program_name, file_type (sbuf), quoted_name);
@@ -437,17 +438,21 @@ rm_fts (FTS *fts, FTSENT *ent, struct rm_options const *x)
       /* Perform checks that can apply only for command-line arguments.  */
       if (ent->fts_level == FTS_ROOTLEVEL)
         {
-          /* If the basename of a command line argument is "." or "..",
+          /* POSIX says:
+             If the basename of a command line argument is "." or "..",
              diagnose it and do nothing more with that argument.  */
           if (dot_or_dotdot (last_component (ent->fts_accpath)))
             {
-              error (0, 0, _("cannot remove directory: %s"),
-                     quote (ent->fts_path));
+              error (0, 0,
+                     _("refusing to remove %s or %s directory: skipping %s"),
+                     quote_n (0, "."), quote_n (1, ".."),
+                     quote_n (2, ent->fts_path));
               fts_skip_tree (fts, ent);
               return RM_ERROR;
             }
 
-          /* If a command line argument resolves to "/" (and --preserve-root
+          /* POSIX also says:
+             If a command line argument resolves to "/" (and --preserve-root
              is in effect -- default) diagnose and skip it.  */
           if (ROOT_DEV_INO_CHECK (x->root_dev_ino, ent->fts_statp))
             {

@@ -2,7 +2,7 @@
 # Test df's behaviour when the mount list cannot be read.
 # This test is skipped on systems that lack LD_PRELOAD support; that's fine.
 
-# Copyright (C) 2012-2013 Free Software Foundation, Inc.
+# Copyright (C) 2012-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,8 +19,15 @@
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ df
+require_gcc_shared_
 
 df || skip_ "df fails"
+
+grep '^#define HAVE_MNTENT_H 1' $CONFIG_HEADER > /dev/null \
+      || skip_ "no mntent.h available to confirm the interface"
+
+grep '^#define HAVE_GETMNTENT 1' $CONFIG_HEADER > /dev/null \
+      || skip_ "getmntent is not used on this system"
 
 # Simulate "mtab" failure.
 cat > k.c <<'EOF' || framework_failure_
@@ -44,8 +51,8 @@ struct mntent *getmntent (FILE *fp)
 EOF
 
 # Then compile/link it:
-$CC -shared -fPIC -ldl -O2 k.c -o k.so \
-  || skip_ "getmntent hack does not work on this platform"
+gcc_shared_ k.c k.so \
+  || framework_failure_ 'failed to build shared library'
 
 # Test if LD_PRELOAD works:
 LD_PRELOAD=./k.so df

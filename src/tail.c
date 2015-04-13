@@ -1,5 +1,5 @@
 /* tail -- output the last part of file(s)
-   Copyright (C) 1989-2013 Free Software Foundation, Inc.
+   Copyright (C) 1989-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -268,25 +268,24 @@ With no FILE, or when FILE is -, read standard input.\n\
       emit_mandatory_arg_note ();
 
      fputs (_("\
-  -c, --bytes=K            output the last K bytes; alternatively, use -c +K\n\
-                           to output bytes starting with the Kth of each file\n\
+  -c, --bytes=K            output the last K bytes; or use -c +K to output\n\
+                             bytes starting with the Kth of each file\n\
 "), stdout);
      fputs (_("\
   -f, --follow[={name|descriptor}]\n\
                            output appended data as the file grows;\n\
-                           -f, --follow, and --follow=descriptor are\n\
-                           equivalent\n\
+                             an absent option argument means 'descriptor'\n\
   -F                       same as --follow=name --retry\n\
 "), stdout);
      printf (_("\
   -n, --lines=K            output the last K lines, instead of the last %d;\n\
-                           or use -n +K to output lines starting with the Kth\n\
+                             or use -n +K to output starting with the Kth\n\
       --max-unchanged-stats=N\n\
                            with --follow=name, reopen a FILE which has not\n\
-                           changed size after N (default %d) iterations\n\
-                           to see if it has been unlinked or renamed\n\
-                           (this is the usual case of rotated log files).\n\
-                           With inotify, this option is rarely useful.\n\
+                             changed size after N (default %d) iterations\n\
+                             to see if it has been unlinked or renamed\n\
+                             (this is the usual case of rotated log files);\n\
+                             with inotify, this option is rarely useful\n\
 "),
              DEFAULT_N_LINES,
              DEFAULT_MAX_N_UNCHANGED_STATS_BETWEEN_OPENS
@@ -294,15 +293,13 @@ With no FILE, or when FILE is -, read standard input.\n\
      fputs (_("\
       --pid=PID            with -f, terminate after process ID, PID dies\n\
   -q, --quiet, --silent    never output headers giving file names\n\
-      --retry              keep trying to open a file even when it is or\n\
-                             becomes inaccessible; useful when following by\n\
-                             name, i.e., with --follow=name\n\
+      --retry              keep trying to open a file if it is inaccessible\n\
 "), stdout);
      fputs (_("\
   -s, --sleep-interval=N   with -f, sleep for approximately N seconds\n\
-                             (default 1.0) between iterations.\n\
-                             With inotify and --pid=P, check process P at\n\
-                             least once every N seconds.\n\
+                             (default 1.0) between iterations;\n\
+                             with inotify and --pid=P, check process P at\n\
+                             least once every N seconds\n\
   -v, --verbose            always output headers giving file names\n\
 "), stdout);
      fputs (HELP_OPTION_DESCRIPTION, stdout);
@@ -342,13 +339,6 @@ pretty_name (struct File_spec const *f)
   return (STREQ (f->name, "-") ? _("standard input") : f->name);
 }
 
-static void
-xwrite_stdout (char const *buffer, size_t n_bytes)
-{
-  if (n_bytes > 0 && fwrite (buffer, 1, n_bytes, stdout) == 0)
-    error (EXIT_FAILURE, errno, _("write error"));
-}
-
 /* Record a file F with descriptor FD, size SIZE, status ST, and
    blocking status BLOCKING.  */
 
@@ -386,6 +376,20 @@ write_header (const char *pretty_filename)
 
   printf ("%s==> %s <==\n", (first_file ? "" : "\n"), pretty_filename);
   first_file = false;
+}
+
+/* Write N_BYTES from BUFFER to stdout.
+   Exit immediately on error with a single diagnostic.  */
+
+static void
+xwrite_stdout (char const *buffer, size_t n_bytes)
+{
+  if (n_bytes > 0 && fwrite (buffer, 1, n_bytes, stdout) < n_bytes)
+    {
+      clearerr (stdout); /* To avoid redundant close_stdout diagnostic.  */
+      error (EXIT_FAILURE, errno, _("error writing %s"),
+             quote ("standard output"));
+    }
 }
 
 /* Read and output N_BYTES of file PRETTY_FILENAME starting at the current
@@ -948,7 +952,20 @@ recheck (struct File_spec *f, bool blocking)
      then mark the file as not tailable.  */
   f->tailable = !(reopen_inaccessible_files && fd == -1);
 
-  if (fd == -1 || fstat (fd, &new_stats) < 0)
+  if (! disable_inotify && ! lstat (f->name, &new_stats)
+      && S_ISLNK (new_stats.st_mode))
+    {
+      /* Diagnose the edge case where a regular file is changed
+         to a symlink.  We avoid inotify with symlinks since
+         it's awkward to match between symlink name and target.  */
+      ok = false;
+      f->errnum = -1;
+      f->ignore = true;
+
+      error (0, 0, _("%s has been replaced with a symbolic link. "
+                     "giving up on this name"), quote (pretty_name (f)));
+    }
+  else if (fd == -1 || fstat (fd, &new_stats) < 0)
     {
       ok = false;
       f->errnum = errno;
@@ -1054,16 +1071,32 @@ recheck (struct File_spec *f, bool blocking)
 }
 
 /* Return true if any of the N_FILES files in F are live, i.e., have
-   open file descriptors.  */
+   open file descriptors, or should be checked again (see --retry).
+   When following descriptors, checking should only continue when any
+   of the files is not yet ignored.  */
 
 static bool
 any_live_files (const struct File_spec *f, size_t n_files)
 {
   size_t i;
 
+  if (reopen_inaccessible_files && follow_mode == Follow_name)
+    return true;  /* continue following for -F option */
+
   for (i = 0; i < n_files; i++)
-    if (0 <= f[i].fd)
-      return true;
+    {
+      if (0 <= f[i].fd)
+        {
+          return true;
+        }
+      else
+        {
+          if (reopen_inaccessible_files && follow_mode == Follow_descriptor)
+            if (! f[i].ignore)
+              return true;
+        }
+    }
+
   return false;
 }
 
@@ -1191,7 +1224,7 @@ tail_forever (struct File_spec *f, size_t n_files, double sleep_interval)
           f[i].size += bytes_read;
         }
 
-      if (! any_live_files (f, n_files) && ! reopen_inaccessible_files)
+      if (! any_live_files (f, n_files))
         {
           error (0, 0, _("no files remaining"));
           break;
@@ -1238,6 +1271,23 @@ any_remote_file (const struct File_spec *f, size_t n_files)
   return false;
 }
 
+/* Return true if any of the N_FILES files in F is a symlink.
+   Note we don't worry about the edge case where "-" exists,
+   since that will have the same consequences for inotify,
+   which is the only context this function is currently used.  */
+
+static bool
+any_symlinks (const struct File_spec *f, size_t n_files)
+{
+  size_t i;
+
+  struct stat st;
+  for (i = 0; i < n_files; i++)
+    if (lstat (f[i].name, &st) == 0 && S_ISLNK (st.st_mode))
+      return true;
+  return false;
+}
+
 /* Return true if any of the N_FILES files in F represents
    stdin and is tailable.  */
 
@@ -1272,7 +1322,12 @@ static void
 check_fspec (struct File_spec *fspec, int wd, int *prev_wd)
 {
   struct stat stats;
-  char const *name = pretty_name (fspec);
+  char const *name;
+
+  if (fspec->fd == -1)
+    return;
+
+  name = pretty_name (fspec);
 
   if (fstat (fspec->fd, &stats) != 0)
     {
@@ -1432,6 +1487,7 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
     {
       struct File_spec *fspec;
       struct inotify_event *ev;
+      void *void_ev;
 
       /* When following by name without --retry, and the last file has
          been unlinked or renamed-away, diagnose it and return.  */
@@ -1493,7 +1549,8 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
             error (EXIT_FAILURE, errno, _("error reading inotify event"));
         }
 
-      ev = (struct inotify_event *) (evbuf + evbuf_off);
+      void_ev = evbuf + evbuf_off;
+      ev = void_ev;
       evbuf_off += sizeof (*ev) + ev->len;
 
       if (ev->len) /* event on ev->name in watched directory  */
@@ -1516,6 +1573,7 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
           int new_wd = inotify_add_watch (wd, f[j].name, inotify_wd_mask);
           if (new_wd < 0)
             {
+              /* Can get ENOENT for a dangling symlink for example.  */
               error (0, errno, _("cannot watch %s"), quote (f[j].name));
               continue;
             }
@@ -2030,8 +2088,17 @@ parse_options (int argc, char **argv,
         }
     }
 
-  if (reopen_inaccessible_files && follow_mode != Follow_name)
-    error (0, 0, _("warning: --retry is useful mainly when following by name"));
+  if (reopen_inaccessible_files)
+    {
+      if (!forever)
+        {
+          reopen_inaccessible_files = false;
+          error (0, 0, _("warning: --retry ignored; --retry is useful"
+                         " only when following"));
+        }
+      else if (follow_mode == Follow_descriptor)
+        error (0, 0, _("warning: --retry only effective for the initial open"));
+    }
 
   if (pid && !forever)
     error (0, 0,
@@ -2149,6 +2216,10 @@ main (int argc, char **argv)
                      " indefinitely is ineffective"));
   }
 
+  /* Don't read anything if we'll never output anything.  */
+  if (! n_units && ! forever && ! from_start)
+    exit (EXIT_SUCCESS);
+
   F = xnmalloc (n_files, sizeof *F);
   for (i = 0; i < n_files; i++)
     F[i].name = file[i];
@@ -2178,6 +2249,15 @@ main (int argc, char **argv)
          in this case because it would miss any updates to the file
          that were not initiated from the local system.
 
+         any_symlinks() checks if the user has specified any symbolic links.
+         inotify is not used in this case because it returns updated _targets_
+         which would not match the specified names.  If we tried to always
+         use the target names, then we would miss changes to the symlink itself.
+
+         ok is false when one of the files specified could not be opened for
+         reading.  In this case and when following by descriptor,
+         tail_forever_inotify() cannot be used (in its current implementation).
+
          FIXME: inotify doesn't give any notification when a new
          (remote) file or directory is mounted on top a watched file.
          When follow_mode == Follow_name we would ideally like to detect that.
@@ -2189,7 +2269,9 @@ main (int argc, char **argv)
          is recreated, then we don't recheck any new file when
          follow_mode == Follow_name  */
       if (!disable_inotify && (tailable_stdin (F, n_files)
-                               || any_remote_file (F, n_files)))
+                               || any_remote_file (F, n_files)
+                               || any_symlinks (F, n_files)
+                               || (!ok && follow_mode == Follow_descriptor)))
         disable_inotify = true;
 
       if (!disable_inotify)

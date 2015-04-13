@@ -1,7 +1,7 @@
 #!/bin/sh
 # readlink from 6.9 would fail with a false-positive symlink loop error
 
-# Copyright (C) 2007-2013 Free Software Foundation, Inc.
+# Copyright (C) 2007-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ readlink
-cwd=$("$abs_top_builddir/src/pwd")
+cwd=$(env pwd -P)
 
 # To trigger this bug, we have to construct a name/situation during
 # the resolution of which the code dereferences the same symlink (S)

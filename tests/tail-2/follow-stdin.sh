@@ -1,7 +1,7 @@
 #!/bin/sh
 # tail -f - would fail with the initial inotify implementation
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ timeout 1 tail -f < in > out 2> err
 test $? = 124 || fail=1
 
 # Ensure there was no error output.
-test -s err && fail=1
+compare /dev/null err || fail=1
 
 # Ensure there was
 compare exp out || fail=1

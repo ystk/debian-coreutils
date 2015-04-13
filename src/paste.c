@@ -1,5 +1,5 @@
 /* paste - merge lines of files
-   Copyright (C) 1997-2013 Free Software Foundation, Inc.
+   Copyright (C) 1997-2014 Free Software Foundation, Inc.
    Copyright (C) 1984 David M. Ihnat
 
    This program is free software: you can redistribute it and/or modify
@@ -62,7 +62,7 @@ static bool have_read_stdin;
    corresponding lines from each file in parallel. */
 static bool serial_merge;
 
-/* The delimeters between lines of input files (used cyclically). */
+/* The delimiters between lines of input files (used cyclically). */
 static char *delims;
 
 /* A pointer to the character after the end of 'delims'. */

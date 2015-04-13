@@ -1,5 +1,5 @@
 /* du -- summarize disk usage
-   Copyright (C) 1988-2013 Free Software Foundation, Inc.
+   Copyright (C) 1988-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -78,6 +78,9 @@ struct duinfo
   /* Size of files in directory.  */
   uintmax_t size;
 
+  /* Number of inodes in directory.  */
+  uintmax_t inodes;
+
   /* Latest time stamp found.  If tmax.tv_sec == TYPE_MINIMUM (time_t)
      && tmax.tv_nsec < 0, no time stamp has been found.  */
   struct timespec tmax;
@@ -88,6 +91,7 @@ static inline void
 duinfo_init (struct duinfo *a)
 {
   a->size = 0;
+  a->inodes = 0;
   a->tmax.tv_sec = TYPE_MINIMUM (time_t);
   a->tmax.tv_nsec = -1;
 }
@@ -97,6 +101,7 @@ static inline void
 duinfo_set (struct duinfo *a, uintmax_t size, struct timespec tmax)
 {
   a->size = size;
+  a->inodes = 1;
   a->tmax = tmax;
 }
 
@@ -106,6 +111,7 @@ duinfo_add (struct duinfo *a, struct duinfo const *b)
 {
   uintmax_t sum = a->size + b->size;
   a->size = a->size <= sum ? sum : UINTMAX_MAX;
+  a->inodes = a->inodes + b->inodes;
   if (timespec_cmp (a->tmax, b->tmax) < 0)
     a->tmax = b->tmax;
 }
@@ -154,6 +160,9 @@ static intmax_t opt_threshold = 0;
 /* Human-readable options for output.  */
 static int human_output_opts;
 
+/* Output inodes count instead of blocks used.  */
+static bool opt_inodes = false;
+
 /* If true, print most recently modified date, using the specified format.  */
 static bool opt_time = false;
 
@@ -197,7 +206,8 @@ enum
   HUMAN_SI_OPTION,
   FTS_DEBUG,
   TIME_OPTION,
-  TIME_STYLE_OPTION
+  TIME_STYLE_OPTION,
+  INODES_OPTION
 };
 
 static struct option const long_options[] =
@@ -214,6 +224,7 @@ static struct option const long_options[] =
   {"exclude-from", required_argument, NULL, 'X'},
   {"files0-from", required_argument, NULL, FILES0_FROM_OPTION},
   {"human-readable", no_argument, NULL, 'h'},
+  {"inodes", no_argument, NULL, INODES_OPTION},
   {"si", no_argument, NULL, HUMAN_SI_OPTION},
   {"max-depth", required_argument, NULL, 'd'},
   {"null", no_argument, NULL, '0'},
@@ -278,7 +289,7 @@ Summarize disk usage of each FILE, recursively for directories.\n\
       emit_mandatory_arg_note ();
 
       fputs (_("\
-  -0, --null            end each output line with 0 byte rather than newline\n\
+  -0, --null            end each output line with NUL, not newline\n\
   -a, --all             write counts for all files, not just directories\n\
       --apparent-size   print apparent sizes, rather than disk usage; although\
 \n\
@@ -287,9 +298,9 @@ Summarize disk usage of each FILE, recursively for directories.\n\
                           fragmentation, indirect blocks, and the like\n\
 "), stdout);
       fputs (_("\
-  -B, --block-size=SIZE  scale sizes by SIZE before printing them.  E.g.,\n\
-                           '-BM' prints sizes in units of 1,048,576 bytes.\n\
-                           See SIZE format below.\n\
+  -B, --block-size=SIZE  scale sizes by SIZE before printing them; e.g.,\n\
+                           '-BM' prints sizes in units of 1,048,576 bytes;\n\
+                           see SIZE format below\n\
   -b, --bytes           equivalent to '--apparent-size --block-size=1'\n\
   -c, --total           produce a grand total\n\
   -D, --dereference-args  dereference only symlinks that are listed on the\n\
@@ -300,12 +311,13 @@ Summarize disk usage of each FILE, recursively for directories.\n\
                           --summarize\n\
 "), stdout);
       fputs (_("\
-      --files0-from=F   summarize disk usage of the NUL-terminated file\n\
-                          names specified in file F;\n\
-                          If F is - then read names from standard input\n\
+      --files0-from=F   summarize disk usage of the\n\
+                          NUL-terminated file names specified in file F;\n\
+                          if F is -, then read names from standard input\n\
   -H                    equivalent to --dereference-args (-D)\n\
   -h, --human-readable  print sizes in human readable format (e.g., 1K 234M 2G)\
 \n\
+      --inodes          list inode usage information instead of block usage\n\
 "), stdout);
       fputs (_("\
   -k                    like --block-size=1K\n\
@@ -315,7 +327,7 @@ Summarize disk usage of each FILE, recursively for directories.\n\
 "), stdout);
       fputs (_("\
   -P, --no-dereference  don't follow any symbolic links (this is the default)\n\
-  -S, --separate-dirs   do not include size of subdirectories\n\
+  -S, --separate-dirs   for directories do not include size of subdirectories\n\
       --si              like -h, but use powers of 1000 not 1024\n\
   -s, --summarize       display only a total for each argument\n\
 "), stdout);
@@ -326,9 +338,9 @@ Summarize disk usage of each FILE, recursively for directories.\n\
                           directory, or any of its subdirectories\n\
       --time=WORD       show time as WORD instead of modification time:\n\
                           atime, access, use, ctime or status\n\
-      --time-style=STYLE  show times using style STYLE:\n\
-                          full-iso, long-iso, iso, +FORMAT\n\
-                          FORMAT is interpreted like 'date'\n\
+      --time-style=STYLE  show times using STYLE, which can be:\n\
+                            full-iso, long-iso, iso, or +FORMAT;\n\
+                            FORMAT is interpreted like in 'date'\n\
 "), stdout);
       fputs (_("\
   -X, --exclude-from=FILE  exclude files that match any pattern in FILE\n\
@@ -394,7 +406,10 @@ print_only_size (uintmax_t n_bytes)
 static void
 print_size (const struct duinfo *pdui, const char *string)
 {
-  print_only_size (pdui->size);
+  print_only_size (opt_inodes
+                   ? pdui->inodes
+                   : pdui->size);
+
   if (opt_time)
     {
       putchar ('\t');
@@ -499,15 +514,11 @@ process_file (FTS *fts, FTSENT *ent)
           break;
 
         case FTS_DC:
-          if (cycle_warning_required (fts, ent))
+          /* If not following symlinks and not a (bind) mount point.  */
+          if (cycle_warning_required (fts, ent)
+              && ! di_set_lookup (di_mnt, sb->st_dev, sb->st_ino))
             {
-              /* If this is a mount point, then diagnose it and avoid
-                 the cycle.  */
-              if (di_set_lookup (di_mnt, sb->st_dev, sb->st_ino))
-                error (0, 0, _("mount point %s already traversed"),
-                       quote (file));
-              else
-                emit_cycle_warning (file);
+              emit_cycle_warning (file);
               return false;
             }
           return true;
@@ -589,9 +600,10 @@ process_file (FTS *fts, FTSENT *ent)
       || level == 0)
     {
       /* Print or elide this entry according to the --threshold option.  */
+      uintmax_t v = opt_inodes ? dui_to_print.inodes : dui_to_print.size;
       if (opt_threshold < 0
-          ? dui_to_print.size <= -opt_threshold
-          : dui_to_print.size >= opt_threshold)
+          ? v <= -opt_threshold
+          : v >= opt_threshold)
         print_size (&dui_to_print, file);
     }
 
@@ -670,12 +682,7 @@ fill_mount_table (void)
 
       mnt_free = mnt_ent;
       mnt_ent = mnt_ent->me_next;
-
-      free (mnt_free->me_devname);
-      free (mnt_free->me_mountdir);
-      if (mnt_free->me_type_malloced)
-        free (mnt_free->me_type);
-      free (mnt_free);
+      free_mount_entry (mnt_free);
     }
 }
 
@@ -858,6 +865,10 @@ main (int argc, char **argv)
           add_exclude (exclude, optarg, EXCLUDE_WILDCARDS);
           break;
 
+        case INODES_OPTION:
+          opt_inodes = true;
+          break;
+
         case TIME_OPTION:
           opt_time = true;
           time_type =
@@ -903,6 +914,16 @@ main (int argc, char **argv)
 
   if (opt_summarize_only)
     max_depth = 0;
+
+  if (opt_inodes)
+    {
+      if (apparent_size)
+        {
+          error (0, 0, _("warning: options --apparent-size and -b are "
+                         "ineffective with --inodes"));
+        }
+      output_block_size = 1;
+    }
 
   /* Process time style if printing last times.  */
   if (opt_time)

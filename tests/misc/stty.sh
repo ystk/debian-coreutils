@@ -1,7 +1,7 @@
 #! /bin/sh
 # Make sure stty can parse most of its options.
 
-# Copyright (C) 1998-2013 Free Software Foundation, Inc.
+# Copyright (C) 1998-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -52,7 +52,10 @@ for opt in $options; do
   # other serial control settings give the same error. So skip them.
   # Also on ppc*|sparc* glibc platforms 'icanon' gives the same error.
   # See: http://debbugs.gnu.org/7228#14
-  case $opt in parenb|parodd|cstopb|crtscts|cdtrdsr|icanon) continue;; esac
+  case $opt in
+    parenb|parodd|cmspar) continue;;
+    cstopb|crtscts|cdtrdsr|icanon) continue;;
+  esac
 
   stty $opt || fail=1
 

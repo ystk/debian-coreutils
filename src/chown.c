@@ -1,5 +1,5 @@
 /* chown -- change user and group ownership of files
-   Copyright (C) 1989-2013 Free Software Foundation, Inc.
+   Copyright (C) 1989-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -226,10 +226,9 @@ main (int argc, char **argv)
 
         case FROM_OPTION:
           {
-            char *u_dummy, *g_dummy;
             const char *e = parse_user_spec (optarg,
                                              &required_uid, &required_gid,
-                                             &u_dummy, &g_dummy);
+                                             NULL, NULL);
             if (e)
               error (EXIT_FAILURE, 0, "%s: %s", e, quote (optarg));
             break;

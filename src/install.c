@@ -1,5 +1,5 @@
 /* install - copy files and set attributes
-   Copyright (C) 1989-2013 Free Software Foundation, Inc.
+   Copyright (C) 1989-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -218,8 +218,8 @@ need_copy (const char *src_name, const char *dest_name,
   /* compare SELinux context if preserving */
   if (selinux_enabled && x->preserve_security_context)
     {
-      security_context_t file_scontext = NULL;
-      security_context_t to_scontext = NULL;
+      char *file_scontext = NULL;
+      char *to_scontext = NULL;
       bool scontext_match;
 
       if (getfilecon (src_name, &file_scontext) == -1)
@@ -279,7 +279,6 @@ cp_option_init (struct cp_options *x)
   x->reduce_diagnostics=false;
   x->data_copy_required = true;
   x->require_preserve = false;
-  x->require_preserve_context = false;
   x->require_preserve_xattr = false;
   x->recursive = false;
   x->sparse_mode = SPARSE_AUTO;
@@ -295,7 +294,9 @@ cp_option_init (struct cp_options *x)
 
   x->open_dangling_dest_symlink = false;
   x->update = false;
-  x->preserve_security_context = false;
+  x->require_preserve_context = false;  /* Not used by install currently.  */
+  x->preserve_security_context = false; /* Whether to copy context from src.  */
+  x->set_security_context = false;    /* Whether to set sys default context.  */
   x->preserve_xattr = false;
   x->verbose = false;
   x->dest_info = NULL;
@@ -305,12 +306,13 @@ cp_option_init (struct cp_options *x)
 #ifdef ENABLE_MATCHPATHCON
 /* Modify file context to match the specified policy.
    If an error occurs the file will remain with the default directory
-   context.  */
+   context.  Note this sets the context to that returned by matchpathcon,
+   and thus discards MLS levels and user identity of the FILE.  */
 static void
 setdefaultfilecon (char const *file)
 {
   struct stat st;
-  security_context_t scontext = NULL;
+  char *scontext = NULL;
   static bool first_call = true;
 
   if (selinux_enabled != 1)
@@ -359,7 +361,8 @@ setdefaultfilecon (char const *file)
   first_call = false;
 
   /* If there's an error determining the context, or it has none,
-     return to allow default context */
+     return to allow default context.  Note the "<<none>>" check
+     is only needed for libselinux < 1.20 (2005-01-04).  */
   if ((matchpathcon (file, st.st_mode, &scontext) != 0)
       || STREQ (scontext, "<<none>>"))
     {
@@ -515,16 +518,17 @@ change_timestamps (struct stat const *src_sb, char const *dest)
    magic numbers vary so much from system to system that making
    it portable would be very difficult.  Not worth the effort. */
 
-static void
+static bool
 strip (char const *name)
 {
   int status;
+  bool ok = false;
   pid_t pid = fork ();
 
   switch (pid)
     {
     case -1:
-      error (EXIT_FAILURE, errno, _("fork system call failed"));
+      error (0, errno, _("fork system call failed"));
       break;
     case 0:			/* Child. */
       execlp (strip_program, strip_program, name, NULL);
@@ -532,11 +536,14 @@ strip (char const *name)
       break;
     default:			/* Parent. */
       if (waitpid (pid, &status, 0) < 0)
-        error (EXIT_FAILURE, errno, _("waiting for strip"));
+        error (0, errno, _("waiting for strip"));
       else if (! WIFEXITED (status) || WEXITSTATUS (status))
-        error (EXIT_FAILURE, 0, _("strip process terminated abnormally"));
+        error (0, 0, _("strip process terminated abnormally"));
+      else
+        ok = true;      /* strip succeeded */
       break;
     }
+  return ok;
 }
 
 /* Initialize the user and group ownership of the files to install. */
@@ -640,8 +647,10 @@ In the 4th form, create all components of the given DIRECTORY(ies).\n\
 "), stdout);
       fputs (_("\
       --preserve-context  preserve SELinux security context\n\
-  -Z, --context=CONTEXT  set SELinux security context of files and directories\
-\n\
+  -Z                      set SELinux security context of destination\n\
+                            file to default type\n\
+      --context[=CTX]     like -Z, or if CTX is specified then set the\n\
+                            SELinux or SMACK security context to CTX\n\
 "), stdout);
 
       fputs (HELP_OPTION_DESCRIPTION, stdout);
@@ -681,7 +690,12 @@ install_file_in_file (const char *from, const char *to,
   if (! copy_file (from, to, x))
     return false;
   if (strip_files)
-    strip (to);
+    if (! strip (to))
+      {
+        if (unlink (to) != 0)  /* Cleanup.  */
+          error (EXIT_FAILURE, errno, _("cannot unlink %s"), to);
+        return false;
+      }
   if (x->preserve_timestamps && (strip_files || ! S_ISREG (from_sb.st_mode))
       && ! change_timestamps (&from_sb, to))
     return false;
@@ -692,8 +706,7 @@ install_file_in_file (const char *from, const char *to,
    Return true if successful.  */
 
 static bool
-install_file_in_file_parents (char const *from, char *to,
-                              struct cp_options *x)
+mkancesdirs_safe_wd (char const *from, char *to, struct cp_options *x)
 {
   bool save_working_directory =
     ! (IS_ABSOLUTE_FILE_NAME (from) && IS_ABSOLUTE_FILE_NAME (to));
@@ -723,8 +736,18 @@ install_file_in_file_parents (char const *from, char *to,
           return false;
         }
     }
+  return status == EXIT_SUCCESS;
+}
 
-  return (status == EXIT_SUCCESS && install_file_in_file (from, to, x));
+/* Copy file FROM onto file TO, creating any missing parent directories of TO.
+   Return true if successful.  */
+
+static bool
+install_file_in_file_parents (char const *from, char *to,
+                              const struct cp_options *x)
+{
+  return (mkancesdirs_safe_wd (from, to, (struct cp_options *)x)
+          && install_file_in_file (from, to, x));
 }
 
 /* Copy file FROM into directory TO_DIR, keeping its same name,
@@ -733,11 +756,16 @@ install_file_in_file_parents (char const *from, char *to,
 
 static bool
 install_file_in_dir (const char *from, const char *to_dir,
-                     const struct cp_options *x)
+                     const struct cp_options *x, bool mkdir_and_install)
 {
   const char *from_base = last_component (from);
   char *to = file_name_concat (to_dir, from_base, NULL);
-  bool ret = install_file_in_file (from, to, x);
+  bool ret = true;
+
+  if (mkdir_and_install)
+    ret = mkancesdirs_safe_wd (from, to, (struct cp_options *)x);
+
+  ret = ret && install_file_in_file (from, to, x);
   free (to);
   return ret;
 }
@@ -758,7 +786,7 @@ main (int argc, char **argv)
   int n_files;
   char **file;
   bool strip_program_specified = false;
-  security_context_t scontext = NULL;
+  char const *scontext = NULL;
   /* set iff kernel has extra selinux system calls */
   selinux_enabled = (0 < is_selinux_enabled ());
 
@@ -782,7 +810,7 @@ main (int argc, char **argv)
      we'll actually use backup_suffix_string.  */
   backup_suffix_string = getenv ("SIMPLE_BACKUP_SUFFIX");
 
-  while ((optc = getopt_long (argc, argv, "bcCsDdg:m:o:pt:TvS:Z:", long_options,
+  while ((optc = getopt_long (argc, argv, "bcCsDdg:m:o:pt:TvS:Z", long_options,
                               NULL)) != -1)
     {
       switch (optc)
@@ -837,16 +865,6 @@ main (int argc, char **argv)
           if (target_directory)
             error (EXIT_FAILURE, 0,
                    _("multiple target directories specified"));
-          else
-            {
-              struct stat st;
-              if (stat (optarg, &st) != 0)
-                error (EXIT_FAILURE, errno, _("failed to access %s"),
-                       quote (optarg));
-              if (! S_ISDIR (st.st_mode))
-                error (EXIT_FAILURE, 0, _("target %s is not a directory"),
-                       quote (optarg));
-            }
           target_directory = optarg;
           break;
         case 'T':
@@ -854,7 +872,7 @@ main (int argc, char **argv)
           break;
 
         case PRESERVE_CONTEXT_OPTION:
-          if ( ! selinux_enabled)
+          if (! selinux_enabled)
             {
               error (0, 0, _("WARNING: ignoring --preserve-context; "
                              "this kernel is not SELinux-enabled"));
@@ -864,14 +882,27 @@ main (int argc, char **argv)
           use_default_selinux_context = false;
           break;
         case 'Z':
-          if ( ! selinux_enabled)
+          if (selinux_enabled)
             {
-              error (0, 0, _("WARNING: ignoring --context (-Z); "
-                             "this kernel is not SELinux-enabled"));
-              break;
+              /* Disable use of the install(1) specific setdefaultfilecon().
+                 Note setdefaultfilecon() is different from the newer and more
+                 generic restorecon() in that the former sets the context of
+                 the dest files to that returned by matchpathcon directly,
+                 thus discarding MLS level and user identity of the file.
+                 TODO: consider removing setdefaultfilecon() in future.  */
+              use_default_selinux_context = false;
+
+              if (optarg)
+                scontext = optarg;
+              else
+                x.set_security_context = true;
             }
-          scontext = optarg;
-          use_default_selinux_context = false;
+          else if (optarg)
+            {
+              error (0, 0,
+                     _("warning: ignoring --context; "
+                       "it requires an SELinux-enabled kernel"));
+            }
           break;
         case_GETOPT_HELP_CHAR;
         case_GETOPT_VERSION_CHAR (PROGRAM_NAME, AUTHORS);
@@ -888,10 +919,17 @@ main (int argc, char **argv)
     error (EXIT_FAILURE, 0,
            _("target directory not allowed when installing a directory"));
 
-  if (x.preserve_security_context && scontext != NULL)
-    error (EXIT_FAILURE, 0,
-           _("cannot force target context to %s and preserve it"),
-           quote (scontext));
+  if (target_directory)
+    {
+      struct stat st;
+      bool stat_success = stat (target_directory, &st) == 0 ? true : false;
+      if (! mkdir_and_install && ! stat_success)
+        error (EXIT_FAILURE, errno, _("failed to access %s"),
+               quote (target_directory));
+      if (stat_success && ! S_ISDIR (st.st_mode))
+        error (EXIT_FAILURE, 0, _("target %s is not a directory"),
+               quote (target_directory));
+    }
 
   if (backup_suffix_string)
     simple_backup_suffix = xstrdup (backup_suffix_string);
@@ -901,7 +939,11 @@ main (int argc, char **argv)
                                    version_control_string)
                    : no_backups);
 
-  if (scontext && setfscreatecon (scontext) < 0)
+  if (x.preserve_security_context && (x.set_security_context || scontext))
+    error (EXIT_FAILURE, 0,
+           _("cannot set target context and preserve it"));
+
+  if (scontext && setfscreatecon (se_const (scontext)) < 0)
     error (EXIT_FAILURE, errno,
            _("failed to set default file creation context to %s"),
            quote (scontext));
@@ -994,7 +1036,8 @@ main (int argc, char **argv)
           int i;
           dest_info_init (&x);
           for (i = 0; i < n_files; i++)
-            if (! install_file_in_dir (file[i], target_directory, &x))
+            if (! install_file_in_dir (file[i], target_directory, &x,
+                                       mkdir_and_install))
               exit_status = EXIT_FAILURE;
         }
     }

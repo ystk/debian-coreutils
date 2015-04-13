@@ -1,6 +1,6 @@
 /* uname -- print system information
 
-   Copyright (C) 1989-2013 Free Software Foundation, Inc.
+   Copyright (C) 1989-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -321,9 +321,9 @@ main (int argc, char **argv)
           if (element == unknown)
             {
               cpu_type_t cputype;
-              size_t s = sizeof cputype;
+              size_t cs = sizeof cputype;
               NXArchInfo const *ai;
-              if (sysctlbyname ("hw.cputype", &cputype, &s, NULL, 0) == 0
+              if (sysctlbyname ("hw.cputype", &cputype, &cs, NULL, 0) == 0
                   && (ai = NXGetArchInfoFromCpuType (cputype,
                                                      CPU_SUBTYPE_MULTIPLE))
                   != NULL)

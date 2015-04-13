@@ -1,5 +1,5 @@
 /* basename -- strip directory and suffix from file names
-   Copyright (C) 1990-2013 Free Software Foundation, Inc.
+   Copyright (C) 1990-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -59,8 +59,8 @@ If specified, also remove a trailing SUFFIX.\n\
 
       fputs (_("\
   -a, --multiple       support multiple arguments and treat each as a NAME\n\
-  -s, --suffix=SUFFIX  remove a trailing SUFFIX\n\
-  -z, --zero           separate output with NUL rather than newline\n\
+  -s, --suffix=SUFFIX  remove a trailing SUFFIX; implies -a\n\
+  -z, --zero           end each output line with NUL, not newline\n\
 "), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
@@ -146,6 +146,7 @@ main (int argc, char **argv)
         {
         case 's':
           suffix = optarg;
+          /* Fall through: -s implies -a.  */
 
         case 'a':
           multiple_names = true;

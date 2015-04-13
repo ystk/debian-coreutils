@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure that touch -c no-such-file no longer fails (it did in 4.1.8).
 
-# Copyright (C) 2002-2013 Free Software Foundation, Inc.
+# Copyright (C) 2002-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,13 +24,11 @@ touch -c no-file > /dev/null 2>&1 || fail=1
 touch -cm no-file > /dev/null 2>&1 || fail=1
 touch -ca no-file > /dev/null 2>&1 || fail=1
 
-test="$abs_top_builddir/src/test"
-
 # If >&- works, test "touch -c -" etc.
 # >&- apparently does not work in HP-UX 11.23.
 # This test is ineffective unless /dev/stdout also works.
-if "$test" -w /dev/stdout >/dev/null &&
-   "$test" ! -w /dev/stdout >&-; then
+if env test -w /dev/stdout >/dev/null &&
+   env test ! -w /dev/stdout >&-; then
   touch -c - >&- 2> /dev/null || fail=1
   touch -cm - >&- 2> /dev/null || fail=1
   touch -ca - >&- 2> /dev/null || fail=1

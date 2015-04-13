@@ -1,6 +1,6 @@
 /* mountlist.c -- return a list of mounted file systems
 
-   Copyright (C) 1991-1992, 1997-2013 Free Software Foundation, Inc.
+   Copyright (C) 1991-1992, 1997-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -128,9 +128,19 @@
 # include <sys/mntent.h>
 #endif
 
+#ifndef HAVE_HASMNTOPT
+# define hasmntopt(mnt, opt) ((char *) 0)
+#endif
+
 #undef MNT_IGNORE
-#if defined MNTOPT_IGNORE && defined HAVE_HASMNTOPT
-# define MNT_IGNORE(M) hasmntopt (M, MNTOPT_IGNORE)
+#ifdef MNTOPT_IGNORE
+# if defined __sun && defined __SVR4
+/* Solaris defines hasmntopt(struct mnttab *, char *)
+   while it is otherwise hasmntopt(struct mnttab *, const char *).  */
+#  define MNT_IGNORE(M) hasmntopt (M, (char *) MNTOPT_IGNORE)
+# else
+#  define MNT_IGNORE(M) hasmntopt (M, MNTOPT_IGNORE)
+# endif
 #else
 # define MNT_IGNORE(M) 0
 #endif
@@ -138,11 +148,6 @@
 #if USE_UNLOCKED_IO
 # include "unlocked-io.h"
 #endif
-
-/* The results of open() in this file are not used with fchdir,
-   therefore save some unnecessary work in fchdir.c.  */
-#undef open
-#undef close
 
 /* The results of opendir() in this file are not used with dirfd and fchdir,
    therefore save some unnecessary work in fchdir.c.  */
@@ -942,6 +947,7 @@ read_file_system_list (bool need_fs_type)
             mtail = &me->me_next;
           }
       }
+    closedir (dirp);
   }
 #endif /* MOUNTED_INTERIX_STATVFS */
 
@@ -957,15 +963,22 @@ read_file_system_list (bool need_fs_type)
     while (mount_list)
       {
         me = mount_list->me_next;
-        free (mount_list->me_devname);
-        free (mount_list->me_mountdir);
-        if (mount_list->me_type_malloced)
-          free (mount_list->me_type);
-        free (mount_list);
+        free_mount_entry (mount_list);
         mount_list = me;
       }
 
     errno = saved_errno;
     return NULL;
   }
+}
+
+/* Free a mount entry as returned from read_file_system_list ().  */
+
+void free_mount_entry (struct mount_entry *me)
+{
+  free (me->me_devname);
+  free (me->me_mountdir);
+  if (me->me_type_malloced)
+    free (me->me_type);
+  free (me);
 }

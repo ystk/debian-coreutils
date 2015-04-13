@@ -1,3 +1,45 @@
+coreutils (8.23-4) unstable; urgency=low
+
+  * [33] remove chroot optimization that avoids the actual chroot when 
+    running "chroot /". The intent was to allow "chroot / true" to 
+    work in all cases on all platforms even for non-root users, but
+    has caused problems with bind mounts. Upstream has added a new 
+    option to chroot, but I'll wait for the new upstream version for
+    that. (Closes: #765514)
+  * remove spurious file addition in patch [31] that did not affect
+    built package
+
+ -- Michael Stone <mstone@debian.org>  Sat, 14 Mar 2015 07:59:06 -0400
+
+coreutils (8.23-3) unstable; urgency=low
+
+  * Standards version 3.9.6.0
+  * build with verbose make (Closes: #751132)
+  * add numfmt to package description (Closes: #764698)
+  * [31] show duplicate remote mounts in df (Closes: #737399)
+  * [32] cherry pick upstream fix to make info doc references 
+    more reliable (Closes: #760861)
+
+ -- Michael Stone <mstone@debian.org>  Wed, 29 Oct 2014 20:58:59 -0400
+
+coreutils (8.23-2) unstable; urgency=low
+
+  * Added missing replaces (Closes: #760233, #760234)
+
+ -- Michael Stone <mstone@debian.org>  Mon, 01 Sep 2014 19:52:12 -0400
+
+coreutils (8.23-1) unstable; urgency=low
+
+  * New upstream version
+  * Include realpath command in coreutils package and replace Debian
+    version of the command from the realpath package (Closes: #730779).
+    Add transational realpath package to help with upgrades.
+    (from Robert Luberda <robert@debian.org>)
+  * Add build-arch and build-indep targets required by Policy
+    3.9.4. (Niels Thykier <niels@thykier.net>) (Closes: #721118)
+
+ -- Michael Stone <mstone@debian.org>  Mon, 01 Sep 2014 09:56:18 -0400
+
 coreutils (8.21-1.2) unstable; urgency=low
 
   * Non-maintainer upload.

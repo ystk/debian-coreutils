@@ -1,5 +1,5 @@
 /* system-dependent definitions for coreutils
-   Copyright (C) 1989-2013 Free Software Foundation, Inc.
+   Copyright (C) 1989-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -330,7 +330,7 @@ enum
 #define GETOPT_VERSION_OPTION_DECL \
   "version", no_argument, NULL, GETOPT_VERSION_CHAR
 #define GETOPT_SELINUX_CONTEXT_OPTION_DECL \
-  "context", required_argument, NULL, 'Z'
+  "context", optional_argument, NULL, 'Z'
 
 #define case_GETOPT_HELP_CHAR			\
   case GETOPT_HELP_CHAR:			\
@@ -425,10 +425,6 @@ enum
 # define ATTRIBUTE_NORETURN __attribute__ ((__noreturn__))
 #endif
 
-#ifndef ATTRIBUTE_UNUSED
-# define ATTRIBUTE_UNUSED __attribute__ ((__unused__))
-#endif
-
 /* The warn_unused_result attribute appeared first in gcc-3.4.0 */
 #undef ATTRIBUTE_WARN_UNUSED_RESULT
 #if __GNUC__ < 3 || (__GNUC__ == 3 && __GNUC_MINOR__ < 4)
@@ -500,21 +496,24 @@ ptr_align (void const *ptr, size_t alignment)
    Note the word after the buffer must be non NUL. */
 
 static inline bool _GL_ATTRIBUTE_PURE
-is_nul (const char *buf, size_t bufsize)
+is_nul (void const *buf, size_t bufsize)
 {
   typedef uintptr_t word;
+  void const *vp;
+  char const *cbuf = buf;
+  word const *wp = buf;
 
   /* Find first nonzero *word*, or the word with the sentinel.  */
-  word *wp = (word *) buf;
   while (*wp++ == 0)
     continue;
 
   /* Find the first nonzero *byte*, or the sentinel.  */
-  char *cp = (char *) (wp - 1);
+  vp = wp - 1;
+  char const *cp = vp;
   while (*cp++ == 0)
     continue;
 
-  return cp > buf + bufsize;
+  return cbuf + bufsize < cp;
 }
 
 /* If 10*Accum + Digit_val is larger than the maximum value for Type,
@@ -550,8 +549,8 @@ static inline void
 emit_size_note (void)
 {
   fputs (_("\n\
-SIZE is an integer and optional unit (example: 10M is 10*1024*1024).  Units\n\
-are K, M, G, T, P, E, Z, Y (powers of 1024) or KB, MB, ... (powers of 1000).\n\
+The SIZE argument is an integer and optional unit (example: 10K is 10*1024).\n\
+Units are K,M,G,T,P,E,Z,Y (powers of 1024) or KB,MB,... (powers of 1000).\n\
 "), stdout);
 }
 
@@ -568,11 +567,7 @@ Otherwise, units default to 1024 bytes (or 512 if POSIXLY_CORRECT is set).\n\
 static inline void
 emit_ancillary_info (void)
 {
-  printf (_("\nReport %s bugs to %s\n"), last_component (program_name),
-          PACKAGE_BUGREPORT);
-  printf (_("%s home page: <%s>\n"), PACKAGE_NAME, PACKAGE_URL);
-  fputs (_("General help using GNU software: <http://www.gnu.org/gethelp/>\n"),
-         stdout);
+  printf (_("\n%s online help: <%s>\n"), PACKAGE_NAME, PACKAGE_URL);
   /* Don't output this redundant message for English locales.
      Note we still output for 'C' so that it gets included in the man page.  */
   const char *lc_messages = setlocale (LC_MESSAGES, NULL);
@@ -622,6 +617,16 @@ usable_st_size (struct stat const *sb)
 
 void usage (int status) ATTRIBUTE_NORETURN;
 
+/* Like error(0, 0, ...), but without an implicit newline.
+   Also a noop unless the global DEV_DEBUG is set.  */
+#define devmsg(...)			\
+  do					\
+    {					\
+      if (dev_debug)			\
+        fprintf (stderr, __VA_ARGS__);	\
+    }					\
+  while (0)
+
 #define emit_cycle_warning(file_name)	\
   do					\
     {					\
@@ -652,3 +657,9 @@ stzncpy (char *restrict dest, char const *restrict src, size_t len)
 #ifndef ARRAY_CARDINALITY
 # define ARRAY_CARDINALITY(Array) (sizeof (Array) / sizeof *(Array))
 #endif
+
+/* Avoid const warnings by casting to more portable type.
+   This is to cater for the incorrect const function declarations
+   in selinux.h before libselinux-2.3 (May 2014).
+   When version >= 2.3 is ubiquitous remove this function.  */
+static inline char * se_const (char const * sctx) { return (char *) sctx; }
