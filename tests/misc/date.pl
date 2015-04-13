@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Test "date".
 
-# Copyright (C) 2005-2013 Free Software Foundation, Inc.
+# Copyright (C) 2005-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -285,6 +285,13 @@ my @Tests =
 
      ['invalid-high-bit-set', "-d '\xb0'",
       {ERR => "date: invalid date '\\260'\n"},
+      {EXIT => 1},
+     ],
+
+     # From coreutils-5.3.0 to 8.22 inclusive
+     # this would either infinite loop or crash
+     ['invalid-TZ-crash', "-d 'TZ=\"\"\"'",
+      {ERR => "date: invalid date 'TZ=\"\"\"'\n"},
       {EXIT => 1},
      ],
     );

@@ -2,7 +2,7 @@
 # Make sure that 'mv file unwritable-file' prompts the user
 # and that 'mv -f file unwritable-file' doesn't.
 
-# Copyright (C) 2001-2013 Free Software Foundation, Inc.
+# Copyright (C) 2001-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,13 +46,13 @@ check_overwrite_prompt()
 {
   local delay="$1"
   case "$(cat out)" in
-    "mv: try to overwrite 'g', overriding mode 0000"*) ;;
+    "mv: replace 'g', overriding mode 0000"*) ;;
     *) sleep $delay; return 1;;
   esac
 }
 
 # Wait for up to 12.7 seconds for the expected prompt.
-retry_delay_ check_overwrite_prompt .1 7 || fail=1
+retry_delay_ check_overwrite_prompt .1 7 || { fail=1; cat out; }
 
 kill $pid
 

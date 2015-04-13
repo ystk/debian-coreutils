@@ -2,7 +2,7 @@
 # Make sure all of these programs work properly
 # when invoked with --help or --version.
 
-# Copyright (C) 2000-2013 Free Software Foundation, Inc.
+# Copyright (C) 2000-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -70,47 +70,38 @@ done
 test "x$v" = "x$VERSION" \
   || fail_ "--version-\$VERSION mismatch"
 
-for lang in C fr da; do
-  for i in $built_programs; do
+for i in $built_programs; do
 
-    # Skip 'test'; it doesn't accept --help or --version.
-    test $i = test && continue;
+  # Skip 'test'; it doesn't accept --help or --version.
+  test $i = test && continue
 
-    # false fails even when invoked with --help or --version.
-    if test $i = false; then
-      env LC_MESSAGES=$lang $i --help >/dev/null && fail=1
-      env LC_MESSAGES=$lang $i --version >/dev/null && fail=1
-      continue
+  # false fails even when invoked with --help or --version.
+  # true and false are tested with these options separately.
+  test $i = false || test $i = true && continue
+
+  # The just-built install executable is always named 'ginstall'.
+  test $i = install && i=ginstall
+
+  # Make sure they exit successfully, under normal conditions.
+  env $i --help    >/dev/null || fail=1
+  env $i --version >/dev/null || fail=1
+
+  # Make sure they fail upon 'disk full' error.
+  if test -w /dev/full && test -c /dev/full; then
+    env $i --help    >/dev/full 2>/dev/null && fail=1
+    env $i --version >/dev/full 2>/dev/null && fail=1
+    status=$?
+    test $i = [ && prog=lbracket || prog=$(echo $i|sed "s/$EXEEXT$//")
+    eval "expected=\$expected_failure_status_$prog"
+    test x$expected = x && expected=1
+    if test $status = $expected; then
+      : # ok
+    else
+      fail=1
+      echo "*** $i: bad exit status '$status' (expected $expected)," 1>&2
+      echo "  with --help or --version output redirected to /dev/full" 1>&2
     fi
-
-    # The just-built install executable is always named 'ginstall'.
-    test $i = install && i=ginstall
-
-    # Make sure they exit successfully, under normal conditions.
-    env $i --help    > h-$i     || fail=1
-    env $i --version >/dev/null || fail=1
-
-    # Make sure they mention the bug-reporting address in --help output.
-    grep "$PACKAGE_BUGREPORT" h-$i > /dev/null || fail=1
-    rm -f h-$i
-
-    # Make sure they fail upon 'disk full' error.
-    if test -w /dev/full && test -c /dev/full; then
-      env $i --help    >/dev/full 2>/dev/null && fail=1
-      env $i --version >/dev/full 2>/dev/null && fail=1
-      status=$?
-      test $i = [ && prog=lbracket || prog=$(echo $i|sed "s/$EXEEXT$//")
-      eval "expected=\$expected_failure_status_$prog"
-      test x$expected = x && expected=1
-      if test $status = $expected; then
-        : # ok
-      else
-        fail=1
-        echo "*** $i: bad exit status '$status' (expected $expected)," 1>&2
-        echo "  with --help or --version output redirected to /dev/full" 1>&2
-      fi
-    fi
-  done
+  fi
 done
 
 bigZ_in=bigZ-in.Z
@@ -248,7 +239,7 @@ parted_setup () { args="-s $tmp_in mklabel gpt"
 # something more than --help or --version.
 for i in $built_programs; do
   # Skip these.
-  case $i in chroot|stty|tty|false|chcon|runcon) continue;; esac
+  case $i in chroot|stty|tty|false|chcon|runcon|coreutils) continue;; esac
 
   rm -rf $tmp_in $tmp_in2 $tmp_dir $tmp_out $bigZ_in $zin $zin2
   echo z |gzip > $zin

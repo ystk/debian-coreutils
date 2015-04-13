@@ -1,5 +1,5 @@
 /* date - print or set the system date and time
-   Copyright (C) 1989-2013 Free Software Foundation, Inc.
+   Copyright (C) 1989-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -151,7 +151,7 @@ Display the current time in the given FORMAT, or set the system date.\n\
                             Date and time components are separated by\n\
                             a single space: 2006-08-07 12:34:56-06:00\n\
   -s, --set=STRING          set time described by STRING\n\
-  -u, --utc, --universal    print or set Coordinated Universal Time\n\
+  -u, --utc, --universal    print or set Coordinated Universal Time (UTC)\n\
 "), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);

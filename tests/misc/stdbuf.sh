@@ -1,7 +1,7 @@
 #!/bin/sh
 # Exercise stdbuf functionality
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -49,6 +49,8 @@ test $? = 125 || fail=1 # Internal error is a particular status
 stdbuf -o$SIZE_OFLOW true # size too large
 test $? = 125 || fail=1
 stdbuf -iL true # line buffering stdin disallowed
+test $? = 125 || fail=1
+stdbuf true # a buffering mode must be specified
 test $? = 125 || fail=1
 stdbuf -i0 -o0 -e0 true || fail=1 #check all files
 stdbuf -o1 . # invalid command

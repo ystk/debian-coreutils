@@ -1,5 +1,5 @@
 /* 'ln' program to create links between files.
-   Copyright (C) 1986-2013 Free Software Foundation, Inc.
+   Copyright (C) 1986-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -103,8 +103,18 @@ static struct option const long_options[] =
   {NULL, 0, NULL, 0}
 };
 
+/* Return true when the passed ERR implies
+   that a file does not or could not exist.  */
+
+static bool
+errno_nonexisting (int err)
+{
+  return err == ENOENT || err == ENAMETOOLONG || err == ENOTDIR || err == ELOOP;
+}
+
+
 /* FILE is the last operand of this command.  Return true if FILE is a
-   directory.  But report an error there is a problem accessing FILE,
+   directory.  But report an error if there is a problem accessing FILE,
    or if FILE does not exist but would have to refer to an existing
    directory if it referred to anything at all.  */
 
@@ -119,7 +129,7 @@ target_directory_operand (char const *file)
     (dereference_dest_dir_symlinks ? stat (file, &st) : lstat (file, &st));
   int err = (stat_result == 0 ? 0 : errno);
   bool is_a_dir = !err && S_ISDIR (st.st_mode);
-  if (err && err != ENOENT)
+  if (err && ! errno_nonexisting (errno))
     error (EXIT_FAILURE, err, _("failed to access %s"), quote (file));
   if (is_a_dir < looks_like_a_dir)
     error (EXIT_FAILURE, err, _("target %s is not a directory"), quote (file));
@@ -132,22 +142,28 @@ target_directory_operand (char const *file)
 static char *
 convert_abs_rel (const char *from, const char *target)
 {
-  char *realtarget = canonicalize_filename_mode (target, CAN_MISSING);
+  /* Get dirname to generate paths relative to.  We don't resolve
+     the full TARGET as the last component could be an existing symlink.  */
+  char *targetdir = dir_name (target);
+
+  char *realdest = canonicalize_filename_mode (targetdir, CAN_MISSING);
   char *realfrom = canonicalize_filename_mode (from, CAN_MISSING);
 
-  /* Write to a PATH_MAX buffer.  */
-  char *relative_from = xmalloc (PATH_MAX);
-
-  /* Get dirname to generate paths relative to.  */
-  realtarget[dir_len (realtarget)] = '\0';
-
-  if (!relpath (realfrom, realtarget, relative_from, PATH_MAX))
+  char *relative_from = NULL;
+  if (realdest && realfrom)
     {
-      free (relative_from);
-      relative_from = NULL;
+      /* Write to a PATH_MAX buffer.  */
+      relative_from = xmalloc (PATH_MAX);
+
+      if (!relpath (realfrom, realdest, relative_from, PATH_MAX))
+        {
+          free (relative_from);
+          relative_from = NULL;
+        }
     }
 
-  free (realtarget);
+  free (targetdir);
+  free (realdest);
   free (realfrom);
 
   return relative_from ? relative_from : xstrdup (from);
@@ -327,7 +343,8 @@ do_link (const char *source, const char *dest)
     {
       /* Right after creating a hard link, do this: (note dest name and
          source_stats, which are also the just-linked-destinations stats) */
-      record_file (dest_set, dest, &source_stats);
+      if (! symbolic_link)
+        record_file (dest_set, dest, &source_stats);
 
       if (verbose)
         {

@@ -1,5 +1,5 @@
 /* copy.c -- core functions for copying files and directories
-   Copyright (C) 1989-2013 Free Software Foundation, Inc.
+   Copyright (C) 1989-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -51,6 +51,7 @@
 #include "ignore-value.h"
 #include "ioblksize.h"
 #include "quote.h"
+#include "root-uid.h"
 #include "same.h"
 #include "savedir.h"
 #include "stat-size.h"
@@ -60,6 +61,7 @@
 #include "write-any-file.h"
 #include "areadlink.h"
 #include "yesno.h"
+#include "selinux.h"
 
 #if USE_XATTR
 # include <attr/error_context.h>
@@ -96,6 +98,14 @@ rpl_mkfifo (char const *file, mode_t mode)
 #define SAME_GROUP(A, B) ((A).st_gid == (B).st_gid)
 #define SAME_OWNER_AND_GROUP(A, B) (SAME_OWNER (A, B) && SAME_GROUP (A, B))
 
+/* LINK_FOLLOWS_SYMLINKS is tri-state; if it is -1, we don't know
+   how link() behaves, so assume we can't hardlink symlinks in that case.  */
+#if defined HAVE_LINKAT || ! LINK_FOLLOWS_SYMLINKS
+# define CAN_HARDLINK_SYMLINKS 1
+#else
+# define CAN_HARDLINK_SYMLINKS 0
+#endif
+
 struct dir_list
 {
   struct dir_list *parent;
@@ -107,7 +117,7 @@ struct dir_list
 #define DEST_INFO_INITIAL_CAPACITY 61
 
 static bool copy_internal (char const *src_name, char const *dst_name,
-                           bool new_dst, dev_t device,
+                           bool new_dst, struct stat const *parent,
                            struct dir_list *ancestors,
                            const struct cp_options *x,
                            bool command_line_arg,
@@ -471,7 +481,7 @@ errno_unsupported (int err)
 
 #if USE_XATTR
 static void
-copy_attr_error (struct error_context *ctx ATTRIBUTE_UNUSED,
+copy_attr_error (struct error_context *ctx _GL_UNUSED,
                  char const *fmt, ...)
 {
   if (!errno_unsupported (errno))
@@ -487,7 +497,7 @@ copy_attr_error (struct error_context *ctx ATTRIBUTE_UNUSED,
 }
 
 static void
-copy_attr_allerror (struct error_context *ctx ATTRIBUTE_UNUSED,
+copy_attr_allerror (struct error_context *ctx _GL_UNUSED,
                  char const *fmt, ...)
 {
   int err = errno;
@@ -500,15 +510,27 @@ copy_attr_allerror (struct error_context *ctx ATTRIBUTE_UNUSED,
 }
 
 static char const *
-copy_attr_quote (struct error_context *ctx ATTRIBUTE_UNUSED, char const *str)
+copy_attr_quote (struct error_context *ctx _GL_UNUSED, char const *str)
 {
   return quote (str);
 }
 
 static void
-copy_attr_free (struct error_context *ctx ATTRIBUTE_UNUSED,
-                char const *str ATTRIBUTE_UNUSED)
+copy_attr_free (struct error_context *ctx _GL_UNUSED,
+                char const *str _GL_UNUSED)
 {
+}
+
+/* Exclude SELinux extended attributes that are otherwise handled,
+   and are problematic to copy again.  Also honor attributes
+   configured for exclusion in /etc/xattr.conf.
+   FIXME: Should we handle POSIX ACLs similarly?
+   Return zero to skip.  */
+static int
+check_selinux_attr (const char *name, struct error_context *ctx)
+{
+  return STRNCMP_LIT (name, "security.selinux")
+         && attr_copy_check_permissions (name, ctx);
 }
 
 /* If positive SRC_FD and DST_FD descriptors are passed,
@@ -521,6 +543,7 @@ copy_attr (char const *src_path, int src_fd,
   int ret;
   bool all_errors = (!x->data_copy_required || x->require_preserve_xattr);
   bool some_errors = (!all_errors && !x->reduce_diagnostics);
+  bool selinux_done = (x->preserve_security_context || x->set_security_context);
   struct error_context ctx =
   {
     .error = all_errors ? copy_attr_allerror : copy_attr_error,
@@ -528,10 +551,12 @@ copy_attr (char const *src_path, int src_fd,
     .quote_free = copy_attr_free
   };
   if (0 <= src_fd && 0 <= dst_fd)
-    ret = attr_copy_fd (src_path, src_fd, dst_path, dst_fd, 0,
+    ret = attr_copy_fd (src_path, src_fd, dst_path, dst_fd,
+                        selinux_done ? check_selinux_attr : NULL,
                         (all_errors || some_errors ? &ctx : NULL));
   else
-    ret = attr_copy_file (src_path, dst_path, 0,
+    ret = attr_copy_file (src_path, dst_path,
+                          selinux_done ? check_selinux_attr : NULL,
                           (all_errors || some_errors ? &ctx : NULL));
 
   return ret == 0;
@@ -539,11 +564,11 @@ copy_attr (char const *src_path, int src_fd,
 #else /* USE_XATTR */
 
 static bool
-copy_attr (char const *src_path ATTRIBUTE_UNUSED,
-           int src_fd ATTRIBUTE_UNUSED,
-           char const *dst_path ATTRIBUTE_UNUSED,
-           int dst_fd ATTRIBUTE_UNUSED,
-           struct cp_options const *x ATTRIBUTE_UNUSED)
+copy_attr (char const *src_path _GL_UNUSED,
+           int src_fd _GL_UNUSED,
+           char const *dst_path _GL_UNUSED,
+           int dst_fd _GL_UNUSED,
+           struct cp_options const *x _GL_UNUSED)
 {
   return true;
 }
@@ -573,7 +598,7 @@ copy_dir (char const *src_name_in, char const *dst_name_in, bool new_dst,
   struct cp_options non_command_line_options = *x;
   bool ok = true;
 
-  name_space = savedir (src_name_in);
+  name_space = savedir (src_name_in, SAVEDIR_SORT_FASTREAD);
   if (name_space == NULL)
     {
       /* This diagnostic is a bit vague because savedir can fail in
@@ -596,7 +621,7 @@ copy_dir (char const *src_name_in, char const *dst_name_in, bool new_dst,
       char *dst_name = file_name_concat (dst_name_in, namep, NULL);
       bool first_dir_created = *first_dir_created_per_command_line_arg;
 
-      ok &= copy_internal (src_name, dst_name, new_dst, src_sb->st_dev,
+      ok &= copy_internal (src_name, dst_name, new_dst, src_sb,
                            ancestors, &non_command_line_options, false,
                            &first_dir_created,
                            &local_copy_into_self, NULL);
@@ -736,6 +761,96 @@ set_author (const char *dst_name, int dest_desc, const struct stat *src_sb)
 #endif
 }
 
+/* Set the default security context for the process.  New files will
+   have this security context set.  Also existing files can have their
+   context adjusted based on this process context, by
+   set_file_security_ctx() called with PROCESS_LOCAL=true.
+   This should be called before files are created so there is no race
+   where a file may be present without an appropriate security context.
+   Based on CP_OPTIONS, diagnose warnings and fail when appropriate.
+   Return FALSE on failure, TRUE on success.  */
+
+static bool
+set_process_security_ctx (char const *src_name, char const *dst_name,
+                          mode_t mode, bool new_dst, const struct cp_options *x)
+{
+  if (x->preserve_security_context)
+    {
+      /* Set the default context for the process to match the source.  */
+      bool all_errors = !x->data_copy_required || x->require_preserve_context;
+      bool some_errors = !all_errors && !x->reduce_diagnostics;
+      char *con;
+
+      if (0 <= lgetfilecon (src_name, &con))
+        {
+          if (setfscreatecon (con) < 0)
+            {
+              if (all_errors || (some_errors && !errno_unsupported (errno)))
+                error (0, errno,
+                       _("failed to set default file creation context to %s"),
+                       quote (con));
+              if (x->require_preserve_context)
+                {
+                  freecon (con);
+                  return false;
+                }
+            }
+          freecon (con);
+        }
+      else
+        {
+          if (all_errors || (some_errors && !errno_unsupported (errno)))
+            {
+              error (0, errno,
+                     _("failed to get security context of %s"),
+                     quote (src_name));
+            }
+          if (x->require_preserve_context)
+            return false;
+        }
+    }
+  else if (x->set_security_context)
+    {
+      /* With -Z, adjust the default context for the process
+         to have the type component adjusted as per the destination path.  */
+      if (new_dst && defaultcon (dst_name, mode) < 0
+          && ! ignorable_ctx_err (errno))
+        {
+          error (0, errno,
+                 _("failed to set default file creation context for %s"),
+                 quote (dst_name));
+        }
+    }
+
+  return true;
+}
+
+/* Reset the security context of DST_NAME, to that already set
+   as the process default if PROCESS_LOCAL is true.  Otherwise
+   adjust the type component of DST_NAME's security context as
+   per the system default for that path.  Issue warnings upon
+   failure, when allowed by various settings in CP_OPTIONS.
+   Return FALSE on failure, TRUE on success.  */
+
+static bool
+set_file_security_ctx (char const *dst_name, bool process_local,
+                       bool recurse, const struct cp_options *x)
+{
+  bool all_errors = (!x->data_copy_required
+                     || x->require_preserve_context);
+  bool some_errors = !all_errors && !x->reduce_diagnostics;
+
+  if (! restorecon (dst_name, recurse, process_local))
+    {
+      if (all_errors || (some_errors && !errno_unsupported (errno)))
+        error (0, errno, _("failed to set the security context of %s"),
+               quote_n (0, dst_name));
+      return false;
+    }
+
+  return true;
+}
+
 /* Change the file mode bits of the file identified by DESC or NAME to MODE.
    Use DESC if DESC is valid and fchmod is available, NAME otherwise.  */
 
@@ -833,44 +948,23 @@ copy_reg (char const *src_name, char const *dst_name,
       dest_errno = errno;
 
       /* When using cp --preserve=context to copy to an existing destination,
-         use the default context rather than that of the source.  Why?
-         1) the src context may prohibit writing, and
-         2) because it's more consistent to use the same context
-         that is used when the destination file doesn't already exist.  */
-      if (x->preserve_security_context && 0 <= dest_desc)
+         reset the context as per the default context, which has already been
+         set according to the src.
+         When using the mutually exclusive -Z option, then adjust the type of
+         the existing context according to the system default for the dest.
+         Note we set the context here, _after_ the file is opened, lest the
+         new context disallow that.  */
+      if ((x->set_security_context || x->preserve_security_context)
+          && 0 <= dest_desc)
         {
-          bool all_errors = (!x->data_copy_required
-                             || x->require_preserve_context);
-          bool some_errors = !all_errors && !x->reduce_diagnostics;
-          security_context_t con = NULL;
-
-          if (getfscreatecon (&con) < 0)
+          if (! set_file_security_ctx (dst_name, x->preserve_security_context,
+                                       false, x))
             {
-              if (all_errors || (some_errors && !errno_unsupported (errno)))
-                error (0, errno, _("failed to get file system create context"));
               if (x->require_preserve_context)
                 {
                   return_val = false;
                   goto close_src_and_dst_desc;
                 }
-            }
-
-          if (con)
-            {
-              if (fsetfilecon (dest_desc, con) < 0)
-                {
-                  if (all_errors || (some_errors && !errno_unsupported (errno)))
-                    error (0, errno,
-                           _("failed to set the security context of %s to %s"),
-                           quote_n (0, dst_name), quote_n (1, con));
-                  if (x->require_preserve_context)
-                    {
-                      return_val = false;
-                      freecon (con);
-                      goto close_src_and_dst_desc;
-                    }
-                }
-              freecon (con);
             }
         }
 
@@ -887,6 +981,18 @@ copy_reg (char const *src_name, char const *dst_name,
 
           /* Tell caller that the destination file was unlinked.  */
           *new_dst = true;
+
+          /* Ensure there is no race where a file may be left without
+             an appropriate security context.  */
+          if (x->set_security_context)
+            {
+              if (! set_process_security_ctx (src_name, dst_name, dst_mode,
+                                              *new_dst, x))
+                {
+                  return_val = false;
+                  goto close_src_desc;
+                }
+            }
         }
     }
 
@@ -1127,7 +1233,7 @@ preserve_metadata:
     {
       bool access_changed = false;
 
-      if (!(sb.st_mode & S_IWUSR) && geteuid () != 0)
+      if (!(sb.st_mode & S_IWUSR) && geteuid () != ROOT_UID)
         access_changed = fchmod_or_lchmod (dest_desc, dst_name, 0600) == 0;
 
       if (!copy_attr (src_name, source_desc, dst_name, dest_desc, x)
@@ -1459,8 +1565,9 @@ writable_destination (char const *file, mode_t mode)
           || euidaccess (file, W_OK) == 0);
 }
 
-static void
-overwrite_prompt (char const *dst_name, struct stat const *dst_sb)
+static bool
+overwrite_ok (struct cp_options const *x, char const *dst_name,
+              struct stat const *dst_sb)
 {
   if (! writable_destination (dst_name, dst_sb->st_mode))
     {
@@ -1468,7 +1575,10 @@ overwrite_prompt (char const *dst_name, struct stat const *dst_sb)
       strmode (dst_sb->st_mode, perms);
       perms[10] = '\0';
       fprintf (stderr,
-               _("%s: try to overwrite %s, overriding mode %04lo (%s)? "),
+               (x->move_mode || x->unlink_dest_before_opening
+                || x->unlink_dest_after_failed_open)
+               ? _("%s: replace %s, overriding mode %04lo (%s)? ")
+               : _("%s: unwritable %s (mode %04lo, %s); try anyway? "),
                program_name, quote (dst_name),
                (unsigned long int) (dst_sb->st_mode & CHMOD_MODE_BITS),
                &perms[1]);
@@ -1478,6 +1588,8 @@ overwrite_prompt (char const *dst_name, struct stat const *dst_sb)
       fprintf (stderr, _("%s: overwrite %s? "),
                program_name, quote (dst_name));
     }
+
+  return yesno ();
 }
 
 /* Initialize the hash table implementing a set of F_triple entries
@@ -1532,8 +1644,7 @@ abandon_move (const struct cp_options *x,
                || (x->interactive == I_UNSPECIFIED
                    && x->stdin_tty
                    && ! writable_destination (dst_name, dst_sb->st_mode)))
-              && (overwrite_prompt (dst_name, dst_sb), 1)
-              && ! yesno ()));
+              && ! overwrite_ok (x, dst_name, dst_sb)));
 }
 
 /* Print --verbose output on standard output, e.g. 'new' -> 'old'.
@@ -1557,18 +1668,23 @@ restore_default_fscreatecon_or_die (void)
            _("failed to restore the default file creation context"));
 }
 
-/* Create a hard link DST_NAME to SRC_NAME, honoring the REPLACE and
-   VERBOSE settings.  Return true upon success.  Otherwise, diagnose
-   the failure and return false.
-   If SRC_NAME is a symbolic link it will not be followed.  If the system
-   doesn't support hard links to symbolic links, then DST_NAME will
-   be created as a symbolic link to SRC_NAME.  */
+/* Create a hard link DST_NAME to SRC_NAME, honoring the REPLACE, VERBOSE and
+   DEREFERENCE settings.  Return true upon success.  Otherwise, diagnose the
+   failure and return false.  If SRC_NAME is a symbolic link, then it will not
+   be followed unless DEREFERENCE is true.
+   If the system doesn't support hard links to symbolic links, then DST_NAME
+   will be created as a symbolic link to SRC_NAME.  */
 static bool
 create_hard_link (char const *src_name, char const *dst_name,
-                  bool replace, bool verbose)
+                  bool replace, bool verbose, bool dereference)
 {
-  /* We want to guarantee that symlinks are not followed.  */
-  bool link_failed = (linkat (AT_FDCWD, src_name, AT_FDCWD, dst_name, 0) != 0);
+  /* We want to guarantee that symlinks are not followed, unless requested.  */
+  int flags = 0;
+  if (dereference)
+    flags = AT_SYMLINK_FOLLOW;
+
+  bool link_failed = (linkat (AT_FDCWD, src_name, AT_FDCWD, dst_name, flags)
+                      != 0);
 
   /* If the link failed because of an existing destination,
      remove that file and then call link again.  */
@@ -1581,7 +1697,8 @@ create_hard_link (char const *src_name, char const *dst_name,
         }
       if (verbose)
         printf (_("removed %s\n"), quote (dst_name));
-      link_failed = (linkat (AT_FDCWD, src_name, AT_FDCWD, dst_name, 0) != 0);
+      link_failed = (linkat (AT_FDCWD, src_name, AT_FDCWD, dst_name, flags)
+                     != 0);
     }
 
   if (link_failed)
@@ -1594,12 +1711,22 @@ create_hard_link (char const *src_name, char const *dst_name,
   return true;
 }
 
+/* Return true if the current file should be (tried to be) dereferenced:
+   either for DEREF_ALWAYS or for DEREF_COMMAND_LINE_ARGUMENTS in the case
+   where the current file is a COMMAND_LINE_ARG; otherwise return false.  */
+static inline bool _GL_ATTRIBUTE_PURE
+should_dereference (const struct cp_options *x, bool command_line_arg)
+{
+  return x->dereference == DEREF_ALWAYS
+         || (x->dereference == DEREF_COMMAND_LINE_ARGUMENTS
+             && command_line_arg);
+}
+
 /* Copy the file SRC_NAME to the file DST_NAME.  The files may be of
    any type.  NEW_DST should be true if the file DST_NAME cannot
    exist because its parent directory was just created; NEW_DST should
-   be false if DST_NAME might already exist.  DEVICE is the device
-   number of the parent directory, or 0 if the parent of this file is
-   not known.  ANCESTORS points to a linked, null terminated list of
+   be false if DST_NAME might already exist.  A nonnull PARENT describes the
+   parent directory.  ANCESTORS points to a linked, null terminated list of
    devices and inodes of parent directories of SRC_NAME.  COMMAND_LINE_ARG
    is true iff SRC_NAME was specified on the command line.
    FIRST_DIR_CREATED_PER_COMMAND_LINE_ARG is both input and output.
@@ -1609,7 +1736,7 @@ create_hard_link (char const *src_name, char const *dst_name,
 static bool
 copy_internal (char const *src_name, char const *dst_name,
                bool new_dst,
-               dev_t device,
+               struct stat const *parent,
                struct dir_list *ancestors,
                const struct cp_options *x,
                bool command_line_arg,
@@ -1668,6 +1795,8 @@ copy_internal (char const *src_name, char const *dst_name,
 
       record_file (x->src_info, src_name, &src_sb);
     }
+
+  bool dereference = should_dereference (x, command_line_arg);
 
   if (!new_dst)
     {
@@ -1747,7 +1876,7 @@ copy_internal (char const *src_name, char const *dst_name,
                       /* Note we currently replace DST_NAME unconditionally,
                          even if it was a newer separate file.  */
                       if (! create_hard_link (earlier_file, dst_name, true,
-                                              x->verbose))
+                                              x->verbose, dereference))
                         {
                           goto un_backup;
                         }
@@ -1761,7 +1890,7 @@ copy_internal (char const *src_name, char const *dst_name,
              returning early, and hence not copying/moving the file.
              This may be due to an interactive 'negative' reply to the
              prompt about the existing file.  It may also be due to the
-             use of the --reply=no option.
+             use of the --no-clobber option.
 
              cp and mv treat -i and -f differently.  */
           if (x->move_mode)
@@ -1788,8 +1917,7 @@ copy_internal (char const *src_name, char const *dst_name,
               if (! S_ISDIR (src_mode)
                   && (x->interactive == I_ALWAYS_NO
                       || (x->interactive == I_ASK_USER
-                          && (overwrite_prompt (dst_name, &dst_sb), 1)
-                          && ! yesno ())))
+                          && ! overwrite_ok (x, dst_name, &dst_sb))))
                 return true;
             }
 
@@ -2077,7 +2205,8 @@ copy_internal (char const *src_name, char const *dst_name,
         }
       else
         {
-          if (! create_hard_link (earlier_file, dst_name, true, x->verbose))
+          if (! create_hard_link (earlier_file, dst_name, true, x->verbose,
+                                  dereference))
             goto un_backup;
 
           return true;
@@ -2091,6 +2220,12 @@ copy_internal (char const *src_name, char const *dst_name,
           if (x->verbose && S_ISDIR (src_mode))
             emit_verbose (src_name, dst_name,
                           backup_succeeded ? dst_backup : NULL);
+
+          if (x->set_security_context)
+            {
+              /* -Z failures are only warnings currently.  */
+              (void) set_file_security_ctx (dst_name, false, true, x);
+            }
 
           if (rename_succeeded)
             *rename_succeeded = true;
@@ -2171,8 +2306,12 @@ copy_internal (char const *src_name, char const *dst_name,
 
       /* The rename attempt has failed.  Remove any existing destination
          file so that a cross-device 'mv' acts as if it were really using
-         the rename syscall.  */
-      if (unlink (dst_name) != 0 && errno != ENOENT)
+         the rename syscall.  Note both src and dst must both be directories
+         or not, and this is enforced above.  Therefore we check the src_mode
+         and operate on dst_name here as a tighter constraint and also because
+         src_mode is readily available here.  */
+      if ((S_ISDIR (src_mode) ? rmdir (dst_name) : unlink (dst_name)) != 0
+          && errno != ENOENT)
         {
           error (0, errno,
              _("inter-device move failed: %s to %s; unable to remove target"),
@@ -2197,40 +2336,12 @@ copy_internal (char const *src_name, char const *dst_name,
 
   delayed_ok = true;
 
-  if (x->preserve_security_context)
-    {
-      bool all_errors = !x->data_copy_required || x->require_preserve_context;
-      bool some_errors = !all_errors && !x->reduce_diagnostics;
-      security_context_t con;
-
-      if (0 <= lgetfilecon (src_name, &con))
-        {
-          if (setfscreatecon (con) < 0)
-            {
-              if (all_errors || (some_errors && !errno_unsupported (errno)))
-                error (0, errno,
-                       _("failed to set default file creation context to %s"),
-                       quote (con));
-              if (x->require_preserve_context)
-                {
-                  freecon (con);
-                  return false;
-                }
-            }
-          freecon (con);
-        }
-      else
-        {
-          if (all_errors || (some_errors && !errno_unsupported (errno)))
-            {
-              error (0, errno,
-                     _("failed to get security context of %s"),
-                     quote (src_name));
-            }
-          if (x->require_preserve_context)
-            return false;
-        }
-    }
+  /* If required, set the default security context for new files.
+     Also for existing files this is used as a reference
+     when copying the context with --preserve=context.
+     FIXME: Do we need to consider dst_mode_bits here?  */
+  if (! set_process_security_ctx (src_name, dst_name, src_mode, new_dst, x))
+    return false;
 
   if (S_ISDIR (src_mode))
     {
@@ -2308,10 +2419,21 @@ copy_internal (char const *src_name, char const *dst_name,
       else
         {
           omitted_permissions = 0;
+
+          /* For directories, the process global context could be reset for
+             descendents, so use it to set the context for existing dirs here.
+             This will also give earlier indication of failure to set ctx.  */
+          if (x->set_security_context || x->preserve_security_context)
+            if (! set_file_security_ctx (dst_name, x->preserve_security_context,
+                                         false, x))
+              {
+                if (x->require_preserve_context)
+                  goto un_backup;
+              }
         }
 
       /* Decide whether to copy the contents of the directory.  */
-      if (x->one_file_system && device != 0 && device != src_sb.st_dev)
+      if (x->one_file_system && parent && parent->st_dev != src_sb.st_dev)
         {
           /* Here, we are crossing a file system boundary and cp's -x option
              is in effect: so don't copy the contents of this directory. */
@@ -2373,18 +2495,16 @@ copy_internal (char const *src_name, char const *dst_name,
      should not follow the link.  We can approximate the desired
      behavior by skipping this hard-link creating block and instead
      copying the symlink, via the 'S_ISLNK'- copying code below.
-     LINK_FOLLOWS_SYMLINKS is tri-state; if it is -1, we don't know
-     how link() behaves, so we use the fallback case for safety.
 
      Note gnulib's linkat module, guarantees that the symlink is not
      dereferenced.  However its emulation currently doesn't maintain
      timestamps or ownership so we only call it when we know the
      emulation will not be needed.  */
   else if (x->hard_link
-           && !(LINK_FOLLOWS_SYMLINKS && S_ISLNK (src_mode)
+           && !(! CAN_HARDLINK_SYMLINKS && S_ISLNK (src_mode)
                 && x->dereference == DEREF_NEVER))
     {
-      if (! create_hard_link (src_name, dst_name, false, false))
+      if (! create_hard_link (src_name, dst_name, false, false, dereference))
         goto un_backup;
     }
   else if (S_ISREG (src_mode)
@@ -2496,6 +2616,19 @@ copy_internal (char const *src_name, char const *dst_name,
       goto un_backup;
     }
 
+  /* With -Z or --preserve=context, set the context for existing files.
+     Note this is done already for copy_reg() for reasons described therein.  */
+  if (!new_dst && !x->copy_as_regular && !S_ISDIR (src_mode)
+      && (x->set_security_context || x->preserve_security_context))
+    {
+      if (! set_file_security_ctx (dst_name, x->preserve_security_context,
+                                   false, x))
+        {
+           if (x->require_preserve_context)
+             goto un_backup;
+        }
+    }
+
   if (command_line_arg && x->dest_info)
     {
       /* Now that the destination file is very likely to exist,
@@ -2508,7 +2641,7 @@ copy_internal (char const *src_name, char const *dst_name,
   /* If we've just created a hard-link due to cp's --link option,
      we're done.  */
   if (x->hard_link && ! S_ISDIR (src_mode)
-      && !(LINK_FOLLOWS_SYMLINKS && S_ISLNK (src_mode)
+      && !(! CAN_HARDLINK_SYMLINKS && S_ISLNK (src_mode)
            && x->dereference == DEREF_NEVER))
     return delayed_ok;
 
@@ -2544,12 +2677,8 @@ copy_internal (char const *src_name, char const *dst_name,
         }
     }
 
-  /* The operations beyond this point may dereference a symlink.  */
-  if (dest_is_symlink)
-    return delayed_ok;
-
   /* Avoid calling chown if we know it's not necessary.  */
-  if (x->preserve_ownership
+  if (!dest_is_symlink && x->preserve_ownership
       && (new_dst || !SAME_OWNER_AND_GROUP (src_sb, dst_sb)))
     {
       switch (set_owner (x, dst_name, -1, &src_sb, new_dst, &dst_sb))
@@ -2563,11 +2692,16 @@ copy_internal (char const *src_name, char const *dst_name,
         }
     }
 
-  set_author (dst_name, -1, &src_sb);
-
+  /* Set xattrs after ownership as changing owners will clear capabilities.  */
   if (x->preserve_xattr && ! copy_attr (src_name, -1, dst_name, -1, x)
       && x->require_preserve_xattr)
     return false;
+
+  /* The operations beyond this point may dereference a symlink.  */
+  if (dest_is_symlink)
+    return delayed_ok;
+
+  set_author (dst_name, -1, &src_sb);
 
   if (x->preserve_mode || x->move_mode)
     {
@@ -2693,7 +2827,7 @@ copy (char const *src_name, char const *dst_name,
   top_level_dst_name = dst_name;
 
   bool first_dir_created_per_command_line_arg = false;
-  return copy_internal (src_name, dst_name, nonexistent_dst, 0, NULL,
+  return copy_internal (src_name, dst_name, nonexistent_dst, NULL, NULL,
                         options, true,
                         &first_dir_created_per_command_line_arg,
                         copy_into_self, rename_succeeded);
@@ -2718,7 +2852,7 @@ cp_options_default (struct cp_options *x)
     priv_freeset (pset);
   }
 #else
-  x->chown_privileges = x->owner_privileges = (geteuid () == 0);
+  x->chown_privileges = x->owner_privileges = (geteuid () == ROOT_UID);
 #endif
 }
 
@@ -2746,8 +2880,12 @@ owner_failure_ok (struct cp_options const *x)
   return ((errno == EPERM || errno == EINVAL) && !x->owner_privileges);
 }
 
-/* Return the user's umask, caching the result.  */
+/* Return the user's umask, caching the result.
 
+   FIXME: If the destination's parent directory has has a default ACL,
+   some operating systems (e.g., GNU/Linux's "POSIX" ACLs) use that
+   ACL's mask rather than the process umask.  Currently, the callers
+   of cached_umask incorrectly assume that this situation cannot occur.  */
 extern mode_t
 cached_umask (void)
 {

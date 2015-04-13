@@ -1,5 +1,5 @@
 /* 'rm' file deletion utility for GNU.
-   Copyright (C) 1988-2013 Free Software Foundation, Inc.
+   Copyright (C) 1988-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -141,10 +141,10 @@ Remove (unlink) the FILE(s).\n\
 "), stdout);
       fputs (_("\
   -I                    prompt once before removing more than three files, or\n\
-                          when removing recursively.  Less intrusive than -i,\n\
+                          when removing recursively; less intrusive than -i,\n\
                           while still giving protection against most mistakes\n\
       --interactive[=WHEN]  prompt according to WHEN: never, once (-I), or\n\
-                          always (-i).  Without WHEN, prompt always\n\
+                          always (-i); without WHEN, prompt always\n\
 "), stdout);
       fputs (_("\
       --one-file-system  when removing a hierarchy recursively, skip any\n\
@@ -244,7 +244,7 @@ main (int argc, char **argv)
           break;
 
         case 'I':
-          x.interactive = RMI_NEVER;
+          x.interactive = RMI_SOMETIMES;
           x.ignore_missing_files = false;
           prompt_once = true;
           break;
@@ -339,9 +339,13 @@ main (int argc, char **argv)
     {
       fprintf (stderr,
                (x.recursive
-                ? _("%s: remove all arguments recursively? ")
-                : _("%s: remove all arguments? ")),
-               program_name);
+                ? ngettext ("%s: remove %zu argument recursively? ",
+                            "%s: remove %zu arguments recursively? ",
+                            select_plural (n_files))
+                : ngettext ("%s: remove %zu argument? ",
+                            "%s: remove %zu arguments? ",
+                            select_plural (n_files))),
+               program_name, n_files);
       if (!yesno ())
         exit (EXIT_SUCCESS);
     }

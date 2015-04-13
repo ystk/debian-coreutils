@@ -1,5 +1,5 @@
 /* 'dir', 'vdir' and 'ls' directory listing programs for GNU.
-   Copyright (C) 1985-2013 Free Software Foundation, Inc.
+   Copyright (C) 1985-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -101,12 +101,14 @@
 #include "obstack.h"
 #include "quote.h"
 #include "quotearg.h"
+#include "smack.h"
 #include "stat-size.h"
 #include "stat-time.h"
 #include "strftime.h"
 #include "xstrtol.h"
 #include "areadlink.h"
 #include "mbsalign.h"
+#include "dircolors.h"
 
 /* Include <sys/capability.h> last to avoid a clash of <sys/types.h>
    include guards with some premature versions of libcap.
@@ -185,7 +187,7 @@ verify (sizeof filetype_letter - 1 == arg_directory + 1);
 enum acl_type
   {
     ACL_T_NONE,
-    ACL_T_SELINUX_ONLY,
+    ACL_T_LSM_CONTEXT_ONLY,
     ACL_T_YES
   };
 
@@ -205,8 +207,8 @@ struct fileinfo
        zero.  */
     mode_t linkmode;
 
-    /* SELinux security context.  */
-    security_context_t scontext;
+    /* security context.  */
+    char *scontext;
 
     bool stat_ok;
 
@@ -215,7 +217,7 @@ struct fileinfo
     bool linkok;
 
     /* For long listings, true if the file has an access control list,
-       or an SELinux security context.  */
+       or a security context.  */
     enum acl_type acl_type;
 
     /* For color listings, true if a regular file has capability info.  */
@@ -962,25 +964,33 @@ static struct obstack subdired_obstack;
 static struct obstack dev_ino_obstack;
 
 /* Push a pair onto the device/inode stack.  */
-#define DEV_INO_PUSH(Dev, Ino)						\
-  do									\
-    {									\
-      struct dev_ino *di;						\
-      obstack_blank (&dev_ino_obstack, sizeof (struct dev_ino));	\
-      di = -1 + (struct dev_ino *) obstack_next_free (&dev_ino_obstack); \
-      di->st_dev = (Dev);						\
-      di->st_ino = (Ino);						\
-    }									\
-  while (0)
+static void
+dev_ino_push (dev_t dev, ino_t ino)
+{
+  void *vdi;
+  struct dev_ino *di;
+  int dev_ino_size = sizeof *di;
+  obstack_blank (&dev_ino_obstack, dev_ino_size);
+  vdi = obstack_next_free (&dev_ino_obstack);
+  di = vdi;
+  di--;
+  di->st_dev = dev;
+  di->st_ino = ino;
+}
 
 /* Pop a dev/ino struct off the global dev_ino_obstack
    and return that struct.  */
 static struct dev_ino
 dev_ino_pop (void)
 {
-  assert (sizeof (struct dev_ino) <= obstack_object_size (&dev_ino_obstack));
-  obstack_blank (&dev_ino_obstack, -(int) (sizeof (struct dev_ino)));
-  return *(struct dev_ino *) obstack_next_free (&dev_ino_obstack);
+  void *vdi;
+  struct dev_ino *di;
+  int dev_ino_size = sizeof *di;
+  assert (dev_ino_size <= obstack_object_size (&dev_ino_obstack));
+  obstack_blank (&dev_ino_obstack, -dev_ino_size);
+  vdi = obstack_next_free (&dev_ino_obstack);
+  di = vdi;
+  return *di;
 }
 
 /* Note the use commented out below:
@@ -1978,7 +1988,7 @@ decode_switches (int argc, char **argv)
   if (file_type <= indicator_style)
     {
       char const *p;
-      for (p = "*=>@|" + indicator_style - file_type; *p; p++)
+      for (p = &"*=>@|"[indicator_style - file_type]; *p; p++)
         set_char_quoting (filename_quoting_options, *p, 1);
     }
 
@@ -2317,6 +2327,30 @@ enum parse_state
     PS_FAIL
   };
 
+
+/* Check if the content of TERM is a valid name in dircolors.  */
+
+static bool
+known_term_type (void)
+{
+  char const *term = getenv ("TERM");
+  if (! term || ! *term)
+    return false;
+
+  char const *line = G_line;
+  while (line - G_line < sizeof (G_line))
+    {
+      if (STRNCMP_LIT (line, "TERM ") == 0)
+        {
+          if (STREQ (term, line + 5))
+            return true;
+        }
+      line += strlen (line) + 1;
+    }
+
+  return false;
+}
+
 static void
 parse_ls_color (void)
 {
@@ -2327,7 +2361,16 @@ parse_ls_color (void)
   struct color_ext_type *ext;	/* Extension we are working on */
 
   if ((p = getenv ("LS_COLORS")) == NULL || *p == '\0')
-    return;
+    {
+      /* LS_COLORS takes precedence, but if that's not set then
+         honor the COLORTERM and TERM env variables so that
+         we only go with the internal ANSI color codes if the
+         former is non empty or the latter is set to a known value.  */
+      char const *colorterm = getenv ("COLORTERM");
+      if (! (colorterm && *colorterm) && ! known_term_type ())
+        print_with_color = false;
+      return;
+    }
 
   ext = NULL;
   strcpy (label, "??");
@@ -2542,7 +2585,7 @@ print_dir (char const *name, char const *realname, bool command_line_arg)
           return;
         }
 
-      DEV_INO_PUSH (dir_stat.st_dev, dir_stat.st_ino);
+      dev_ino_push (dir_stat.st_dev, dir_stat.st_ino);
     }
 
   if (recursive || print_dir_name)
@@ -2638,7 +2681,7 @@ print_dir (char const *name, char const *realname, bool command_line_arg)
      contents listed rather than being mentioned here as files.  */
 
   if (recursive)
-    extract_dirs_from_files (name, command_line_arg);
+    extract_dirs_from_files (name, false);
 
   if (format == long_format || print_block_size)
     {
@@ -2734,7 +2777,7 @@ has_capability (char const *name)
 }
 #else
 static bool
-has_capability (char const *name ATTRIBUTE_UNUSED)
+has_capability (char const *name _GL_UNUSED)
 {
   errno = ENOTSUP;
   return false;
@@ -2749,7 +2792,12 @@ free_ent (struct fileinfo *f)
   free (f->name);
   free (f->linkname);
   if (f->scontext != UNKNOWN_SECURITY_CONTEXT)
-    freecon (f->scontext);
+    {
+      if (is_smack_enabled ())
+        free (f->scontext);
+      else
+        freecon (f->scontext);
+    }
 }
 
 /* Empty the table of files.  */
@@ -2790,8 +2838,8 @@ errno_unsupported (int err)
 }
 
 /* Cache *getfilecon failure, when it's trivial to do so.
-   Like getfilecon/lgetfilecon, but when F's st_dev says it's on a known-
-   SELinux-challenged file system, fail with ENOTSUP immediately.  */
+   Like getfilecon/lgetfilecon, but when F's st_dev says it's doesn't
+   support getting the security context, fail with ENOTSUP immediately.  */
 static int
 getfilecon_cache (char const *file, struct fileinfo *f, bool deref)
 {
@@ -2804,9 +2852,16 @@ getfilecon_cache (char const *file, struct fileinfo *f, bool deref)
       errno = ENOTSUP;
       return -1;
     }
-  int r = (deref
-           ? getfilecon (file, &f->scontext)
-           : lgetfilecon (file, &f->scontext));
+  int r = 0;
+#ifdef HAVE_SMACK
+  if (is_smack_enabled ())
+    r = smack_new_label_from_path (file, "security.SMACK64", deref,
+                                   &f->scontext);
+  else
+#endif
+    r = (deref
+         ? getfilecon (file, &f->scontext)
+         : lgetfilecon (file, &f->scontext));
   if (r < 0 && errno_unsupported (errno))
     unsupported_device = f->stat.st_dev;
   return r;
@@ -2997,13 +3052,18 @@ gobble_file (char const *name, enum filetype type, ino_t inode,
 
       if (format == long_format || print_scontext)
         {
-          bool have_selinux = false;
+          bool have_scontext = false;
           bool have_acl = false;
           int attr_len = getfilecon_cache (absolute_name, f, do_deref);
           err = (attr_len < 0);
 
           if (err == 0)
-            have_selinux = ! STREQ ("unlabeled", f->scontext);
+            {
+              if (is_smack_enabled ())
+                have_scontext = ! STREQ ("_", f->scontext);
+              else
+                have_scontext = ! STREQ ("unlabeled", f->scontext);
+            }
           else
             {
               f->scontext = UNKNOWN_SECURITY_CONTEXT;
@@ -3023,10 +3083,10 @@ gobble_file (char const *name, enum filetype type, ino_t inode,
               have_acl = (0 < n);
             }
 
-          f->acl_type = (!have_selinux && !have_acl
+          f->acl_type = (!have_scontext && !have_acl
                          ? ACL_T_NONE
-                         : (have_selinux && !have_acl
-                            ? ACL_T_SELINUX_ONLY
+                         : (have_scontext && !have_acl
+                            ? ACL_T_LSM_CONTEXT_ONLY
                             : ACL_T_YES));
           any_has_acl |= f->acl_type != ACL_T_NONE;
 
@@ -3773,7 +3833,7 @@ print_long_format (const struct fileinfo *f)
   struct tm *when_local;
 
   /* Compute the mode string, except remove the trailing space if no
-     file in this directory has an ACL or SELinux security context.  */
+     file in this directory has an ACL or security context.  */
   if (f->stat_ok)
     filemodestring (&f->stat, modebuf);
   else
@@ -3784,7 +3844,7 @@ print_long_format (const struct fileinfo *f)
     }
   if (! any_has_acl)
     modebuf[10] = '\0';
-  else if (f->acl_type == ACL_T_SELINUX_ONLY)
+  else if (f->acl_type == ACL_T_LSM_CONTEXT_ONLY)
     modebuf[10] = '.';
   else if (f->acl_type == ACL_T_YES)
     modebuf[10] = '+';
@@ -4732,21 +4792,21 @@ Sort entries alphabetically if none of -cftuvSUX nor --sort is specified.\n\
   -b, --escape               print C-style escapes for nongraphic characters\n\
 "), stdout);
       fputs (_("\
-      --block-size=SIZE      scale sizes by SIZE before printing them.  E.g.,\n\
+      --block-size=SIZE      scale sizes by SIZE before printing them; e.g.,\n\
                                '--block-size=M' prints sizes in units of\n\
-                               1,048,576 bytes.  See SIZE format below.\n\
+                               1,048,576 bytes; see SIZE format below\n\
   -B, --ignore-backups       do not list implied entries ending with ~\n\
   -c                         with -lt: sort by, and show, ctime (time of last\n\
-                               modification of file status information)\n\
-                               with -l: show ctime and sort by name\n\
+                               modification of file status information);\n\
+                               with -l: show ctime and sort by name;\n\
                                otherwise: sort by ctime, newest first\n\
 "), stdout);
       fputs (_("\
   -C                         list entries by columns\n\
-      --color[=WHEN]         colorize the output.  WHEN defaults to 'always'\n\
-                               or can be 'never' or 'auto'.  More info below\n\
-  -d, --directory            list directory entries instead of contents,\n\
-                               and do not dereference symbolic links\n\
+      --color[=WHEN]         colorize the output; WHEN can be 'never', 'auto',\
+\n\
+                               or 'always' (the default); more info below\n\
+  -d, --directory            list directories themselves, not their contents\n\
   -D, --dired                generate output designed for Emacs' dired mode\n\
 "), stdout);
       fputs (_("\
@@ -4762,13 +4822,13 @@ Sort entries alphabetically if none of -cftuvSUX nor --sort is specified.\n\
 "), stdout);
       fputs (_("\
       --group-directories-first\n\
-                             group directories before files.\n\
-                               augment with a --sort option, but any\n\
+                             group directories before files;\n\
+                               can be augmented with a --sort option, but any\n\
                                use of --sort=none (-U) disables grouping\n\
 "), stdout);
       fputs (_("\
   -G, --no-group             in a long listing, don't print group names\n\
-  -h, --human-readable       with -l, print sizes in human readable format\n\
+  -h, --human-readable       with -l and/or -s, print human readable sizes\n\
                                (e.g., 1K 234M 2G)\n\
       --si                   likewise, but use powers of 1000 not 1024\n\
 "), stdout);
@@ -4777,7 +4837,7 @@ Sort entries alphabetically if none of -cftuvSUX nor --sort is specified.\n\
                              follow symbolic links listed on the command line\n\
       --dereference-command-line-symlink-to-dir\n\
                              follow each command line symbolic link\n\
-                             that points to a directory\n\
+                               that points to a directory\n\
       --hide=PATTERN         do not list implied entries matching shell PATTERN\
 \n\
                                (overridden by -a or -A)\n\
@@ -4790,7 +4850,7 @@ Sort entries alphabetically if none of -cftuvSUX nor --sort is specified.\n\
   -i, --inode                print the index number of each file\n\
   -I, --ignore=PATTERN       do not list implied entries matching shell PATTERN\
 \n\
-  -k, --kibibytes            use 1024-byte blocks\n\
+  -k, --kibibytes            default to 1024-byte blocks for disk usage\n\
 "), stdout);
       fputs (_("\
   -l                         use a long listing format\n\
@@ -4809,9 +4869,10 @@ Sort entries alphabetically if none of -cftuvSUX nor --sort is specified.\n\
                              append / indicator to directories\n\
 "), stdout);
       fputs (_("\
-  -q, --hide-control-chars   print ? instead of non graphic characters\n\
-      --show-control-chars   show non graphic characters as-is (default\n\
-                             unless program is 'ls' and output is a terminal)\n\
+  -q, --hide-control-chars   print ? instead of nongraphic characters\n\
+      --show-control-chars   show nongraphic characters as-is (the default,\n\
+                               unless program is 'ls' and output is a terminal)\
+\n\
   -Q, --quote-name           enclose entry names in double quotes\n\
       --quoting-style=WORD   use quoting style WORD for entry names:\n\
                                literal, locale, shell, shell-always, c, escape\
@@ -4824,30 +4885,33 @@ Sort entries alphabetically if none of -cftuvSUX nor --sort is specified.\n\
 "), stdout);
       fputs (_("\
   -S                         sort by file size\n\
-      --sort=WORD            sort by WORD instead of name: none -U,\n\
-                             extension -X, size -S, time -t, version -v\n\
-      --time=WORD            with -l, show time as WORD instead of modification\
-\n\
-                             time: atime -u, access -u, use -u, ctime -c,\n\
-                             or status -c; use specified time as sort key\n\
-                             if --sort=time\n\
+      --sort=WORD            sort by WORD instead of name: none (-U), size (-S)\
+,\n\
+                               time (-t), version (-v), extension (-X)\n\
+      --time=WORD            with -l, show time as WORD instead of default\n\
+                               modification time: atime or access or use (-u)\n\
+                               ctime or status (-c); also use specified time\n\
+                               as sort key if --sort=time\n\
 "), stdout);
       fputs (_("\
       --time-style=STYLE     with -l, show times using style STYLE:\n\
-                             full-iso, long-iso, iso, locale, +FORMAT.\n\
-                             FORMAT is interpreted like 'date'; if FORMAT is\n\
-                             FORMAT1<newline>FORMAT2, FORMAT1 applies to\n\
-                             non-recent files and FORMAT2 to recent files;\n\
-                             if STYLE is prefixed with 'posix-', STYLE\n\
-                             takes effect only outside the POSIX locale\n\
+                               full-iso, long-iso, iso, locale, or +FORMAT;\n\
+                               FORMAT is interpreted like in 'date'; if FORMAT\
+\n\
+                               is FORMAT1<newline>FORMAT2, then FORMAT1 applies\
+\n\
+                               to non-recent files and FORMAT2 to recent files;\
+\n\
+                               if STYLE is prefixed with 'posix-', STYLE\n\
+                               takes effect only outside the POSIX locale\n\
 "), stdout);
       fputs (_("\
   -t                         sort by modification time, newest first\n\
   -T, --tabsize=COLS         assume tab stops at each COLS instead of 8\n\
 "), stdout);
       fputs (_("\
-  -u                         with -lt: sort by, and show, access time\n\
-                               with -l: show access time and sort by name\n\
+  -u                         with -lt: sort by, and show, access time;\n\
+                               with -l: show access time and sort by name;\n\
                                otherwise: sort by access time\n\
   -U                         do not sort; list entries in directory order\n\
   -v                         natural sort of (version) numbers within text\n\
@@ -4856,7 +4920,7 @@ Sort entries alphabetically if none of -cftuvSUX nor --sort is specified.\n\
   -w, --width=COLS           assume screen width instead of current value\n\
   -x                         list entries by lines instead of by columns\n\
   -X                         sort alphabetically by entry extension\n\
-  -Z, --context              print any SELinux security context of each file\n\
+  -Z, --context              print any security context of each file\n\
   -1                         list one file per line\n\
 "), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);

@@ -1,5 +1,5 @@
 /* chcon -- change security context of files
-   Copyright (C) 2005-2013 Free Software Foundation, Inc.
+   Copyright (C) 2005-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -91,7 +91,7 @@ static struct option const long_options[] =
    setting any portions selected via the global variables, specified_user,
    specified_role, etc.  */
 static int
-compute_context_from_mask (security_context_t context, context_t *ret)
+compute_context_from_mask (char const *context, context_t *ret)
 {
   bool ok = true;
   context_t new_context = context_new (context);
@@ -140,9 +140,9 @@ compute_context_from_mask (security_context_t context, context_t *ret)
 static int
 change_file_context (int fd, char const *file)
 {
-  security_context_t file_context = NULL;
-  context_t context;
-  security_context_t context_string;
+  char *file_context = NULL;
+  context_t context IF_LINT (= 0);
+  char const * context_string;
   int errors = 0;
 
   if (specified_context == NULL)
@@ -170,22 +170,19 @@ change_file_context (int fd, char const *file)
 
       if (compute_context_from_mask (file_context, &context))
         return 1;
+
+      context_string = context_str (context);
     }
   else
     {
-      /* FIXME: this should be done exactly once, in main.  */
-      context = context_new (specified_context);
-      if (!context)
-        abort ();
+      context_string = specified_context;
     }
-
-  context_string = context_str (context);
 
   if (file_context == NULL || ! STREQ (context_string, file_context))
     {
       int fail = (affect_symlink_referent
-                  ?  setfileconat (fd, file, context_string)
-                  : lsetfileconat (fd, file, context_string));
+                  ?  setfileconat (fd, file, se_const (context_string))
+                  : lsetfileconat (fd, file, se_const (context_string)));
 
       if (fail)
         {
@@ -195,8 +192,11 @@ change_file_context (int fd, char const *file)
         }
     }
 
-  context_free (context);
-  freecon (file_context);
+  if (specified_context == NULL)
+    {
+      context_free (context);
+      freecon (file_context);
+    }
 
   return errors;
 }
@@ -355,7 +355,7 @@ Usage: %s [OPTION]... CONTEXT FILE...\n\
 "),
         program_name, program_name, program_name);
       fputs (_("\
-Change the security context of each FILE to CONTEXT.\n\
+Change the SELinux security context of each FILE to CONTEXT.\n\
 With --reference, change the security context of each FILE to that of RFILE.\n\
 "), stdout);
 
@@ -409,8 +409,6 @@ one takes effect.\n\
 int
 main (int argc, char **argv)
 {
-  security_context_t ref_context = NULL;
-
   /* Bit flags that control how fts works.  */
   int bit_flags = FTS_PHYSICAL;
 
@@ -542,6 +540,8 @@ main (int argc, char **argv)
 
   if (reference_file)
     {
+      char *ref_context = NULL;
+
       if (getfilecon (reference_file, &ref_context) < 0)
         error (EXIT_FAILURE, errno, _("failed to get security context of %s"),
                quote (reference_file));
@@ -555,13 +555,10 @@ main (int argc, char **argv)
     }
   else
     {
-      context_t context;
       specified_context = argv[optind++];
-      context = context_new (specified_context);
-      if (!context)
-        error (EXIT_FAILURE, 0, _("invalid context: %s"),
+      if (security_check_context (se_const (specified_context)) < 0)
+        error (EXIT_FAILURE, errno, _("invalid context: %s"),
                quotearg_colon (specified_context));
-      context_free (context);
     }
 
   if (reference_file && component_specified)

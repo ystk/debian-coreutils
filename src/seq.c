@@ -1,5 +1,5 @@
 /* seq - print sequence of numbers to standard output.
-   Copyright (C) 1994-2013 Free Software Foundation, Inc.
+   Copyright (C) 1994-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -87,6 +87,8 @@ Print numbers from FIRST to LAST, in steps of INCREMENT.\n\
 \n\
 If FIRST or INCREMENT is omitted, it defaults to 1.  That is, an\n\
 omitted INCREMENT defaults to 1 even when LAST is smaller than FIRST.\n\
+The sequence of numbers ends when the sum of the current number and\n\
+INCREMENT would become greater than LAST.\n\
 FIRST, INCREMENT, and LAST are interpreted as floating point values.\n\
 INCREMENT is usually positive if FIRST is smaller than LAST, and\n\
 INCREMENT is usually negative if FIRST is greater than LAST.\n\
@@ -602,7 +604,7 @@ main (int argc, char **argv)
       if (asprintf (&s2, "%0.Lf", last.value) < 0)
         xalloc_die ();
 
-      if (seq_fast (s1, s2))
+      if (*s1 != '-' && *s2 != '-' && seq_fast (s1, s2))
         {
           IF_LINT (free (s1));
           IF_LINT (free (s2));

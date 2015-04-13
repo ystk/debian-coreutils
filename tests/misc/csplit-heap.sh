@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure that csplit uses a bounded amount of memory
 
-# Copyright (C) 2010-2013 Free Software Foundation, Inc.
+# Copyright (C) 2010-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ csplit
 
-require_ulimit_
+require_ulimit_v_
 
 (
  ulimit -v 20000

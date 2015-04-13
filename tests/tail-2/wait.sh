@@ -2,7 +2,7 @@
 # Make sure that 'tail -f' returns immediately if a file doesn't exist
 # while 'tail -F' waits for it to appear.
 
-# Copyright (C) 2003-2013 Free Software Foundation, Inc.
+# Copyright (C) 2003-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -51,8 +51,8 @@ for inotify in ---disable-inotify ''; do
 
   grep -Ev 'inotify (resources exhausted|cannot be used)' tail.err > x
   mv x tail.err
-  test -s tail.err && fail=1
-  :>tail.err
+  compare /dev/null tail.err || fail=1
+  >tail.err
 
   tail_F()
   {

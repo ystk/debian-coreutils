@@ -1,7 +1,7 @@
 # -*- autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-# Copyright (C) 1991-2013 Free Software Foundation, Inc.
+# Copyright (C) 1991-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -100,7 +100,9 @@ AC_ARG_ENABLE([gcc-warnings],
    # we're running from a git repo, then auto enable the warnings.
    gl_gcc_warnings=no
    gl_GCC_VERSION_IFELSE([4], [6],
-                         [test -d "$srcdir"/.git && gl_gcc_warnings=yes])]
+                         [test -d "$srcdir"/.git \
+                          && ! test -f "$srcdir"/.tarball-version \
+                          && gl_gcc_warnings=yes])]
 )
 
 if test "$gl_gcc_warnings" = yes; then
@@ -123,7 +125,7 @@ if test "$gl_gcc_warnings" = yes; then
   nw="$nw -Wunreachable-code"       # Too many warnings for now
   nw="$nw -Wpadded"                 # Our structs are not padded
   nw="$nw -Wredundant-decls"        # openat.h declares e.g., mkdirat
-  nw="$nw -Wlogical-op"             # any use of fwrite provokes this
+  nw="$nw -Wlogical-op"             # Too many warnings until GCC 4.8.0
   nw="$nw -Wformat-nonliteral"      # who.c and pinky.c strftime uses
   nw="$nw -Wvla"                    # warnings in gettext.h
   nw="$nw -Wnested-externs"         # use of XARGMATCH/verify_function__
@@ -149,20 +151,27 @@ if test "$gl_gcc_warnings" = yes; then
   done
   gl_WARN_ADD([-Wno-sign-compare])     # Too many warnings for now
   gl_WARN_ADD([-Wno-unused-parameter]) # Too many warnings for now
-  gl_WARN_ADD([-Wsuggest-attribute=const])
-  gl_WARN_ADD([-Wsuggest-attribute=noreturn])
   gl_WARN_ADD([-Wno-format-nonliteral])
 
-  # Enable this warning only with gcc-4.7 and newer.  With 4.6.2 20111027,
-  # it suggests test.c's advance function may be pure, even though it
-  # increments a global variable.  Oops.
-  # Normally we'd write code to test for the precise failure, but that
-  # requires a relatively large input to make gcc exhibit the failure.
-  gl_GCC_VERSION_IFELSE([4], [7], [gl_WARN_ADD([-Wsuggest-attribute=pure])])
+  # Enable this warning only with gcc-4.8 and newer.  Before that
+  # bounds checking as done in truncate.c was incorrectly flagged.
+  # See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=43772
+  gl_GCC_VERSION_IFELSE([4], [8], [gl_WARN_ADD([-Wlogical-op])])
 
-  # In spite of excluding -Wlogical-op above, it is enabled, as of
-  # gcc 4.5.0 20090517, and it provokes warnings in cat.c, dd.c, truncate.c
-  gl_WARN_ADD([-Wno-logical-op])
+  # clang is unduly picky about some things.
+  AC_CACHE_CHECK([whether the compiler is clang], [utils_cv_clang],
+    [AC_COMPILE_IFELSE(
+       [AC_LANG_PROGRAM([[
+            #ifndef __clang__
+              #error "not clang"
+            #endif
+          ]])],
+       [utils_cv_clang=yes],
+       [utils_cv_clang=no])])
+  if test $utils_cv_clang = yes; then
+    gl_WARN_ADD([-Wno-format-extra-args])
+    gl_WARN_ADD([-Wno-tautological-constant-out-of-range-compare])
+  fi
 
   gl_WARN_ADD([-fdiagnostics-show-option])
   gl_WARN_ADD([-funit-at-a-time])
@@ -203,6 +212,36 @@ if test "$gl_gcc_warnings" = yes; then
                          [$GNULIB_WARN_CFLAGS], [$nw])
   AC_SUBST([GNULIB_TEST_WARN_CFLAGS])
 fi
+
+AC_ARG_ENABLE([single-binary],
+  [AS_HELP_STRING([--enable-single-binary=[shebangs|symlinks]],
+     [Compile all the tools in a single binary, reducing the overall size.
+      When compiled this way, shebangs (default when enabled) or symlinks are
+      installed for each tool that points to the single binary.])],
+  [gl_single_binary=no ;
+   case $enableval in
+     yes) gl_single_binary=shebangs ;;
+     no|shebangs|symlinks) gl_single_binary=$enableval ;;
+     *)      AC_MSG_ERROR([bad value $enableval for single-binary option.
+                           Options are: symlinks, shebangs, no.]) ;;
+   esac],
+  [gl_single_binary=no]
+)
+AC_ARG_ENABLE([single-binary-exceptions],
+  [AS_HELP_STRING([--enable-single-binary-exceptions=PROG_LIST],
+     [When used with --enable-single-binary, exclude the PROG_LIST from
+      it, so these programs are compiled as separated files
+      (comma-separated, default none))])],
+  [gl_single_binary_exceptions=$enableval],
+  [gl_single_binary_exceptions=]
+)
+if test "$gl_single_binary" = 'symlinks'; then
+  if ! test "`echo ls | sed \"$program_transform_name\"`" = 'ls'; then
+    AC_MSG_ERROR([program name transformations are not currently supported
+                  with --enable-single-binary=symlinks.])
+  fi
+fi
+AM_CONDITIONAL([SINGLE_BINARY], [test "$gl_single_binary" != no])
 
 AC_FUNC_FORK
 
@@ -259,6 +298,13 @@ fi])dnl
 AC_MSG_RESULT([$utils_cv_localtime_cache])
 if test $utils_cv_localtime_cache = yes; then
   AC_DEFINE([LOCALTIME_CACHE], [1], [FIXME])
+fi
+
+# Assume that if getattrat exists, it's compatible with Solaris 11.
+AC_CHECK_FUNCS([getattrat])
+if test $ac_cv_func_getattrat = yes; then
+  LIB_NVPAIR=-lnvpair
+  AC_SUBST([LIB_NVPAIR])
 fi
 
 # SCO-ODT-3.0 is reported to need -los to link programs using initgroups
@@ -408,14 +454,26 @@ if test $gl_cv_list_mounted_fs = yes && test $gl_cv_fs_space = yes; then
   gl_ADD_PROG([optional_bin_progs], [df])
 fi
 
-# Limit stdbuf to ELF systems with GCC
-AC_MSG_CHECKING([whether this is an ELF system])
-AC_EGREP_CPP([yes], [#if __ELF__
-yes
-#endif], [elf_sys=yes], [elf_sys=no])
-AC_MSG_RESULT([$elf_sys])
-if test "$elf_sys" = "yes" && \
-   test "$GCC" = "yes"; then
+AC_MSG_CHECKING([whether this is system supports stdbuf])
+AC_COMPILE_IFELSE(
+  [AC_LANG_PROGRAM([[
+    static int stdbuf = 0;
+
+    /* Restrict to ELF systems with compilers
+       that support the constructor attribute.  */
+    void __attribute__ ((constructor))
+    stdbuf_init (void)
+    {
+      #if __ELF__
+        stdbuf = 1;
+      #endif
+    }]],[[
+    return !(stdbuf == 1);]])
+  ],
+  [stdbuf_supported=yes],
+  [stdbuf_supported=no])
+AC_MSG_RESULT([$stdbuf_supported])
+if test "$stdbuf_supported" = "yes"; then
   gl_ADD_PROG([optional_bin_progs], [stdbuf])
 fi
 
@@ -451,6 +509,52 @@ man1_MANS=`
 # a distribution tarball.
 EXTRA_MANS=`for p in $no_install_progs_default; do echo man/$p.1; done`
 
+# Replace all the programs by the single binary and symlinks if specified.
+single_binary_progs=
+single_binary_libs=
+single_binary_deps=
+single_binary_install_type=
+if test "$gl_single_binary" != no; then
+  man1_MANS="$man1_MANS man/coreutils.1"
+  # Convert the list to a space separated list
+  gl_single_binary_exceptions=`echo $gl_single_binary_exceptions | tr ',' ' '`
+
+  single_binary_progs=`echo $optional_bin_progs`
+  optional_bin_progs="coreutils"
+  for prog in $gl_single_binary_exceptions; do
+    # Fail if requested to exclude a program than was not part of coreutils.
+    case " $single_binary_progs " in
+      *" $prog "*)
+        gl_REMOVE_PROG([single_binary_progs], [$prog]) ;
+        gl_ADD_PROG([optional_bin_progs], [$prog]) ;;
+      *) AC_MSG_ERROR(['$prog' is not being compiled.]) ;;
+    esac
+  done
+
+  # single_binary_libs holds the list of libs required by the selected
+  # programs, such as for example -lrt.
+  single_binary_libs=`
+    for p in $single_binary_progs; do
+      # Convert '[' to '_'
+      test x"$p" = x'@<:@' && p='_'
+      printf '$(src_libsinglebin_%s_a_ldadd) ' "$p"
+    done`
+  # single_binary_deps holds the list of libsinglebin_*.a files that have the
+  # compiled code of each selected program in a "library" format.
+  single_binary_deps=`
+    for p in $single_binary_progs; do
+      # Convert '[' to '_'
+      test x"$p" = x'@<:@' && p='_'
+      printf 'src/libsinglebin_%s.a ' "$p"
+    done`
+  single_binary_install_type="$gl_single_binary"
+fi
+AC_SUBST([single_binary_progs], [$single_binary_progs])
+AC_SUBST([single_binary_libs], [$single_binary_libs])
+AC_SUBST([single_binary_deps], [$single_binary_deps])
+AC_SUBST([single_binary_install_type], [$single_binary_install_type])
+
+
 # The programs built and installed by "make && make install".
 # Since this is AC_SUBST'd, Automake won't be able to perform rewrite
 # with $(EXEEXT) appending on it, so we have to do it ourselves -- in
@@ -482,6 +586,15 @@ AM_GNU_GETTEXT_VERSION([0.18.1])
 
 # For a test of uniq: it uses the $LOCALE_FR envvar.
 gt_LOCALE_FR
+
+# If doing dynamic dependency checking, create man/dynamic-deps.mk so
+# that 'make' doesn't complain about its being absent.  Use an old
+# time stamp, so that 'make' thinks it is older than 'Makefile'.
+# Use time stamp 1, since some 'make' implementations treat 0 specially.
+# Use 'touch -t', since older 'touch' implementations don't grok -d.
+AC_CONFIG_COMMANDS([man/dynamic-deps.mk],
+  [test -n "$AMDEP_TRUE" ||
+   TZ=UTC0 touch -t 197001010000.01 man/dynamic-deps.mk])
 
 AC_CONFIG_FILES(
   Makefile

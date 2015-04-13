@@ -1,5 +1,5 @@
 /* split.c -- split a file into pieces.
-   Copyright (C) 1988-2013 Free Software Foundation, Inc.
+   Copyright (C) 1988-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -33,7 +33,6 @@
 #include "error.h"
 #include "fd-reopen.h"
 #include "fcntl--.h"
-#include "full-read.h"
 #include "full-write.h"
 #include "ioblksize.h"
 #include "quote.h"
@@ -215,15 +214,15 @@ is -, read standard input.\n\
 
       fprintf (stdout, _("\
   -a, --suffix-length=N   generate suffixes of length N (default %d)\n\
-      --additional-suffix=SUFFIX  append an additional SUFFIX to file names.\n\
+      --additional-suffix=SUFFIX  append an additional SUFFIX to file names\n\
   -b, --bytes=SIZE        put SIZE bytes per output file\n\
   -C, --line-bytes=SIZE   put at most SIZE bytes of lines per output file\n\
-  -d, --numeric-suffixes[=FROM]  use numeric suffixes instead of alphabetic.\n\
-                                   FROM changes the start value (default 0).\n\
+  -d, --numeric-suffixes[=FROM]  use numeric suffixes instead of alphabetic;\n\
+                                   FROM changes the start value (default 0)\n\
   -e, --elide-empty-files  do not generate empty output files with '-n'\n\
       --filter=COMMAND    write to shell COMMAND; file name is $FILE\n\
   -l, --lines=NUMBER      put NUMBER lines per output file\n\
-  -n, --number=CHUNKS     generate CHUNKS output files.  See below\n\
+  -n, --number=CHUNKS     generate CHUNKS output files; see explanation below\n\
   -u, --unbuffered        immediately copy input to output with '-n r/...'\n\
 "), DEFAULT_SUFFIX_LENGTH);
       fputs (_("\
@@ -526,8 +525,8 @@ bytes_split (uintmax_t n_bytes, char *buf, size_t bufsize, uintmax_t max_files)
 
   do
     {
-      n_read = full_read (STDIN_FILENO, buf, bufsize);
-      if (n_read < bufsize && errno)
+      n_read = safe_read (STDIN_FILENO, buf, bufsize);
+      if (n_read == SAFE_READ_ERROR)
         error (EXIT_FAILURE, errno, "%s", infile);
       bp_out = buf;
       to_read = n_read;
@@ -562,7 +561,7 @@ bytes_split (uintmax_t n_bytes, char *buf, size_t bufsize, uintmax_t max_files)
             }
         }
     }
-  while (n_read == bufsize);
+  while (n_read);
 
   /* Ensure NUMBER files are created, which truncates
      any existing files or notifies any consumers on fifos.
@@ -584,8 +583,8 @@ lines_split (uintmax_t n_lines, char *buf, size_t bufsize)
 
   do
     {
-      n_read = full_read (STDIN_FILENO, buf, bufsize);
-      if (n_read < bufsize && errno)
+      n_read = safe_read (STDIN_FILENO, buf, bufsize);
+      if (n_read == SAFE_READ_ERROR)
         error (EXIT_FAILURE, errno, "%s", infile);
       bp = bp_out = buf;
       eob = bp + n_read;
@@ -614,64 +613,117 @@ lines_split (uintmax_t n_lines, char *buf, size_t bufsize)
             }
         }
     }
-  while (n_read == bufsize);
+  while (n_read);
 }
-
+
 /* Split into pieces that are as large as possible while still not more
    than N_BYTES bytes, and are split on line boundaries except
-   where lines longer than N_BYTES bytes occur.
-   FIXME: Allow N_BYTES to be any uintmax_t value, and don't require a
-   buffer of size N_BYTES, in case N_BYTES is very large.  */
+   where lines longer than N_BYTES bytes occur. */
 
 static void
-line_bytes_split (size_t n_bytes)
+line_bytes_split (uintmax_t n_bytes, char *buf, size_t bufsize)
 {
-  char *bp;
-  bool eof = false;
-  size_t n_buffered = 0;
-  char *buf = xmalloc (n_bytes);
+  size_t n_read;
+  uintmax_t n_out = 0;      /* for each split.  */
+  size_t n_hold = 0;
+  char *hold = NULL;        /* for lines > bufsize.  */
+  size_t hold_size = 0;
+  bool split_line = false;  /* Whether a \n was output in a split.  */
 
   do
     {
-      /* Fill up the full buffer size from the input file.  */
-
-      size_t to_read = n_bytes - n_buffered;
-      size_t n_read = full_read (STDIN_FILENO, buf + n_buffered, to_read);
-      if (n_read < to_read && errno)
+      n_read = safe_read (STDIN_FILENO, buf, bufsize);
+      if (n_read == SAFE_READ_ERROR)
         error (EXIT_FAILURE, errno, "%s", infile);
-
-      n_buffered += n_read;
-      if (n_buffered != n_bytes)
+      size_t n_left = n_read;
+      char *sob = buf;
+      while (n_left)
         {
-          if (n_buffered == 0)
-            break;
-          eof = true;
+          size_t split_rest = 0;
+          char *eoc = NULL;
+          char *eol;
+
+          /* Determine End Of Chunk and/or End of Line,
+             which are used below to select what to write or buffer.  */
+          if (n_bytes - n_out - n_hold <= n_left)
+            {
+              /* Have enough for split.  */
+              split_rest = n_bytes - n_out - n_hold;
+              eoc = sob + split_rest - 1;
+              eol = memrchr (sob, '\n', split_rest);
+            }
+          else
+            eol = memrchr (sob, '\n', n_left);
+
+          /* Output hold space if possible.  */
+          if (n_hold && !(!eol && n_out))
+            {
+              cwrite (n_out == 0, hold, n_hold);
+              n_out += n_hold;
+              if (n_hold > bufsize)
+                hold = xrealloc (hold, bufsize);
+              n_hold = 0;
+              hold_size = bufsize;
+            }
+
+          /* Output to eol if present.  */
+          if (eol)
+            {
+              split_line = true;
+              size_t n_write = eol - sob + 1;
+              cwrite (n_out == 0, sob, n_write);
+              n_out += n_write;
+              n_left -= n_write;
+              sob += n_write;
+              if (eoc)
+                split_rest -= n_write;
+            }
+
+          /* Output to eoc or eob if possible.  */
+          if (n_left && !split_line)
+            {
+              size_t n_write = eoc ? split_rest : n_left;
+              cwrite (n_out == 0, sob, n_write);
+              n_out += n_write;
+              n_left -= n_write;
+              sob += n_write;
+              if (eoc)
+                split_rest -= n_write;
+            }
+
+          /* Update hold if needed.  */
+          if ((eoc && split_rest) || (!eoc && n_left))
+            {
+              size_t n_buf = eoc ? split_rest : n_left;
+              if (hold_size - n_hold < n_buf)
+                {
+                  if (hold_size <= SIZE_MAX - bufsize)
+                    hold_size += bufsize;
+                  else
+                    xalloc_die ();
+                  hold = xrealloc (hold, hold_size);
+                }
+              memcpy (hold + n_hold, sob, n_buf);
+              n_hold += n_buf;
+              n_left -= n_buf;
+              sob += n_buf;
+            }
+
+          /* Reset for new split.  */
+          if (eoc)
+            {
+              n_out = 0;
+              split_line = false;
+            }
         }
-
-      /* Find where to end this chunk.  */
-      bp = buf + n_buffered;
-      if (n_buffered == n_bytes)
-        {
-          while (bp > buf && bp[-1] != '\n')
-            bp--;
-        }
-
-      /* If chunk has no newlines, use all the chunk.  */
-      if (bp == buf)
-        bp = buf + n_buffered;
-
-      /* Output the chars as one output file.  */
-      cwrite (true, buf, bp - buf);
-
-      /* Discard the chars we just output; move rest of chunk
-         down to be the start of the next chunk.  Source and
-         destination probably overlap.  */
-      n_buffered -= bp - buf;
-      if (n_buffered > 0)
-        memmove (buf, bp, n_buffered);
     }
-  while (!eof);
-  free (buf);
+  while (n_read);
+
+  /* Handle no eol at end of file.  */
+  if (n_hold)
+    cwrite (n_out == 0, hold, n_hold);
+
+  free (hold);
 }
 
 /* -n l/[K/]N: Write lines to files of approximately file size / N.
@@ -709,8 +761,8 @@ lines_chunk_split (uintmax_t k, uintmax_t n, char *buf, size_t bufsize,
   while (n_written < file_size)
     {
       char *bp = buf, *eob;
-      size_t n_read = full_read (STDIN_FILENO, buf, bufsize);
-      if (n_read < bufsize && errno)
+      size_t n_read = safe_read (STDIN_FILENO, buf, bufsize);
+      if (n_read == SAFE_READ_ERROR)
         error (EXIT_FAILURE, errno, "%s", infile);
       else if (n_read == 0)
         break; /* eof.  */
@@ -804,8 +856,8 @@ bytes_chunk_extract (uintmax_t k, uintmax_t n, char *buf, size_t bufsize,
 
   while (start < end)
     {
-      size_t n_read = full_read (STDIN_FILENO, buf, bufsize);
-      if (n_read < bufsize && errno)
+      size_t n_read = safe_read (STDIN_FILENO, buf, bufsize);
+      if (n_read == SAFE_READ_ERROR)
         error (EXIT_FAILURE, errno, "%s", infile);
       else if (n_read == 0)
         break; /* eof.  */
@@ -926,7 +978,7 @@ lines_rr (uintmax_t k, uintmax_t n, char *buf, size_t bufsize)
   else
     {
       if (SIZE_MAX < n)
-        error (exit_failure, 0, "%s", _("memory exhausted"));
+        xalloc_die ();
       files = xnmalloc (n, sizeof *files);
 
       /* Generate output file names. */
@@ -945,8 +997,6 @@ lines_rr (uintmax_t k, uintmax_t n, char *buf, size_t bufsize)
   while (true)
     {
       char *bp = buf, *eob;
-      /* Use safe_read() rather than full_read() here
-         so that we process available data immediately.  */
       size_t n_read = safe_read (STDIN_FILENO, buf, bufsize);
       if (n_read == SAFE_READ_ERROR)
         error (EXIT_FAILURE, errno, "%s", infile);
@@ -1408,7 +1458,7 @@ main (int argc, char **argv)
       break;
 
     case type_byteslines:
-      line_bytes_split (n_units);
+      line_bytes_split (n_units, buf, in_blk_size);
       break;
 
     case type_chunk_bytes:

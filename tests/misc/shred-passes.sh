@@ -1,7 +1,7 @@
 #!/bin/sh
 # Verify the operations done by shred
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,9 +20,9 @@
 print_ver_ shred
 
 
-# shred a single letter, zero length file which should result in
+# shred a single letter, which should result in
 # 3 random passes and a single rename.
-touch f || framework_failure_
+printf 1 > f || framework_failure_
 echo "\
 shred: f: pass 1/3 (random)...
 shred: f: pass 2/3 (random)...
@@ -31,9 +31,21 @@ shred: f: removing
 shred: f: renamed to 0
 shred: f: removed" > exp || framework_failure_
 
+shred -v -u f 2>out || fail=1
+
+compare exp out || fail=1
+
+# Likewise but for a zero length file
+# to bypass the data passes
+touch f || framework_failure_
+echo "\
+shred: f: removing
+shred: f: renamed to 0
+shred: f: removed" > exp || framework_failure_
 
 shred -v -u f 2>out || fail=1
 
 compare exp out || fail=1
+
 
 Exit $fail

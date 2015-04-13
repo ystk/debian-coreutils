@@ -1,5 +1,5 @@
 /* od -- dump files in octal and other formats
-   Copyright (C) 1992-2013 Free Software Foundation, Inc.
+   Copyright (C) 1992-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include <getopt.h>
 #include <sys/types.h>
 #include "system.h"
+#include "argmatch.h"
 #include "error.h"
 #include "ftoastr.h"
 #include "quote.h"
@@ -259,13 +260,37 @@ static enum size_spec integral_type_size[MAX_INTEGRAL_TYPE_SIZE + 1];
 #define MAX_FP_TYPE_SIZE sizeof (long double)
 static enum size_spec fp_type_size[MAX_FP_TYPE_SIZE + 1];
 
+#ifndef WORDS_BIGENDIAN
+# define WORDS_BIGENDIAN 0
+#endif
+
+/* Use native endianess by default.  */
+static bool input_swap;
+
 static char const short_options[] = "A:aBbcDdeFfHhIij:LlN:OoS:st:vw::Xx";
 
 /* For long options that have no equivalent short option, use a
    non-character as a pseudo short option, starting with CHAR_MAX + 1.  */
 enum
 {
-  TRADITIONAL_OPTION = CHAR_MAX + 1
+  TRADITIONAL_OPTION = CHAR_MAX + 1,
+  ENDIAN_OPTION,
+};
+
+enum endian_type
+{
+  endian_little,
+  endian_big
+};
+
+static char const *const endian_args[] =
+{
+  "little", "big", NULL
+};
+
+static enum endian_type const endian_types[] =
+{
+  endian_little, endian_big
 };
 
 static struct option const long_options[] =
@@ -278,6 +303,7 @@ static struct option const long_options[] =
   {"strings", optional_argument, NULL, 'S'},
   {"traditional", no_argument, NULL, TRADITIONAL_OPTION},
   {"width", optional_argument, NULL, 'w'},
+  {"endian", required_argument, NULL, ENDIAN_OPTION },
 
   {GETOPT_HELP_OPTION_DECL},
   {GETOPT_VERSION_OPTION_DECL},
@@ -316,18 +342,19 @@ suffixes may be . for octal and b for multiply by 512.\n\
       emit_mandatory_arg_note ();
 
       fputs (_("\
-  -A, --address-radix=RADIX   output format for file offsets.  RADIX is one\n\
+  -A, --address-radix=RADIX   output format for file offsets; RADIX is one\n\
                                 of [doxn], for Decimal, Octal, Hex or None\n\
+      --endian={big|little}   swap input bytes according the specified order\n\
   -j, --skip-bytes=BYTES      skip BYTES input bytes first\n\
 "), stdout);
       fputs (_("\
   -N, --read-bytes=BYTES      limit dump to BYTES input bytes\n\
-  -S BYTES, --strings[=BYTES]  output strings of at least BYTES graphic chars.\
+  -S BYTES, --strings[=BYTES]  output strings of at least BYTES graphic chars;\
 \n\
                                 3 is implied when BYTES is not specified\n\
   -t, --format=TYPE           select output format or formats\n\
   -v, --output-duplicates     do not use * to mark line suppression\n\
-  -w[BYTES], --width[=BYTES]  output BYTES bytes per output line.\n\
+  -w[BYTES], --width[=BYTES]  output BYTES bytes per output line;\n\
                                 32 is implied when BYTES is not specified\n\
       --traditional           accept arguments in third form above\n\
 "), stdout);
@@ -339,7 +366,7 @@ suffixes may be . for octal and b for multiply by 512.\n\
 Traditional format specifications may be intermixed; they accumulate:\n\
   -a   same as -t a,  select named characters, ignoring high-order bit\n\
   -b   same as -t o1, select octal bytes\n\
-  -c   same as -t c,  select ASCII characters or backslash escapes\n\
+  -c   same as -t c,  select printable characters or backslash escapes\n\
   -d   same as -t u2, select unsigned decimal 2-byte units\n\
 "), stdout);
       fputs (_("\
@@ -355,7 +382,7 @@ Traditional format specifications may be intermixed; they accumulate:\n\
 \n\
 TYPE is made up of one or more of these specifications:\n\
   a          named character, ignoring high-order bit\n\
-  c          ASCII character or backslash escape\n\
+  c          printable character or backslash escape\n\
 "), stdout);
       fputs (_("\
   d[SIZE]    signed decimal, SIZE bytes per integer\n\
@@ -400,13 +427,27 @@ N (size_t fields, size_t blank, void const *block,                      \
    char const *FMT_STRING, int width, int pad)                          \
 {                                                                       \
   T const *p = block;                                                   \
-  size_t i;                                                             \
+  uintmax_t i;                                                          \
   int pad_remaining = pad;                                              \
   for (i = fields; blank < i; i--)                                      \
     {                                                                   \
       int next_pad = pad * (i - 1) / fields;                            \
       int adjusted_width = pad_remaining - next_pad + width;            \
-      T x = *p++;                                                       \
+      T x;                                                              \
+      if (input_swap && sizeof (T) > 1)                                 \
+        {                                                               \
+          size_t j;                                                     \
+          union {                                                       \
+            T x;                                                        \
+            char b[sizeof (T)];                                         \
+          } u;                                                          \
+          for (j = 0; j < sizeof (T); j++)                              \
+            u.b[j] = ((const char *) p)[sizeof (T) - 1 - j];            \
+          x = u.x;                                                      \
+        }                                                               \
+      else                                                              \
+        x = *p;                                                         \
+      p++;                                                              \
       ACTION;                                                           \
       pad_remaining = next_pad;                                         \
     }                                                                   \
@@ -416,7 +457,7 @@ N (size_t fields, size_t blank, void const *block,                      \
   PRINT_FIELDS (N, T, fmt_string, xprintf (fmt_string, adjusted_width, x))
 
 #define PRINT_FLOATTYPE(N, T, FTOASTR, BUFSIZE)                         \
-  PRINT_FIELDS (N, T, fmt_string ATTRIBUTE_UNUSED,                      \
+  PRINT_FIELDS (N, T, fmt_string _GL_UNUSED,                      \
                 char buf[BUFSIZE];                                      \
                 FTOASTR (buf, sizeof buf, 0, 0, x);                     \
                 xprintf ("%*s", adjusted_width, buf))
@@ -452,11 +493,11 @@ dump_hexl_mode_trailer (size_t n_bytes, const char *block)
 
 static void
 print_named_ascii (size_t fields, size_t blank, void const *block,
-                   const char *unused_fmt_string ATTRIBUTE_UNUSED,
+                   const char *unused_fmt_string _GL_UNUSED,
                    int width, int pad)
 {
   unsigned char const *p = block;
-  size_t i;
+  uintmax_t i;
   int pad_remaining = pad;
   for (i = fields; blank < i; i--)
     {
@@ -483,11 +524,11 @@ print_named_ascii (size_t fields, size_t blank, void const *block,
 
 static void
 print_ascii (size_t fields, size_t blank, void const *block,
-             const char *unused_fmt_string ATTRIBUTE_UNUSED, int width,
+             const char *unused_fmt_string _GL_UNUSED, int width,
              int pad)
 {
   unsigned char const *p = block;
-  size_t i;
+  uintmax_t i;
   int pad_remaining = pad;
   for (i = fields; blank < i; i--)
     {
@@ -1056,8 +1097,8 @@ skip (uintmax_t n_skip)
 }
 
 static void
-format_address_none (uintmax_t address ATTRIBUTE_UNUSED,
-                     char c ATTRIBUTE_UNUSED)
+format_address_none (uintmax_t address _GL_UNUSED,
+                     char c _GL_UNUSED)
 {
 }
 
@@ -1662,6 +1703,18 @@ main (int argc, char **argv)
 
         case TRADITIONAL_OPTION:
           traditional = true;
+          break;
+
+        case ENDIAN_OPTION:
+          switch (XARGMATCH ("--endian", optarg, endian_args, endian_types))
+            {
+              case endian_big:
+                  input_swap = ! WORDS_BIGENDIAN;
+                  break;
+              case endian_little:
+                  input_swap = WORDS_BIGENDIAN;
+                  break;
+            }
           break;
 
           /* The next several cases map the traditional format

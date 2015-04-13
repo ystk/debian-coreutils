@@ -1,5 +1,5 @@
 /* pwd - print current directory
-   Copyright (C) 1994-2013 Free Software Foundation, Inc.
+   Copyright (C) 1994-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -64,6 +64,9 @@ Print the full filename of the current working directory.\n\
 "), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
+      fputs (_("\n\
+If no option is specified, -P is assumed.\n\
+"), stdout);
       printf (USAGE_BUILTIN_WARNING, PROGRAM_NAME);
       emit_ancillary_info ();
     }
@@ -324,7 +327,9 @@ int
 main (int argc, char **argv)
 {
   char *wd;
-  /* POSIX requires a default of -L, but most scripts expect -P.  */
+  /* POSIX requires a default of -L, but most scripts expect -P.
+     Currently shells default to -L, while stand-alone
+     pwd implementations default to -P.  */
   bool logical = (getenv ("POSIXLY_CORRECT") != NULL);
 
   initialize_main (&argc, &argv);

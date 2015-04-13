@@ -1,5 +1,5 @@
 /* tsort - topological sort.
-   Copyright (C) 1998-2013 Free Software Foundation, Inc.
+   Copyright (C) 1998-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -280,7 +280,7 @@ record_relation (struct item *j, struct item *k)
 }
 
 static bool
-count_items (struct item *unused ATTRIBUTE_UNUSED)
+count_items (struct item *unused _GL_UNUSED)
 {
   n_strings++;
   return false;
@@ -347,8 +347,7 @@ detect_loop (struct item *k)
                         {
                           struct item *tmp = loop->qlink;
 
-                          fprintf (stderr, "%s: %s\n", program_name,
-                                   loop->str);
+                          error (0, 0, "%s", loop->str);
 
                           /* Until we encounter K again.  */
                           if (loop == k)

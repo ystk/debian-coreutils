@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure that cp --preserve=link --link doesn't waste heap
 
-# Copyright (C) 2008-2013 Free Software Foundation, Inc.
+# Copyright (C) 2008-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ cp
 expensive_
-require_ulimit_
+require_ulimit_v_
 
 a=$(printf %031d 0)
 b=$(printf %031d 1)

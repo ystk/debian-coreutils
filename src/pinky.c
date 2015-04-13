@@ -1,5 +1,5 @@
 /* GNU's pinky.
-   Copyright (C) 1992-2013 Free Software Foundation, Inc.
+   Copyright (C) 1992-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -466,12 +466,14 @@ short_pinky (const char *filename,
              const int argc_names, char *const argv_names[])
 {
   size_t n_users;
-  STRUCT_UTMP *utmp_buf;
+  STRUCT_UTMP *utmp_buf = NULL;
 
   if (read_utmp (filename, &n_users, &utmp_buf, 0) != 0)
     error (EXIT_FAILURE, errno, "%s", filename);
 
   scan_entries (n_users, utmp_buf, argc_names, argv_names);
+
+  IF_LINT (free (utmp_buf));
 }
 
 static void

@@ -1,7 +1,7 @@
 #!/bin/sh
 # tests for canonicalize mode (readlink -f).
 
-# Copyright (C) 2004-2013 Free Software Foundation, Inc.
+# Copyright (C) 2004-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 print_ver_ readlink
 
 pwd=$(pwd)
-my_pwd=$("$abs_top_builddir/src/pwd")
+my_pwd=$(env pwd -P)
 tmp=d
 
 mkdir $tmp || framework_failure_

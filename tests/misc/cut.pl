@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Test "cut".
 
-# Copyright (C) 2006-2013 Free Software Foundation, Inc.
+# Copyright (C) 2006-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -144,15 +144,17 @@ my @Tests =
   ['newline-12', '-s', '-d:', '-f1', {IN=>"a:1\nb:"}, {OUT=>"a\nb\n"}],
   ['newline-13', '-d:', '-f1-', {IN=>"a1:\n:"}, {OUT=>"a1:\n:\n"}],
   # newline processing for fields when -d == '\n'
-  ['newline-14', "-d'\n'", '-f1', {IN=>"a:1\nb:"}, {OUT=>"a:1\nb:\n"}],
+  ['newline-14', "-d'\n'", '-f1', {IN=>"a:1\nb:"}, {OUT=>"a:1\n"}],
   ['newline-15', '-s', "-d'\n'", '-f1', {IN=>"a:1\nb:"}, {OUT=>"a:1\n"}],
-  ['newline-16', '-s', "-d'\n'", '-f2', {IN=>"\nb"}, {OUT=>""}],
+  ['newline-16', '-s', "-d'\n'", '-f2', {IN=>"\nb"}, {OUT=>"b\n"}],
   ['newline-17', '-s', "-d'\n'", '-f1', {IN=>"\nb"}, {OUT=>"\n"}],
-  ['newline-18', "-d'\n'", '-f2', {IN=>"\nb"}, {OUT=>"\nb\n"}],
-  ['newline-19', "-d'\n'", '-f1', {IN=>"\nb"}, {OUT=>"\nb\n"}],
+  ['newline-18', "-d'\n'", '-f2', {IN=>"\nb"}, {OUT=>"b\n"}],
+  ['newline-19', "-d'\n'", '-f1', {IN=>"\nb"}, {OUT=>"\n"}],
   ['newline-20', '-s', "-d'\n'", '-f1-', {IN=>"\n"}, {OUT=>"\n"}],
-  ['newline-21', '-s', "-d'\n'", '-f1-', {IN=>"\nb"}, {OUT=>"\n"}],
+  ['newline-21', '-s', "-d'\n'", '-f1-', {IN=>"\nb"}, {OUT=>"\nb\n"}],
   ['newline-22', "-d'\n'", '-f1-', {IN=>"\nb"}, {OUT=>"\nb\n"}],
+  ['newline-23', "-d'\n'", '-f1-', '--ou=:', {IN=>"a\nb\n"}, {OUT=>"a:b\n"}],
+  ['newline-24', "-d'\n'", '-f1,2', '--ou=:', {IN=>"a\nb\n"}, {OUT=>"a:b\n"}],
 
   # New functionality:
   ['out-delim1', '-c1-3,5-', '--output-d=:', {IN=>"abcdefg\n"},
@@ -210,6 +212,8 @@ my @Tests =
                                          {IN=>"123456\n"}, {OUT=>"23456\n"}],
   ['EOL-subsumed-3', '--complement -b3,4-4,5,2-',
                                          {IN=>"123456\n"}, {OUT=>"1\n"}],
+  ['EOL-subsumed-4', '--output-d=: -b1-2,2-3,3-',
+                                        {IN=>"1234\n"}, {OUT=>"1234\n"}],
  );
 
 if ($mb_locale ne 'C')

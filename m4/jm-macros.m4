@@ -2,7 +2,7 @@
 
 dnl Misc type-related macros for coreutils.
 
-# Copyright (C) 1998-2013 Free Software Foundation, Inc.
+# Copyright (C) 1998-2014 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,20 +44,24 @@ AC_DEFUN([coreutils_MACROS],
   # used by shred
   AC_CHECK_FUNCS_ONCE([directio])
 
-  # Used by install.c.
   coreutils_saved_libs=$LIBS
     LIBS="$LIBS $LIB_SELINUX"
+    # Used by selinux.c.
+    AC_CHECK_FUNCS([mode_to_security_class], [], [])
+    # Used by install.c.
     AC_CHECK_FUNCS([matchpathcon_init_prefix], [],
     [
-      case "$ac_cv_search_setfilecon:$ac_cv_header_selinux_selinux_h" in
-        no:*) # SELinux disabled
-          ;;
-        *:no) # SELinux disabled
-          ;;
-        *)
-        AC_MSG_WARN([SELinux enabled, but matchpathcon_init_prefix not found])
-        AC_MSG_WARN([The install utility may run slowly])
-      esac
+      if test "$with_selinux" != no; then
+        case "$ac_cv_search_setfilecon:$ac_cv_header_selinux_selinux_h" in
+          no:*) # SELinux disabled
+            ;;
+          *:no) # SELinux disabled
+            ;;
+          *)
+          AC_MSG_WARN([SELinux enabled, but matchpathcon_init_prefix not found])
+          AC_MSG_WARN([The install utility may run slowly])
+        esac
+      fi
     ])
   LIBS=$coreutils_saved_libs
 
